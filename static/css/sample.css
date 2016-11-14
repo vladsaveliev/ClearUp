@@ -1,0 +1,525 @@
+body
+{
+	font-family: Arial, sans-serif;
+	padding-left: 50px;
+	padding-right: 50px;
+	padding-top: 20px;
+}
+
+/* Header Stuff */
+
+table.sqnmHeader
+{
+	width: 100%;
+}
+
+td.sqnmHeader
+{
+	text-align: left;
+	vertical-align: top;
+}
+
+h1.sqnmHeader
+{
+	font-size: 1.5em;
+	font-weight: normal;
+	font-style: italic;
+}
+
+td.summaryLink
+{
+	text-align: right;
+	vertical-align: top;
+}
+
+p.small
+{
+	font-size: 0.8em;
+	text-indent: 4em;
+}
+
+/* Summary */
+
+table.summaryInfo
+{
+	margin-left: 50px;
+}
+
+td.summaryName, td.summaryValue
+{
+	font-size: 1.25em;
+}
+
+td.summaryName
+{
+	text-align: right;
+}
+
+td.summaryValue
+{
+	text-align: left;
+	font-weight: bold;
+	color: #002776;
+}
+
+h3.subHeading
+{
+	font-size: 1.5em;
+	font-weight: bold;
+	margin-top: 40px;
+}
+
+table.summaryPlate
+{
+}
+
+td.summaryPlateHeader
+{
+	font-size: 1.25em;
+	font-weight: bold;
+	padding-left: 20px;
+}
+
+td.summaryPlateValue
+{
+	font-size: 1.25em;
+	padding-left: 20px;
+}
+
+td.unexpectedName
+{
+	font-size: 1.25em;
+	text-align: right;
+	padding-left: 20px;
+}
+
+td.unexpectedValue
+{
+	font-size: 1.25em;
+	text-align: left;
+	font-weight: bold;
+	color: #002776;
+	padding-left: 20px;
+}
+
+table.summaryMatches
+{
+	border-collapse: collapse;
+	border: 2px solid #888888;
+	margin-left: 20px;
+}
+
+td.summaryMatchesHeader
+{
+	font-size: 1.25em;
+	font-weight: bold;
+	text-align: center;
+}
+
+td.summaryScore
+{
+	font-size: 2em;
+	text-align: center;
+	white-space: nowrap;
+}
+
+td.summaryMatchesHeader, td.summaryScore, td.summaryA, td.summaryB
+{
+	border: 2px solid #BBBBBB;
+	padding: 5px;
+	font-weight: bold;
+}
+
+td.summaryMatchesName
+{
+	text-align: right;
+	font-size: 0.9em;
+}
+
+td.summaryMatchesDetails
+{
+	font-size: 0.9em;
+	font-weight: bold;
+}
+
+table.qcSummary
+{
+	margin-left: 20px;
+	margin-bottom: 20px;
+}
+
+td.qcSummaryName
+{
+	text-align: right;
+	font-size: 1.2em;
+}
+
+td.qcSummaryValue
+{
+	text-align: left;
+	font-weight: bold;
+	color: #002776;
+	font-size: 1.25em;
+}
+
+table.qcSample
+{
+	border-bottom: 2px solid #888888;
+	margin-bottom: 20px;
+	width: 100%;
+}
+
+td.qcDetailsBox
+{
+	border: 2px solid #888888;
+	margin-bottom: 20px;
+}
+
+td.qcDetailsName
+{
+	text-align: right;
+	vertical-align: top;
+	padding: 5px;
+}
+
+td.qcDetailsValue
+{
+	text-align: left;
+	font-weight: bold;
+	color: #002776;
+	vertical-align: top;
+	padding: 5px;
+}
+
+/* Plate Report - Title */
+
+h2.pageTitle
+{
+	font-size: 2.25em;
+}
+
+/* Plate Report - Plate Info */
+
+table.plateInfo
+{
+	margin-left: 50px;
+	margin-bottom: 25px;
+}
+
+td.plateInfoName, td.plateInfoValue
+{
+	font-size: 1.5em;
+	padding-bottom: 10px;
+}
+
+td.plateInfoName
+{
+	text-align: right;
+}
+
+td.plateInfoValue
+{
+	text-align: left;
+	color: #002776;
+	font-weight: bold;
+}
+
+/* Plate Report - Samples Table */
+
+table.plateTable
+{
+	border: 2px solid #888888;
+	border-collapse: collapse;
+}
+
+table.plateTable td
+{
+	border: 2px solid #BBBBBB;
+	padding: 5px;
+	text-align: center;
+	font-size: 0.8em;
+}
+
+tr.plateTableHeader
+{
+	font-size: 1.25em;
+	font-weight: bold;
+	text-align: center;
+}
+
+tr.plateTableHeader2
+{
+	font-weight: bold;
+	text-align: center;
+	background: #EEEEEE;
+}
+
+td.plateSampleId
+{
+	white-space: nowrap;
+}
+
+tr.rowB, tr.rowD, tr.rowF, tr.rowH, tr.rowJ, tr.rowL, tr.rowN, tr.rowP, tr.rowR, tr.rowT
+{
+	background: #EEEEEE;
+}
+
+table.plateTable td.gtzero
+{
+	font-weight: bold;
+	font-size: 1.25em;
+	line-height: 0.8em;
+}
+
+/* Sample Report - Sample Info Table */
+
+table.sampleInfo
+{
+	margin-left: 50px;
+	margin-bottom: 25px;
+}
+
+td.sampleInfoName, td.sampleInfoValue, td.sampleInfoValueB
+{
+	font-size: 1.25em;
+	padding-top: 3px;
+	padding-bottom: 3px;
+}
+
+td.sampleInfoName
+{
+	text-align: right;
+}
+
+td.sampleInfoValue
+{
+	text-align: left;
+	color: #002776;
+	font-weight: bold;
+}
+
+td.sampleInfoValueB
+{
+	text-align: center;
+	padding-left: 10px;
+	padding-right: 10px;
+	vertical-align: middle;
+	border: 1px solid #888888;
+}
+
+td.sampleInfoValueB
+{
+	color: #002776;
+}
+
+/* Sample Report - Tumor/Mismatch Headers */
+
+td.sampleSuperCategory
+{
+	font-size: 1.5em;
+	font-weight: bold;
+	padding-top: 20px;
+}
+
+td.sampleCategory
+{
+	font-size: 1.25em;
+	font-style: italic;
+	padding-top: 10px;
+}
+
+table.sampleMatch
+{
+	border: 2px solid #888888;
+}
+
+table.snpCalls
+{
+	border: 2px solid #FFFFFF;
+}
+
+/* Sample Report - Matched Sample Data */
+td.matchSampleInfoName
+{
+	text-align: right;
+}
+
+td.matchSampleInfoValue
+{
+	text-align: left;
+	font-weight: bold;
+	color: #002776;
+}
+
+/* Match Report */
+td.ab
+{
+	font-size: 4em;
+	font-weight: bold;
+	font-style: italic;
+}
+
+td.abSmall
+{
+	font-weight: bold;
+	font-style: italic;
+	text-align: right;
+}
+
+h2.score
+{
+	font-size: 2em;
+	font-weight: bold;
+}
+
+table.score
+{
+	margin-left: 50px;
+}
+
+td.scoreName
+{
+	text-align: right;
+}
+
+td.scoreValue
+{
+	text-align: left;
+}
+
+table.match
+{
+	margin-top: 25px;
+	border-collapse: collapse;
+    width: 1150px;
+}
+
+table.fixed {
+    table-layout: fixed;
+}
+
+table.fixed td {
+    overflow: hidden;
+}
+
+table.match td
+{
+	padding: 2px;
+}
+
+table.match td:first-child {
+    width: 60px;
+}
+
+table.match td.toprow
+{
+	border-top: 1px solid #BBBBBB;
+	border-left: 1px solid #BBBBBB;
+	border-right: 1px solid #BBBBBB;
+}
+
+table.match td.bottomrow
+{
+	border-bottom: 1px solid #BBBBBB;
+	border-left: 1px solid #BBBBBB;
+	border-right: 1px solid #BBBBBB;
+}
+
+table.match td.scorerow
+{
+	text-align: center;
+}
+
+/* Match and SNP Stuff */
+td.scorerow
+{
+	border: 1px solid #BBBBBB;
+}
+
+td.toprow, td.bottomrow, td.scorerow, td.snpIndex
+{
+	font-size: 0.9em;
+	font-family: monospace;
+
+}
+
+td.snpIndex
+{
+	text-align: center;
+}
+
+/* Quality Score Values */
+td.quality_A, td.conservative
+{
+	font-weight: bold;
+}
+
+td.quality_B, td.moderate
+{
+	font-weight: normal;
+}
+
+td.quality_C, td.aggressive
+{
+	color: #888888;
+}
+
+td.quality_E, td.quality_F, td.usercall
+{
+	font-style: italic;
+}
+
+
+/* Match Value */
+td.hom_match, td.het_match, td.match
+{
+	background: #00c800;
+}
+
+td.het_mismatch
+{
+	background: #FFDD00;
+}
+
+td.hom_mismatch
+{
+	background: #EE0000;
+}
+
+td.nocall
+{
+	background: #EEEEEE;
+}
+
+
+
+/* Legend */
+table.legend
+{
+	margin-top: 25px;
+	border: 2px solid #888888;
+	border-collapse: collapse;
+}
+
+td.legendHeader
+{
+	font-weight: bold;
+	border-bottom: 2px solid #888888;
+}
+
+table.legend td
+{
+	padding: 5px;
+}
+
+/* Confidence Values */
+
+td.Low
+{
+	background-color: #FFF600;
+}
+
+td.High
+{
+}
+

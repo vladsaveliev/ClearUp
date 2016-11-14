@@ -102,7 +102,7 @@
 
         var leafsTexts = g.selectAll(".node--leaf")
           .append("a")
-            .attr("xlink:href", function(d) { return d.id.substring(d.id.lastIndexOf(".") + 1); })
+            .attr("xlink:href", function(d) { return d.data.sample_id; })
           .append("text")
             .attr("dy", 3)
             .attr("x", function(d) { return treeSampleSpace; })

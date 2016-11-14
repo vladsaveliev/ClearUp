@@ -1,0 +1,191 @@
+{% extends "_base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sample.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/igv.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
+
+    <script type="text/javascript" src="{{ url_for('static', filename='js/igv.min.js') }}"></script>
+{% endblock %}
+
+{% block body %}
+    <h1>Unexpected Match Report</h1>
+
+    <table class=samplePair>
+        <tr><td class=ab>A</td><td>
+            <table class=sampleInfo>
+                <tr><td class=sampleInfoName>Sample Name:</td><td class=sampleInfoValue colspan=7>{{ sampleA.name }}</td></tr>
+                <tr><td class=sampleInfoName>Project Name:</td><td class=sampleInfoValue colspan=7>{{ sampleA.project }}</td></tr>
+            </table>
+        </td></tr>
+        <tr><td class=ab>B</td><td>
+            <table class=sampleInfo>
+                <tr><td class=sampleInfoName>Sample Name:</td><td class=sampleInfoValue colspan=7>{{ sampleB.name }}</td></tr>
+                <tr><td class=sampleInfoName>Project Name:</td><td class=sampleInfoValue colspan=7>{{ sampleB.project }}</td></tr>
+            </table>
+        </td></tr>
+    </table>
+
+    <h2 class=score>Total Score: {{ snps_data.total_score }} ({{ snps_data.confidence }} Confidence)</h2>
+    <table class=score>
+        <tr><td class=scoreName>Heterozygous SNP Matches: </td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
+        <tr><td class=scoreName>Homozygous SNP Matches: </td><td class=scoreValue>{{ snps_data.hom_matches }}</td></tr>
+        <tr><td class=scoreName>Heterozygous SNP Mismatches: </td><td class=scoreValue>{{ snps_data.het_mismatches }}</td></tr>
+        <tr><td class=scoreName>Homozygous SNP Mismatches: </td><td class=scoreValue>{{ snps_data.hom_mismatches }}</td></tr>
+        <tr><td class=scoreName>Missing/Ignored SNPs: </td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
+    </table>
+
+    {% for snp_records in snp_tables %}
+    <table class="match fixed">
+        <tr>
+            <td class=snpIndex>&nbsp</td>
+            {% for snp_record in snp_records %}
+                <td class="snpIndex"> {{ snp_record.index }} </td>
+            {% endfor %}
+        </tr>
+        <tr class="table_variant snprow">
+            <td class=abSmall>A</td>
+            {% for snp_record in snp_records %}
+                <td class="hom_match quality_A bottomrow {{ snp_record.class }} {{ snp_record.usercallA }}"
+                    id="{{ snp_record.index }}_{{ snp_record.chrom }}_{{ snp_record.pos }}_a">
+                    <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ project_name }}/{{ sampleA.id }}/{{ sampleA.id }}/{{ snp_record.index }}/add_usercall" >
+                        <input type="text" name="usercall" value="{{ snp_record.snpA }}" maxlength="2" size="2" class="usercall_input">
+                    </form>
+                    <span>{{ snp_record.snpA }}</span> </td>
+            {% endfor %}
+        </tr>
+        <tr class="table_variant snprow">
+            <td class=abSmall>B</td>
+            {% for snp_record in snp_records %}
+                <td class="hom_match quality_A bottomrow {{ snp_record.class }} {{ snp_record.usercallB }}"
+                    id="{{ snp_record.index }}_{{ snp_record.chrom }}_{{ snp_record.pos }}_b">
+                    <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ project_name }}/{{ sampleA.id }}/{{ sampleB.id }}/{{ snp_record.index }}/add_usercall" >
+                        <input type="text" name="usercall" value="{{ snp_record.snpB }}" maxlength="2" size="2" class="usercall_input">
+                    </form>
+                    <span>{{ snp_record.snpB }}</span> </td>
+            {% endfor %}
+        </tr>
+        <tr class="table_variant">
+            <td class=abSmall>Penalties</td>
+            {% for snp_record in snp_records %}
+                <td class="hom_match scorerow bottomrow {{ snp_record.class }}"> {{ snp_record.penalty }} </td>
+            {% endfor %}
+        </tr>
+    </table>
+    {% endfor %}
+
+    <table class=legend>
+        <tr><td class=legendHeader colspan=2>Legend</td></tr>
+        <tr><td class=match>&nbsp;&nbsp;</td><td>Match</td></tr>
+        <tr><td class=het_mismatch>&nbsp;&nbsp;</td><td>Heterozygous Mismatch</td></tr>
+        <tr><td class=hom_mismatch>&nbsp;&nbsp;</td><td>Homozygous Mismatch</td></tr>
+        <tr><td class=nocall>&nbsp;&nbsp;</td><td>Missing/Ignored SNP</td></tr>
+        <tr><td class=conservative>AT</td><td>Conservative Call</td></tr>
+        <tr><td class=moderate>AT</td><td>Moderate Call</td></tr>
+        <tr><td class=aggressive>AT</td><td>Aggressive Call</td></tr>
+        <tr><td class=usercall>AT</td><td>User Call</td></tr>
+    </table>
+
+    <br><br>
+    <div id="igv-container" style="width: 800px;"></div>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript">
+    var sampleNameA = "{{ sampleA.name }}";
+    var sampleNameB = "{{ sampleB.name }}";
+    var bamUrlA = "{{ sampleA.bam }}";
+    var bamUrlB = "{{ sampleB.bam }}";
+    var genome = "{{ genome }}";
+    $('.snprow td').on('click', function () {
+        if (!igv.browser)
+            createIGV();
+         $('.snprow td form').hide();
+         $('.snprow td span').show();
+        var usercall_form = $(this).find('form');
+        var snp_text = $(this).find('span');
+        usercall_form.show();
+        snp_text.hide();
+        var fields = this.id.split('_');
+        var chrom = fields[1];
+        var pos = parseInt(fields[2]);
+        showIGV(chrom, pos);
+
+    });
+    $(".usercall_input").keyup(function () {
+        this.value = this.value.toLocaleUpperCase();
+    });
+
+    function showIGV(chrom, pos) {
+        var locus = chrom + ': ' + (pos - 100) + '-' + (pos + 100);
+        igv.browser.search(locus);
+    }
+
+    function createIGV() {
+        var get_bam_track_config = function(sample_name, bam_url) {
+            return {
+                type: 'bam',
+                indexed: true,
+                alignmentShading: 'strand',
+                url: bam_url,
+                name: sample_name,
+                height: 300,
+                minHeight: 300,
+                autoHeight: false
+            };
+        };
+
+        // global igv settings
+        igv.CoverageMap.threshold=0.1;
+
+        //counts number of het/hom bam tracks displayed so far
+        var tracks_counter = 0;
+
+        //initialize IGV tracks
+        var tracks = [];
+
+        tracks.push(get_bam_track_config(sampleNameA, bamUrlA));
+        tracks.push(get_bam_track_config(sampleNameB, bamUrlB));
+
+        //initialize IGV.js browser
+        var reference = {};
+        if (genome == 'hg19') {
+            reference['id'] = 'hg19';
+            reference['fastaURL'] = 'http://igv.broadinstitute.org/genomes/seq/1kg_v37/human_g1k_v37_decoy.fasta';
+            reference['cytobandURL'] = 'http://igv.broadinstitute.org/genomes/seq/b37/b37_cytoband.txt';
+        }
+        else if (genome == 'hg38') {
+            reference['id'] = 'hg38';
+            reference['fastaURL'] = 'http://igv.broadinstitute.org/genomes/seq/hg38/hg38.fa';
+        }
+        var options = {
+            showCommandBar: true,
+            reference: reference,
+            showKaryo: false,
+            tracks: tracks
+        };
+
+        igv.createBrowser($("#igv-container")[0], options);
+
+
+        //IGV browser customizations
+        $(".igv-ideogram-content-div").hide();  //hide the IGV ideogram
+
+        //$(".igv-logo").hide();
+
+        // allow one more zoom-in level
+        igv.browser.pixelPerBasepairThreshold = function() {
+            return 28.0;  //default is currently 14.0
+        };
+
+        igv.browser.trackViews.forEach(function (panel) {
+            if(panel.track.name)
+            {
+                //add border between tracks
+                panel.viewportDiv.style.borderBottom = panel.viewportDiv.style.borderLeft = "1px solid #cccccc";
+
+            }
+        });
+    }
+    </script>
+{% endblock %}

@@ -6,11 +6,12 @@ import sys
 import glob
 from flask_script import Manager
 
+from fingerprinting import config
 from fingerprinting.model import Project, Sample, db
-from fingerprinting.utils import read_fasta
+from fingerprinting.utils import read_fasta, load_bam_file, get_fingerprints
 from start import app
 
-from Utils.file_utils import verify_file, verify_dir
+from Utils.file_utils import verify_file, verify_dir, safe_mkdir
 import Utils.logger as log
 IS_DEBUG = log.is_debug = True
 
@@ -41,9 +42,14 @@ def load_project(bcbio_final_path, project_name, genome):
     # project = Project.query.filter_by(name=project_name).first()
     seq_by_sample_id = read_fasta(fasta_fpath)
     db.session.add(project)
+    project_work_dirpath = safe_mkdir(join(config.DATA_DIR, project_name))
     for sample_id, seq in seq_by_sample_id.items():
-        sample = Sample(sample_id, project, seq)
+        bam_fpath = load_bam_file(bcbio_final_path, project_work_dirpath, sample_id)
+        sample = Sample(sample_id, project, bam_fpath)
         db.session.add(sample)
+        fingerprints = get_fingerprints(project, sample, seq._data.upper())
+        for fingerprint in fingerprints:
+            db.session.add(fingerprint)
     db.session.commit()
 
     log.info('Done')
