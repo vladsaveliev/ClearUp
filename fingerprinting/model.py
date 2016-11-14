@@ -25,6 +25,8 @@ class Project(db.Model):
         self.bcbio_final_path = bcbio_final_path
         self.fingerprints_fasta_fpath = fp_fpath
         self.genome = genome
+        self.date = None
+        self.region = None
 
     def __repr__(self):
         return '<Project {}>'.format(self.name)

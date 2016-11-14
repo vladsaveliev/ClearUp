@@ -1,70 +1,56 @@
-<!doctype html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
+{% extends "_base.html" %}
 
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/normalize.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-        <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+{% block head %}
+        <title>{{ title }}</title>
 
         <style>
+            #tree_svg {
+                margin-left: -100px;
+            }
 
-        #tree_svg {
-            margin-left: -100px;
-        }
+            .link {
+                fill: none;
+                stroke: #555;
+                stroke-opacity: 0.4;
+                stroke-width: 1.5px;
+            }
 
-        .link {
-            fill: none;
-            stroke: #555;
-            stroke-opacity: 0.4;
-            stroke-width: 1.5px;
-        }
+            .node text {
+              font: 10px sans-serif;
+            }
+            .node text.seq {
+              font: 10px "Lucida Console", Monaco, monospace;
+            }
 
-        .node text {
-          font: 10px sans-serif;
-        }
-        .node text.seq {
-          font: 10px "Lucida Console", Monaco, monospace;
-        }
+            a {
+              fill: #3b84ae;
+              text-decoration: underline;
+            }
+            a:visited {
+              fill: darkpurple;
+              text-decoration: underline;
+            }
+            a:hover, a:active {
+              fill:darkred;
+              text-decoration: underline;
+            }
 
-        a {
-          fill: #3b84ae;
-          text-decoration: underline;
-        }
-        a:visited {
-          fill: darkpurple;
-          text-decoration: underline;
-        }
-        a:hover, a:active {
-          fill:darkred;
-          text-decoration: underline;
-        }
-
-        .c_nuc { fill: #007a00; }
-        .a_nuc { fill: #002aba; }
-        .t_nuc { fill: #970035; }
-        .g_nuc { fill: #eecf00; }
-        .n_nuc { fill: #b2b2b2; }
-
+            .c_nuc { fill: #007a00; }
+            .a_nuc { fill: #002aba; }
+            .t_nuc { fill: #970035; }
+            .g_nuc { fill: #eecf00; }
+            .n_nuc { fill: #b2b2b2; }
         </style>
-    </head>
-    <body><div class="content">
-        <!--[if lt IE 8]>
-            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
+{% endblock %}
 
-        <h1>{{ project_name }}</h1>
+{% block body %}
+        <h1>{{ title }}</h1>
 
         <svg id="tree_svg" width="{{ width }}" height="{{ height }}"></svg>
         <div id="data_json" style="display: none;">{{ data|safe }}</div>
+{% endblock %}
 
-        <script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
-        <script>window.jQuery || document.write('<script src="{{ url_for('static', filename='js/jquery-1.12.0.min.js') }}"><\/script>')</script>
-        <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
+{% block js %}
         <script src="https://d3js.org/d3.v4.js"></script>
         <script>  {# Based on http://bl.ocks.org/mbostock/4063570 #}
         var treeWidth = {{ tree_width }},
@@ -148,5 +134,4 @@
         console.log(seqWidth);
 
         </script>
-    </div></body>
-</html>
+{% endblock %}

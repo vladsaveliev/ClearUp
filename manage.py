@@ -49,6 +49,14 @@ def load_project(bcbio_final_path, project_name, genome):
     log.info('Done')
 
 
+@manager.command
+def reload_all_data():
+    if log.is_local():
+        db.drop_all()
+        db.create_all()
+        load_project('/Users/vlad/az/analysis/dev/Dev_0261_MiSeq_MCRC_PRCC/bcbio/final', 'Dev_0261_MiSeq_MCRC_PRCC', 'hg19')
+        load_project('/Users/vlad/az/analysis/dev/Dev_0261_MiSeq_COPY/bcbio/final', 'Dev_0261_MiSeq_COPY', 'hg19')
+
 
 if __name__ == "__main__":
     manager.run()
