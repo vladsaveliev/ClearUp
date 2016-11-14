@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 from genericpath import isfile
 
-from os.path import join
+from os.path import join, abspath
 import sys
 import glob
 from flask_script import Manager
@@ -54,8 +54,8 @@ def reload_all_data():
     if log.is_local():
         db.drop_all()
         db.create_all()
-        load_project('/Users/vlad/az/analysis/dev/Dev_0261_MiSeq_MCRC_PRCC/bcbio/final', 'Dev_0261_MiSeq_MCRC_PRCC', 'hg19')
-        load_project('/Users/vlad/az/analysis/dev/Dev_0261_MiSeq_COPY/bcbio/final', 'Dev_0261_MiSeq_COPY', 'hg19')
+        load_project(abspath('../test/analysis/dev/Dev_0261_MiSeq_MCRC_PRCC/bcbio/final'), 'Dev_0261_MiSeq_MCRC_PRCC', 'hg19')
+        load_project(abspath('../test/analysis/dev/Dev_0261_MiSeq_COPY/bcbio/final'), 'Dev_0261_MiSeq_COPY', 'hg19')
 
 
 if __name__ == "__main__":
