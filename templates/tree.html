@@ -23,11 +23,11 @@
             }
 
             a {
-              fill: #3b84ae;
+{#              fill: #3b84ae;#}
               text-decoration: underline;
             }
             a:visited {
-              fill: darkpurple;
+{#              fill: darkpurple;#}
               text-decoration: underline;
             }
             a:hover, a:active {
@@ -44,7 +44,15 @@
 {% endblock %}
 
 {% block body %}
-        <h1>{{ title }}</h1>
+        <h1>Phylogeny tree based on fingerprints</h1>
+
+        <ul style="margin-left: -23px;">
+        <span style="margin-left: -16px;">Samples from the following projects are used:</span>
+        {% for project in projects %}
+            <li style="color: {{ project.color }}">{{ project.name }}</li>
+        {% endfor %}
+        </ul>
+        <br>
 
         <svg id="tree_svg" width="{{ width }}" height="{{ height }}"></svg>
         <div id="data_json" style="display: none;">{{ data|safe }}</div>
@@ -98,13 +106,13 @@
           .append("text")
             .attr("dy", 3)
             .attr("x", function(d) { return treeSampleSpace; })
-            .style("text-anchor", function(d) { return "start"; })
+            .style("text-anchor", "start")
+            .style("fill", function(d) { return d.data.color; })
             .text(function(d) { return d.id.substring(d.id.lastIndexOf(".") + 1); });
 
         var labelSizes = [];
         leafsTexts.each(function() { labelSizes.push(this.getComputedTextLength()); });
         var maxTextWidth = d3.max(labelSizes);
-        console.log(maxTextWidth);
 
         var seqWidth = g.selectAll(".node--leaf")
           .append("text")
@@ -118,7 +126,6 @@
                 .enter().append("tspan")
                   .attr("class", function(d) { return d[1]; })
                   .text(function(d) { return d[0]; });
-              console.log(nucs);
             })
             .node()
             .getComputedTextLength();
