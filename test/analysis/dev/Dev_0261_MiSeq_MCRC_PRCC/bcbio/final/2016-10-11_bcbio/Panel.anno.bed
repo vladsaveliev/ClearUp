@@ -1,7 +1,3 @@
-## Tx_overlap_%: part of region overlapping with transcripts
-## Exon_overlaps_%: part of region overlapping with exons
-## CDS_overlaps_%: part of region overlapping with protein coding regions
-#Chrom	Start	End	Gene	Exon	Strand	Feature	Biotype	Ensembl_ID	TSL	HUGO	Tx_overlap_%	Exon_overlaps_%	CDS_overlaps_%
 chr1	4367322	4367323	.	.	.	capture	.	.	.	.	.	.	.
 chr1	45973927	45973928	MMACHC	3	+	capture	protein_coding	ENST00000401061	2	MMACHC	100.0	100.0	100.0
 chr1	67861519	67861520	IL12RB2	16	+	capture	protein_coding	ENST00000262345	1	IL12RB2	100.0	100.0	100.0
