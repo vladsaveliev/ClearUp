@@ -3,40 +3,47 @@
 {% block head %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sample.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/igv.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
-
-    <script type="text/javascript" src="{{ url_for('static', filename='js/igv.min.js') }}"></script>
+{#    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">#}
 {% endblock %}
 
 {% block body %}
-    <h1>Unexpected Match Report</h1>
+    <p style="font-size: 1.5em; margin-top: 20px;">
+        <a href="/" style="margin-left: -1em;">
+        < AZ projects with pre-computed fingerprints</a>
+        <br><br>
+        <a href="/{{ run_id }}" style="margin-left: -1em;">
+        < Phylogeny tree based on fingerprints</a>
+        <br><br>
+        <span style="font-weight: bold; margin-left: -0.2em;">Closest match for {{ sampleA.name }}</span>
+    </p>
 
-    <table class=samplePair>
+    <table class=samplePair style="margin-left: -0.3em;">
         <tr><td class=ab>A</td><td>
             <table class=sampleInfo>
-                <tr><td class=sampleInfoName>Sample Name:</td><td class=sampleInfoValue colspan=7>{{ sampleA.name }}</td></tr>
-                <tr><td class=sampleInfoName>Project Name:</td><td class=sampleInfoValue colspan=7>{{ sampleA.project }}</td></tr>
+                <tr><td class=sampleInfoName>Sample:&nbsp;</td><td class=sampleInfoValue colspan=7>{{ sampleA.name }}</td></tr>
+                <tr><td class=sampleInfoName>Project:&nbsp;</td><td class=sampleInfoValue colspan=7>{{ sampleA.project }}</td></tr>
             </table>
         </td></tr>
         <tr><td class=ab>B</td><td>
             <table class=sampleInfo>
-                <tr><td class=sampleInfoName>Sample Name:</td><td class=sampleInfoValue colspan=7>{{ sampleB.name }}</td></tr>
-                <tr><td class=sampleInfoName>Project Name:</td><td class=sampleInfoValue colspan=7>{{ sampleB.project }}</td></tr>
+                <tr><td class=sampleInfoName>Sample:&nbsp;</td><td class=sampleInfoValue colspan=7>{{ sampleB.name }}</td></tr>
+                <tr><td class=sampleInfoName>Project:&nbsp;</td><td class=sampleInfoValue colspan=7>{{ sampleB.project }}</td></tr>
             </table>
         </td></tr>
     </table>
 
-    <h2 class=score>Total Score: {{ snps_data.total_score }} ({{ snps_data.confidence }} Confidence)</h2>
-    <table class=score>
-        <tr><td class=scoreName>Heterozygous SNP Matches: </td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
-        <tr><td class=scoreName>Homozygous SNP Matches: </td><td class=scoreValue>{{ snps_data.hom_matches }}</td></tr>
-        <tr><td class=scoreName>Heterozygous SNP Mismatches: </td><td class=scoreValue>{{ snps_data.het_mismatches }}</td></tr>
-        <tr><td class=scoreName>Homozygous SNP Mismatches: </td><td class=scoreValue>{{ snps_data.hom_mismatches }}</td></tr>
-        <tr><td class=scoreName>Missing/Ignored SNPs: </td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
+{#    <h2 class=score>Total Score: {{ snps_data.total_score }} ({{ snps_data.confidence }} Confidence)</h2>#}
+    <br>
+    <table class=score style="margin-left: -1px;">
+        <tr><td class=scoreName>Heterozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
+        <tr><td class=scoreName>Homozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_matches }}</td></tr>
+        <tr><td class=scoreName>Heterozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_mismatches }}</td></tr>
+        <tr><td class=scoreName>Homozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_mismatches }}</td></tr>
+        <tr><td class=scoreName>Missing/Ignored SNPs:&nbsp;</td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
     </table>
 
     {% for snp_records in snp_tables %}
-    <table class="match fixed">
+    <table class="match fixed " cellspacing="0" style="margin-left: -64px;">
         <tr>
             <td class=snpIndex>&nbsp</td>
             {% for snp_record in snp_records %}
@@ -44,29 +51,29 @@
             {% endfor %}
         </tr>
         <tr class="table_variant snprow">
-            <td class=abSmall>A</td>
+            <td class=abSmall>A&nbsp;</td>
             {% for snp_record in snp_records %}
                 <td class="hom_match quality_A bottomrow {{ snp_record.class }} {{ snp_record.usercallA }}"
                     id="{{ snp_record.index }}_{{ snp_record.chrom }}_{{ snp_record.pos }}_a">
-                    <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ project_name }}/{{ sampleA.id }}/{{ sampleA.id }}/{{ snp_record.index }}/add_usercall" >
+                    <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ run_id }}/{{ sampleA.id }}/{{ sampleA.id }}/{{ snp_record.index }}/add_usercall" >
                         <input type="text" name="usercall" value="{{ snp_record.snpA }}" maxlength="2" size="2" class="usercall_input">
                     </form>
                     <span>{{ snp_record.snpA }}</span> </td>
             {% endfor %}
         </tr>
         <tr class="table_variant snprow">
-            <td class=abSmall>B</td>
+            <td class=abSmall>B&nbsp;</td>
             {% for snp_record in snp_records %}
                 <td class="hom_match quality_A bottomrow {{ snp_record.class }} {{ snp_record.usercallB }}"
                     id="{{ snp_record.index }}_{{ snp_record.chrom }}_{{ snp_record.pos }}_b">
-                    <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ project_name }}/{{ sampleA.id }}/{{ sampleB.id }}/{{ snp_record.index }}/add_usercall" >
+                    <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ run_id }}/{{ sampleA.id }}/{{ sampleB.id }}/{{ snp_record.index }}/add_usercall" >
                         <input type="text" name="usercall" value="{{ snp_record.snpB }}" maxlength="2" size="2" class="usercall_input">
                     </form>
                     <span>{{ snp_record.snpB }}</span> </td>
             {% endfor %}
         </tr>
         <tr class="table_variant">
-            <td class=abSmall>Penalties</td>
+            <td class=abSmall>Penalties&nbsp;</td>
             {% for snp_record in snp_records %}
                 <td class="hom_match scorerow bottomrow {{ snp_record.class }}"> {{ snp_record.penalty }} </td>
             {% endfor %}
@@ -91,6 +98,7 @@
 {% endblock %}
 
 {% block js %}
+    <script type="text/javascript" src="{{ url_for('static', filename='js/igv.min.js') }}"></script>
     <script type="text/javascript">
     var sampleNameA = "{{ sampleA.name }}";
     var sampleNameB = "{{ sampleB.name }}";

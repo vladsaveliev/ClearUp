@@ -1,0 +1,82 @@
+<html>
+    <head>
+        <title>WebSocket Updater</title>
+        <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+        <link href='http://fonts.googleapis.com/css?family=PT+Sans:400,700,400italic' rel='stylesheet' type='text/css'>
+        <style>
+            body { font-family: 'PT Sans', sans-serif; }
+            #frame { padding: 0.25in; }
+            #updated { background-color: yellow;
+                       float: right;
+                       margin-left: auto; margin-right: auto;
+                       padding: 10px 12px 8px 12px; }
+            .data { margin-top: 12px;  }
+            #console_log {
+                font: 10px "Lucida Console", Monaco, monospace;
+            }
+        </style>
+
+    </head>
+    <body>
+        <div id='frame'>
+			<div id='updated'>UPDATED</div>
+            <div id='console_log' class='data'></div>
+        </div>
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $("div#updated").fadeOut(0);
+
+                var socket = io.connect('http://' + document.domain + ':' + location.port + '/Dev_0261_MiSeq_COPY/');
+
+                socket.on('connect', function() {
+                    socket.emit('connected', {data: 'I\'m connected!'});
+                });
+                console.log('Connected');
+
+                socket.on('running', function(data) {
+                    data = JSON.parse(data);
+                    console.log('Data recieved ' + data);
+                    console.log("Adding lines data.lines: " + data.lines.join('\n'));
+                        var consoleDiv = $('#console_log');
+                        data.lines.forEach(function(line) {
+                            consoleDiv.append(line + '<br>');
+                        });
+
+                    $("#updated").fadeIn('fast');
+                    setTimeout(function() {
+                        $("#updated").fadeOut('slow');
+                    }, 2500);
+    {#                display_data(JSON.parse(event.data));#}
+                });
+
+                {#            socket.on('connected', function() {#}
+    {#                console.log('Connected!');#}
+    {#                socket.emit('connected');#}
+    {#            });#}
+
+    {#            socket.onclose = function(event) {#}
+    {#                $("#updated").html('SERVER DISCONNECT');#}
+    {#                $("#updated").css('backgroundColor', '#FFCCFF');#}
+    {#                $("#updated").fadeIn('fast');#}
+    {#            };#}
+    {##}
+    {#            function display_data(data) {#}
+    {#                console.log('Data' + data);#}
+    {#                console.log("Adding lines data.lines: " + data.lines.join('\n'));#}
+    {#                    var consoleDiv = $('#console_log');#}
+    {#                    data.lines.forEach(function(line) {#}
+    {#                        consoleDiv.append(line + '<br>');#}
+    {#                    });#}
+    {##}
+    {#                // a little UI sparkle - show the #updated div, then after a little#}
+    {#                // while, fade it away#}
+    {#                $("#updated").fadeIn('fast');#}
+    {#                setTimeout(function() {  $("#updated").fadeOut('slow');  }, 2500);#}
+    {#            }#}
+            });
+        </script>
+    </body>
+</html>
+

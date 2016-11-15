@@ -75,17 +75,17 @@ class Sample(db.Model):
 
 class PairedSample(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    project = db.Column(db.String())
+    run_id = db.Column(db.String())
     sample_id = db.Column(db.Integer())
 
-    paired_sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
-    paired_sample = db.relationship('Sample', backref=db.backref('paired_samples', lazy='dynamic'))
+    matching_sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
+    matching_sample = db.relationship('Sample', backref=db.backref('paired_samples', lazy='dynamic'))
 
-    def __init__(self, name, project, sample_id, paired_sample):
+    def __init__(self, name, run_id, sample_id, matching_sample):
         self.name = name
-        self.project = project
+        self.run_id = run_id
         self.sample_id = sample_id
-        self.paired_sample = paired_sample
+        self.matching_sample = matching_sample
 
     def __repr__(self):
         return '<Sample {} is matched with {}>'.format(self.name, self.sample.name)

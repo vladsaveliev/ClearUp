@@ -16,7 +16,9 @@
 {% endblock %}
 
 {% block body %}
-        <h1>AZ projects with pre-computed fingerprints</h1>
+        <p style="font-size: 1.5em; margin-top: 20px;">
+            <span style="font-weight: bold;">AZ projects with pre-computed fingerprints</span>
+        </p>
 
         <button type="button" class="btn disabled" id="run_btn" style="margin: 20px 0">Fingerprint selected projects</button>
 
@@ -53,7 +55,7 @@
                     tbody.find('tr.selected').each(function() {
                         projectNames.push($(this).attr('project_name'));
                     });
-                    location.href = projectNames.toString();
+                    location.href = projectNames.join();
                 });
 
                 tbody.on('click', 'tr', function () {

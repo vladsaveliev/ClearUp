@@ -1,6 +1,7 @@
 {% extends "_base.html" %}
 
 {% block head %}
+        <!--suppress ALL -->
         <title>{{ title }}</title>
 
         <style>
@@ -19,18 +20,18 @@
               font: 10px sans-serif;
             }
             .node text.seq {
-              font: 10px "Lucida Console", Monaco, monospace;
+                font: 10px "Lucida Console", Monaco, monospace;
             }
 
-            a {
+            .node a {
 {#              fill: #3b84ae;#}
               text-decoration: underline;
             }
-            a:visited {
+            .node a:visited {
 {#              fill: darkpurple;#}
               text-decoration: underline;
             }
-            a:hover, a:active {
+            .node a:hover, a:active {
               fill:darkred;
               text-decoration: underline;
             }
@@ -44,7 +45,12 @@
 {% endblock %}
 
 {% block body %}
-        <h1>Phylogeny tree based on fingerprints</h1>
+        <p style="font-size: 1.5em; margin-top: 20px;">
+            <a href="/" style="margin-left: -1.1em;">
+            < AZ projects with pre-computed fingerprints</a>
+            <br><br>
+            <span style="font-weight: bold;">Phylogeny tree based on fingerprints</span>
+        </p>
 
         <ul style="margin-left: -23px;">
         <span style="margin-left: -16px;">Samples from the following projects are used:</span>
@@ -105,7 +111,7 @@
             .attr("xlink:href", function(d) { return d.data.sample_id; })
           .append("text")
             .attr("dy", 3)
-            .attr("x", function(d) { return treeSampleSpace; })
+            .attr("x", treeSampleSpace)
             .style("text-anchor", "start")
             .style("fill", function(d) { return d.data.color; })
             .text(function(d) { return d.id.substring(d.id.lastIndexOf(".") + 1); });
@@ -120,7 +126,7 @@
             .attr("x", function() { return maxTextWidth + sampleSeqSpace; })
             .attr("class", "seq")
             .each(function(d) {
-              var nucs = d3.select(this)
+              d3.select(this)
                 .selectAll(".nuc")
                   .data(d.data.seq)
                 .enter().append("tspan")

@@ -9,9 +9,12 @@ from os.path import join
 
 from Utils.file_utils import verify_file
 import Utils.logger as log
+
 from fingerprinting.model import Fingerprint
 
+
 FASTA_ID_PROJECT_SEPARATOR = '____PROJECT_'
+
 
 def read_fasta(fasta_fpath):
     seq_by_id = dict()
@@ -27,8 +30,10 @@ def load_bam_file(bcbio_final_path, project_work_dirpath, sample_id):
     bam_fpath = next(iter(glob.glob(bam_glob)), None)
     if not verify_file(bam_fpath):
         log.critical('BAM file not found in ' + bam_glob)
-    bam_copy_fpath = join(project_work_dirpath, sample_id + '.bam')
     bam_index_fpath = bam_fpath + '.bai'
+    if not verify_file(bam_index_fpath):
+        log.critical('BAM index file not found in ' + bam_index_fpath)
+    bam_copy_fpath = join(project_work_dirpath, sample_id + '.bam')
     bam_index_copy_fpath = bam_copy_fpath + '.bai'
     shutil.copy(bam_fpath, bam_copy_fpath)
     shutil.copy(bam_index_fpath, bam_index_copy_fpath)
@@ -70,11 +75,11 @@ def get_fingerprints_positions(bcbio_final_path):
 def get_sample_and_project_name(name, fingerprint_project=None):
     project_names = fingerprint_project.split(',') if fingerprint_project else []
     if FASTA_ID_PROJECT_SEPARATOR in name:
-        sample_name, project = name.split(FASTA_ID_PROJECT_SEPARATOR)
+        sample_name, project_name = name.split(FASTA_ID_PROJECT_SEPARATOR)
     else:
-        sample_name, project = name, ''
+        sample_name, project_name = name, ''
     if len(project_names) != 1:
-        return sample_name, project
+        return sample_name, project_name
     else:
         return sample_name, project_names[0]
 
@@ -82,7 +87,7 @@ def get_sample_and_project_name(name, fingerprint_project=None):
 def calculate_distance_matrix(tree):
     clades = tree.get_terminals()
     distance_matrix = defaultdict(lambda: (1, None))
-    for (clade, clade2) in list(itertools.combinations(clades, 2)):
+    for clade, clade2 in list(itertools.combinations(clades, 2)):
         distance = tree.distance(clade, clade2)
         if distance < distance_matrix[clade][0]:
             distance_matrix[clade] = (distance, clade2)

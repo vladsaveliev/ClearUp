@@ -1,6 +1,10 @@
+gevent
+gevent-websocket
 git+https://github.com/mitsuhiko/flask.git
 Flask-Script
 flask-runner
 SQLAlchemy
 biopython
 flask_sqlalchemy
+flask-socketio
+bx

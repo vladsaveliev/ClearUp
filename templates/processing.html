@@ -1,0 +1,84 @@
+{% extends "_base.html" %}
+
+{% block head %}
+        <!--suppress ALL -->
+        <title>{{ title }}</title>
+        <style>
+            #console_log {
+                font: 10px "Lucida Console", Monaco, monospace; line-height: 1.2em;
+            }
+        </style>
+{% endblock %}
+
+{% block body %}
+        <p style="font-size: 1.5em; margin-top: 20px;">
+            <a href="/" style="margin-left: -1.1em;">
+            < AZ projects with pre-computed fingerprints</a>
+            <br><br>
+            <span style="font-weight: bold;">Building phylogeny tree</span>
+        </p>
+
+        <ul style="margin-left: -23px;">
+        <span style="margin-left: -16px;">Samples from the following projects are used:</span>
+        {% for project in projects %}
+            <li style="color: {{ project.color }}">{{ project.name }}</li>
+        {% endfor %}
+        </ul>
+        <br>
+
+        <div>
+            <pre id="console_log">
+
+            </pre>
+        </div>
+{% endblock %}
+
+{% block js %}
+{#        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>#}
+{#        <script>#}
+{#            $(document).ready(function() {#}
+{#                var socket = io.connect('http://' + document.domain + ':' + location.port);#}
+{#                socket.on('connect', function() {#}
+{#                    socket.emit('connected', "{{ run_id }}");#}
+{#                });#}
+{#                console.log('Connected');#}
+{##}
+{#                socket.on('running', function (data) {#}
+{#                    data = JSON.parse(data);#}
+{#                    console.log('Data recieved ' + data);#}
+{#                    console.log("Adding lines data.lines: " + data.lines.join('\n'));#}
+{#                    var consoleDiv = $('#console_log');#}
+{#                    data.lines.forEach(function (line) {#}
+{#                        consoleDiv.append(line + '<br>');#}
+{#                    });#}
+{#                    if (data.finished == true) {#}
+{#                        location.href = "";#}
+{#                    }#}
+{#                });#}
+{#            });#}
+{#        </script>#}
+        <script>
+            $(document).ready(function() {
+                var ws;  // websocket
+                if (! "WebSocket" in window) {
+                    console.log("WebSocket not supported");
+                    $('#console_log').append("Processing...<br>");
+                } else {
+                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + '/{{ run_id }}/run_prank/');
+                    console.log("Connected");
+                    ws.onstart = function() {
+                        ws.send("started");
+                    };
+                    ws.onmessage = function(evt) {
+                        var consoleDiv = $("#console_log");
+                        var data = JSON.parse(evt.data);
+                        if (typeof data.line != 'undefined') {
+                            consoleDiv.append(data.line + "<br>");
+                        } else if (data.finished) {
+                            location.href = "";
+                        }
+                    };
+                }
+            });
+        </script>
+{% endblock %}
