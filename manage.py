@@ -20,11 +20,6 @@ manager = Manager(app)
 
 
 @manager.command
-def hello():
-    print "hello"
-
-
-@manager.command
 def load_project(bcbio_final_path, project_name, genome):
     log.info('Loading project ' + project_name)
 
@@ -53,6 +48,12 @@ def load_project(bcbio_final_path, project_name, genome):
     db.session.commit()
 
     log.info('Done')
+
+
+@manager.command
+def init_db():
+    db.drop_all()
+    db.create_all()
 
 
 @manager.command

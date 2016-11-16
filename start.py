@@ -16,6 +16,7 @@ from gevent.pywsgi import WSGIServer
 from Utils.file_utils import safe_mkdir, file_transaction, can_reuse
 from Utils import logger as log
 log.is_debug = True
+log.log_fpath = join(dirname(__file__), 'data', 'log.txt')
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample
@@ -23,12 +24,6 @@ from fingerprinting.sample_view import send_bam_files, render_sample_page
 from fingerprinting.tree_view import run_prank_socket_handler, render_phylo_tree_page
 
 app = Flask(__name__)
-
-
-if log.is_local() and platform.system() == 'Darwin':
-    PORT = 5002
-else:
-    PORT = 80
 
 
 @app.route('/favicon.ico/')
@@ -97,6 +92,6 @@ if __name__ == "__main__":
         # wb = webbrowser.get(None)  # instead of None, can be "firefox" etc
         # threading.Timer(1.25, lambda: wb.open(url)).start()
 
-    http_server = WSGIServer((config.HOST_IP, PORT), app, handler_class=WebSocketHandler)
-    log.info('Starting webserve at ' + config.HOST_IP + ':' + str(PORT))
+    http_server = WSGIServer((config.HOST_IP, config.PORT), app, handler_class=WebSocketHandler)
+    log.info('Starting a webserver at ' + config.HOST_IP + ':' + str(config.PORT))
     http_server.serve_forever()
