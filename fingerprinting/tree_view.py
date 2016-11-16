@@ -65,7 +65,7 @@ def run_prank_socket_handler(run_id):
         # lines.append(stdout_line)
         # cur_time = time.time()
         # if cur_time - prev_time > 2:
-        if not stdout_line.strip().startswith('#1#'):
+        if '#(' not in stdout_line.strip():
             _send_line(ws, stdout_line)
         # lines = []
     ws.send(json.dumps({
