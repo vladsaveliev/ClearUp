@@ -3,7 +3,7 @@
 {% block head %}
         <title>Fingerprints</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='table_sorter/style.css') }}">
 
         <style>
             #projects_list_table tbody tr:hover{
@@ -16,13 +16,13 @@
 {% endblock %}
 
 {% block body %}
-        <p style="font-size: 1.5em; margin-top: 20px;">
+        <p style="font-size: 1.5em;">
             <span style="font-weight: bold;">AZ projects with pre-computed fingerprints</span>
         </p>
 
         <button type="button" class="btn disabled" id="run_btn" style="margin: 20px 0">Fingerprint selected projects</button>
 
-        <table cellspacing="0" class="report_table tableSorter display" id="projects_list_table">
+        <table cellspacing="0" class="report_table tableSorter" id="projects_list_table">
             <thead>
                 <tr>
                     <th>Project</th>

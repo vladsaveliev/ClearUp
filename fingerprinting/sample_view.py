@@ -35,7 +35,7 @@ def render_sample_page(run_id, sample_id):
     snp_records = []
     for snp_a, snp_b in zip(sample.fingerprints, matching_sample.fingerprints):
         snp_records.append(get_snp_record(snps_dict, snp_a, snp_b))
-        if snp_a.index % 50 == 0:
+        if snp_a.index % 49 == 0:
             snp_tables.append(snp_records)
             snp_records = []
     snp_tables.append(snp_records)

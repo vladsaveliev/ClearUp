@@ -1,14 +1,14 @@
 @charset "UTF-8";
 body {
   margin: 0;
-  font-family: Lucida Grande, Verdana, Arial, sans-serif;
+  font-family: Arial, Lucida Grande, Verdana, sans-serif;
   font-size: 12px;
   color: black;
   padding: 0;
   padding-bottom: 30px; }
 
 .content {
-  margin-left: 100px;
+  margin-left: 70px;
   padding-top: 10px;
   clear: both; }
 

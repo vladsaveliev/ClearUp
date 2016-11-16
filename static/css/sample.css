@@ -1,9 +1,5 @@
-body
-{
-	font-family: Arial, sans-serif;
-	padding-left: 50px;
-	padding-right: 50px;
-	padding-top: 20px;
+td, tr {
+    vertical-align: top;
 }
 
 /* Header Stuff */
@@ -272,21 +268,22 @@ table.plateTable td.gtzero
 }
 
 /* Sample Report - Sample Info Table */
+table.samplePair td.sampleIntoTd {
+	padding-top: 3px;
+}
 
-table.sampleInfo
-{
+table.sampleInfo {
 	margin-left: 30px;
 	margin-bottom: 0;
 }
 
-td.sampleInfoName, td.sampleInfoValue, td.sampleInfoValueB
-{
+td.sampleInfoName, td.sampleInfoValue, td.sampleInfoValueB  {
 	padding-top: 3px;
 	padding-bottom: 3px;
+    white-space: nowrap;
 }
 
-td.sampleInfoValue
-{
+td.sampleInfoValue {
 	text-align: left;
 	font-weight: bold;
 }
@@ -345,12 +342,8 @@ td.abSmall {
     padding-right: 3px;
 }
 
-h2.score {
-	font-size: 2em;
+.score_total {
 	font-weight: bold;
-}
-
-table.score {
 }
 
 td.scoreValue  {
@@ -361,7 +354,7 @@ table.match {
 	margin-top: 25px;
 	border-collapse: collapse;
     border-spacing: 0;
-    width: 1150px;
+    max-width: 1000px;
 }
 
 table.fixed {
@@ -371,24 +364,36 @@ table.fixed td {
     overflow: hidden;
 }
 table.match td {
-	padding: 2px;
 }
 table.match td:first-child {
     width: 60px;
+	padding: 2px 2px 2px 0;
+}
+table.match td.cell {
+    min-width: 14px;
+    max-width: 14px;
+    text-align: center;
+	padding: 2px 2px 2px 2px;
 }
 table.match td.bottomrow {
-    padding-left: 0.3em;
+    /*padding-left: 0.3em;*/
 	/*border: 1px solid #c2c2c2;*/
 }
 table.match td.scorerow  {
 	text-align: center;
 }
 td.toprow, td.bottomrow, td.scorerow, td.snpIndex  {
-	font-size: 0.9em;
+	font-size: 11px;
 	font-family: monospace;
 }
 td.snpIndex  {
 	text-align: center;
+	font-size: 8px;
+}
+.usercall_input {
+    width: 13px;
+    padding: 0;
+    margin: -2px;
 }
 
 /* Quality Score Values */
@@ -433,32 +438,32 @@ td.nocall
 
 
 /* Legend */
-table.legend
-{
+table.legend {
 	margin-top: 25px;
-	border: 2px solid #888888;
+	border: 0px solid #888888;
 	border-collapse: collapse;
 }
 
-td.legendHeader
-{
+table.legend td.legendHeader {
 	font-weight: bold;
-	border-bottom: 2px solid #888888;
+    padding-left: 0;
+	border-bottom: 0px solid #888888;
 }
 
-table.legend td
-{
-	padding: 5px;
+table.legend td.thirdcol {
+    padding-left: 50px;
+}
+
+table.legend td {
+	padding: 4px;
 }
 
 /* Confidence Values */
 
-td.Low
-{
+td.Low {
 	background-color: #FFF600;
 }
 
-td.High
-{
+td.High {
 }
 

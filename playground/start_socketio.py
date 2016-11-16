@@ -139,7 +139,7 @@ def phylo_tree_page(run_id):
     tree_fpath = os.path.join(prank_out + '.best.dnd')
     if not can_reuse(tree_fpath, merged_fasta_fpath):
         return render_template(
-                'processing.html',
+            'processing.html',
             projects=[{
                 'name': p.name,
             } for i, p in enumerate(projects)],
@@ -154,7 +154,7 @@ def phylo_tree_page(run_id):
 
     all_samples_count = sum(len(p.samples.all()) for p in projects)
     return render_template(
-            'tree.html',
+        'tree.html',
         projects=[{
             'name': p.name,
             'color': color_by_proj[p.name],
