@@ -17,7 +17,7 @@ print "now with argparse please use python genotyperswiftV12longprint.py -h for 
 
 parser = argparse.ArgumentParser(prog='genotyperswift', usage='%(prog)s --bed path/to/file.bed --vcf path/to/file.vcf --depth mindepth --denovo True/False')
 parser.add_argument('-b', '--bed', help='sorted bedfile for all the snps', required=True)
-parser.add_argument('-v', '--vcf', help='sorted vcffile for all the mutations', required=True)
+parser.add_argument('-r', '--ref', help='sorted reference file for all the mutations', required=True)
 parser.add_argument('-d', '--depth', default=5, type=int, help='minimum coverage depth for calls. Default = 5', required=True)
 #long term project will scan the annotated vcfs for snps and create a new fingerprint across the experiement
 #parser.add_argument('-D', '--denovo', action='store_true', help='Use if creating a new fingerprint (not the production print)')
@@ -234,8 +234,8 @@ args=parser.parse_args()
 basedirs =[]
 if args.bed:
 	snpbedfile = args.bed()
-if args.vcf:
-	reffile = args.vcf()
+if args.ref:
+	reffile = args.ref()
 if args.depth:
 	depthcut = args.depth()
 homedir = os.getcwd()
