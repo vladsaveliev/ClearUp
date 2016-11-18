@@ -3,7 +3,7 @@
 
 met = set()
 with open('/Users/vlad/vagrant/Fingerprinting/test/2016-10-11_bcbio/fingerprints/sambambadepth.txt') as f, \
-        open('locations/locations.bed', 'w') as out_bed:
+        open('locations.bed', 'w') as out_bed:
     i = 0
     for l in f:
         if l[0] == '#':
