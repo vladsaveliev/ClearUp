@@ -32,21 +32,24 @@ def load_project(bcbio_final_path, project_name, genome):
     fasta_fpath = next(iter(glob.glob(fasta_glob)), None)
     if not verify_file(fasta_fpath):
         log.critical('Fingerprints fasta file not found in ' + fasta_glob)
+    seq_by_sample_name = read_fasta(fasta_fpath)
 
     project = Project(project_name, bcbio_final_path, fasta_fpath, genome)
-    # project = Project.query.filter_by(name=project_name).first()
-    seq_by_sample_id = read_fasta(fasta_fpath)
     db.session.add(project)
+    for sname in seq_by_sample_name.keys():
+        db.session.add(Sample(sname, project))
+
     project_work_dirpath = safe_mkdir(join(config.DATA_DIR, project_name))
-    for sample_id, seq in seq_by_sample_id.items():
-        bam_fpath = load_bam_file(bcbio_final_path, project_work_dirpath, sample_id)
-        sample = Sample(sample_id, project, bam_fpath)
-        db.session.add(sample)
-        fingerprints = get_fingerprints(project, sample, seq._data.upper())
+    fp_by_loc_by_sample = get_fingerprints(project, seq_by_sample_name)
+
+    for s in project.samples:
+        load_bam_file(bcbio_final_path, project_work_dirpath, s.name)
+        fingerprints = sorted(fp_by_loc_by_sample[s.name].values(), key=lambda _fp: _fp.index)
         for fingerprint in fingerprints:
             db.session.add(fingerprint)
-    db.session.commit()
 
+    db.session.commit()
+    log.info()
     log.info('Done')
 
 

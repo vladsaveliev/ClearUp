@@ -345,18 +345,20 @@ td.abSmall {
 .score_total {
 	font-weight: bold;
 }
-
+.score_details td {
+    padding-bottom: 5px;
+}
 td.scoreValue  {
 	text-align: left;
 }
 
+/* Main table */
 table.match {
 	margin-top: 25px;
 	border-collapse: collapse;
     border-spacing: 0;
     max-width: 1000px;
 }
-
 table.fixed {
     table-layout: fixed;
 }
@@ -375,13 +377,6 @@ table.match td.cell {
     text-align: center;
 	padding: 2px 2px 2px 2px;
 }
-table.match td.bottomrow {
-    /*padding-left: 0.3em;*/
-	/*border: 1px solid #c2c2c2;*/
-}
-table.match td.scorerow  {
-	text-align: center;
-}
 td.toprow, td.bottomrow, td.scorerow, td.snpIndex  {
 	font-size: 11px;
 	font-family: monospace;
@@ -389,11 +384,38 @@ td.toprow, td.bottomrow, td.scorerow, td.snpIndex  {
 td.snpIndex  {
 	text-align: center;
 	font-size: 8px;
+    border-top: 1px solid white;
+}
+td.scorerow  {
+	text-align: center;
+    border-bottom: 1px solid white;
 }
 .usercall_input {
     width: 13px;
     padding: 0;
     margin: -2px;
+}
+td.selectedIdxCell {
+    border-top: 1px solid black;
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    /*padding-top: 1px !important;*/
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+}
+td.selectedInnerCell {
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+}
+td.selectedPenaltyCell {
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    border-bottom: 1px solid black;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+    /*padding-bottom: 1px !important;*/
 }
 
 /* Quality Score Values */

@@ -3,15 +3,15 @@ from fingerprinting.model import Project
 
 
 def get_snp_record(snps_dict, snp_a, snp_b):
-    seq_a, seq_b = snp_a.usercall or snp_a.nucl, snp_b.usercall or snp_b.nucl
+    seq_a, seq_b = snp_a.usercall or snp_a.genotype, snp_b.usercall or snp_b.genotype
     seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
     snp_record = {'index': snp_a.index,
                   'chrom': snp_a.chrom,
                   'pos': snp_a.pos,
                   'snpA': seq_a,
                   'snpB': seq_b,
-                  'usercallA': 'usercall' if snp_a.usercall else None,
-                  'usercallB': 'usercall' if snp_b.usercall else None,
+                  'usercallA': 'usercall' if snp_a.usercall else '',
+                  'usercallB': 'usercall' if snp_b.usercall else '',
                   'penalty': 0,
                   'class': ''}
     if not seq_a or not seq_b:

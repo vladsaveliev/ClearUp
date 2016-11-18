@@ -65,7 +65,7 @@
 {% endblock %}
 
 {% block js %}
-        <script src="https://d3js.org/d3.v4.js"></script>
+        <script src="{{ url_for('static', filename='js/d3.v4.js') }}"></script>
         <script>  {# Based on http://bl.ocks.org/mbostock/4063570 #}
         var treeWidth = {{ tree_width }},
             treeHeight = {{ tree_height }},
@@ -125,13 +125,15 @@
             .attr("dy", 3)
             .attr("x", function() { return maxTextWidth + sampleSeqSpace; })
             .attr("class", "seq")
-            .each(function(d) {
+            .each(function(d, i) {
               d3.select(this)
                 .selectAll(".nuc")
                   .data(d.data.seq)
                 .enter().append("tspan")
                   .attr("class", function(d) { return d[1]; })
-                  .text(function(d) { return d[0]; });
+                  .text(function(d) { return d[0]; })
+                .append("tspan")
+                  .attr("width", (i > 0 && i % 2 == 0) ? 3 : 0 );
             })
             .node()
             .getComputedTextLength();

@@ -40,7 +40,7 @@ class TreeRun:
             log.err('Projects ' + ', '.join(project_names) + ' not found in database')
             abort(404)
         self.color_by_proj = {p.name: PROJ_COLORS[i % len(PROJ_COLORS)] for i, p in enumerate(self.projects)}
-        self.work_dirpath = safe_mkdir(join(config.DATA_DIR, '_AND_'.join(project_names)))
+        self.work_dirpath = safe_mkdir(join(config.DATA_DIR, '__AND__'.join(project_names)))
         self.merged_fasta_fpath = merge_fasta(self.projects, self.work_dirpath)
         self.prank_out = os.path.join(self.work_dirpath,
              os.path.splitext(os.path.basename(self.merged_fasta_fpath))[0])

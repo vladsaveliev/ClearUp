@@ -55,7 +55,8 @@
                     tbody.find('tr.selected').each(function() {
                         projectNames.push($(this).attr('project_name'));
                     });
-                    location.href = projectNames.join();
+                    var runId = projectNames.join();
+                    location.href = "/" + runId + "/tree";
                 });
 
                 tbody.on('click', 'tr', function () {

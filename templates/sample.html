@@ -2,8 +2,7 @@
 
 {% block head %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sample.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/igv/igv.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/igv/font-awesome.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='igv/igv.css') }}">
 {% endblock %}
 
 {% block body %}
@@ -12,7 +11,7 @@
             <a href="/" style="margin-left: -1em;">
             < AZ projects with pre-computed fingerprints</a>
             <br><br>
-            <a href="/{{ run_id }}" style="margin-left: -1em;">
+            <a href="/{{ run_id }}/tree" style="margin-left: -1em;">
             < Phylogeny tree based on fingerprints</a>
             <br><br>
             <span style="font-weight: bold; margin-left: -0.2em;">Closest match for {{ sampleA.name }}</span>
@@ -37,51 +36,76 @@
         </div>
 
         <div style="float: left; margin-left: 60px; margin-top: 5px;">
-            <div class="score_total" style="margin-left: -1px; margin-bottom: 3px;">Total Score: {{ snps_data.total_score }} ({{ snps_data.confidence }} Confidence)</div>
+{#            <div class="score_total" style="margin-left: -1px; margin-bottom: 3px;">Total Score: {{ snps_data.total_score }} ({{ snps_data.confidence }} Confidence)</div>#}
             <table class="score_details" style="margin-left: -1px;">
-                <tr><td class=scoreName>Heterozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
-                <tr><td class=scoreName>Homozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_matches }}</td></tr>
-                <tr><td class=scoreName>Heterozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_mismatches }}</td></tr>
-                <tr><td class=scoreName>Homozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_mismatches }}</td></tr>
-                <tr><td class=scoreName>Missing/Ignored SNPs:&nbsp;</td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
+                <tr><td class="scoreName">Heterozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
+                <tr><td class="scoreName">Homozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_matches }}</td></tr>
+                <tr><td class="scoreName">Heterozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_mismatches }}</td></tr>
+                <tr><td class="scoreName">Homozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_mismatches }}</td></tr>
+                <tr><td class="scoreName">Missing/Ignored SNPs:&nbsp;</td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
             </table>
         </div>
         <div style="clear: both"></div>
 
         {% for snp_records in snp_tables %}
         <table class="match fixed " cellspacing="0" style="margin-left: -64px;">
-            <tr>
-                <td class=snpIndex>&nbsp</td>
+            <tr class="index_row">
+                <td class="snpIndex">&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="snpIndex cell"> {{ snp_record.index }} </td>
+                    <td class="snpIndex cell"
+                        id="{{ snp_record.index }}_idx"
+                     chrom="{{ snp_record.chrom }}"
+                       pos="{{ snp_record.pos }}">
+                        {{ snp_record.index }}
+                    </td>
                 {% endfor %}
             </tr>
             <tr class="table_variant snprow">
                 <td class=abSmall>A&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="hom_match quality_A bottomrow cell {{ snp_record.class }} {{ snp_record.usercallA }}"
-                        id="{{ snp_record.index }}_{{ snp_record.chrom }}_{{ snp_record.pos }}_a">
-                        <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ run_id }}/{{ sampleA.id }}/{{ sampleA.id }}/{{ snp_record.index }}/add_usercall" >
+                    <td class="hom_match quality_A toprow cell {{ snp_record.class }} {{ snp_record.usercallA }}"
+                           id="{{ snp_record.index }}_a"
+                        chrom="{{ snp_record.chrom }}"
+                          pos="{{ snp_record.pos }}">
+                        <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="add_usercall/">
+                            <input type="hidden" name="editSampleId" value="{{ sampleA.id }}">
+                            <input type="hidden" name="snpIndex" value="{{ snp_record.index }}">
+                            <input type="hidden" name="chrom" value="{{ snp_record.chrom }}">
+                            <input type="hidden" name="pos" value="{{ snp_record.pos }}">
+                            <input type="hidden" name="selectedCellId" value="{{ snp_record.index }}_a">
                             <input type="text" name="usercall" value="{{ snp_record.snpA }}" maxlength="2" size="2" class="usercall_input">
                         </form>
-                        <span>{{ snp_record.snpA }}</span> </td>
+                        <span>{{ snp_record.snpA }}</span>
+                    </td>
                 {% endfor %}
             </tr>
             <tr class="table_variant snprow">
                 <td class=abSmall>B&nbsp;</td>
                 {% for snp_record in snp_records %}
                     <td class="hom_match quality_A bottomrow cell {{ snp_record.class }} {{ snp_record.usercallB }}"
-                        id="{{ snp_record.index }}_{{ snp_record.chrom }}_{{ snp_record.pos }}_b">
-                        <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="/{{ run_id }}/{{ sampleA.id }}/{{ sampleB.id }}/{{ snp_record.index }}/add_usercall" >
+                           id="{{ snp_record.index }}_b"
+                        chrom="{{ snp_record.chrom }}"
+                          pos="{{ snp_record.pos }}">
+                        <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="add_usercall/">
+                            <input type="hidden" name="editSampleId" value="{{ sampleB.id }}">
+                            <input type="hidden" name="snpIndex" value="{{ snp_record.index }}">
+                            <input type="hidden" name="chrom" value="{{ snp_record.chrom }}">
+                            <input type="hidden" name="pos" value="{{ snp_record.pos }}">
                             <input type="text" name="usercall" value="{{ snp_record.snpB }}" maxlength="2" size="2" class="usercall_input">
                         </form>
-                        <span>{{ snp_record.snpB }}</span> </td>
+                        <span>{{ snp_record.snpB }}</span>
+                    </td>
                 {% endfor %}
             </tr>
-            <tr class="table_variant">
+            <tr class="table_variant penalty_row">
                 <td class=abSmall>Penalties&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="hom_match scorerow bottomrow cell {{ snp_record.class }}"> {{ snp_record.penalty }} </td>
+                    <td class="hom_match scorerow bottomrow cell {{ snp_record.class }}"
+                           id="{{ snp_record.index }}_penalty"
+                        chrom="{{ snp_record.chrom }}"
+                          pos="{{ snp_record.pos }}">
+                        {{ snp_record.penalty }}
+                    </td>
                 {% endfor %}
             </tr>
         </table>
@@ -98,67 +122,153 @@
         <br><br>
     </div>
 
-    <div id="igv-container" style="width: 800px; float: left"></div>
+    <div id="igv-container" style="width: 800px; float: left;"></div>
 
     <div style="clear: both"></div>
 
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{{ url_for('static', filename='js/igv.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='igv/igv.min.js') }}"></script>
     <script type="text/javascript">
     var sampleNameA = "{{ sampleA.name }}";
     var sampleNameB = "{{ sampleB.name }}";
     var bamUrlA = "{{ sampleA.bam }}";
     var bamUrlB = "{{ sampleB.bam }}";
     var genome = "{{ genome }}";
-    $('.snprow td').on('click', function () {
-        if (!igv.browser)
-            createIGV();
-         $('.snprow td form').hide();
-         $('.snprow td span').show();
-        var usercall_form = $(this).find('form');
-        var snp_text = $(this).find('span');
-        usercall_form.show();
-        snp_text.hide();
-        var fields = this.id.split('_');
-        var chrom = fields[1];
-        var pos = parseInt(fields[2]);
-        showIGV(chrom, pos);
+    var locationsBedFile = "{{ locations_bed }}";
+    var selectedIdx = {{ selected_idx }};
 
+    var selectedEls = null;
+    function selectCell(el) {
+        if (activeUsercallForm) {
+            activeUsercallForm.hide();
+            activeSnpTxt.show();
+        }
+        if (selectedEls) {
+            selectedEls.indexCell.removeClass("selectedIdxCell");
+            selectedEls.aCell.removeClass("selectedInnerCell");
+            selectedEls.bCell.removeClass("selectedInnerCell");
+            selectedEls.penaltyCell.removeClass("selectedPenaltyCell");
+        } else {
+            selectedEls = {};
+        }
+        var id = el.attr("id"),
+            chrom = el.attr("chrom"),
+            pos = el.attr("pos"),
+            index = id.split("_")[0];
+
+        selectedEls.indexCell = $("#" + index + "_idx");
+        selectedEls.penaltyCell = $("#" +index + "_penalty");
+        selectedEls.aCell = $("#" + index + "_a");
+        selectedEls.bCell = $("#" + index + "_b");
+        selectedIdx = parseInt(index);
+
+        selectedEls.indexCell.addClass("selectedIdxCell");
+        selectedEls.aCell.addClass("selectedInnerCell");
+        selectedEls.bCell.addClass("selectedInnerCell");
+        selectedEls.penaltyCell.addClass("selectedPenaltyCell");
+
+        return [chrom, parseInt(pos)];
+    }
+
+    var activeUsercallForm = null,
+        activeSnpTxt = null;
+    $('.snprow .cell').on("click", function() {
+        var loc = selectCell($(this));
+
+        activeSnpTxt = $(this).find("span");
+        activeSnpTxt.hide();
+        activeUsercallForm = $(this).find("form");
+        activeUsercallForm.show();
+
+        showIGV(loc[0], loc[1]);
     });
-    $(".usercall_input").keyup(function () {
-        this.value = this.value.toLocaleUpperCase();
+
+    $('.index_row .cell, .penalty_row .cell').on("click", function() {
+        var loc = selectCell($(this));
+        showIGV(loc[0], loc[1]);
+    });
+
+    if (selectedIdx !== null) {
+        var loc = selectCell($("#" + selectedIdx + "_idx"));
+        showIGV(loc[0], loc[1]);
+    }
+
+    function handleKeyDown(e) {
+        if (selectedIdx !== null) {
+            e = e || window.event;
+            var newIdx = -1;
+            if (e.keyCode == '38') {       // up arrow
+                newIdx = selectedIdx - 41;
+            }
+            else if (e.keyCode == '40') {  // down arrow
+                newIdx = selectedIdx + 41;
+            }
+            else if (e.keyCode == '37') {  // left arrow
+                newIdx = selectedIdx - 1;
+            }
+            else if (e.keyCode == '39') {  // right arrow
+                newIdx = selectedIdx + 1;
+            }
+            if (newIdx > 0 && newIdx <= 244) {
+                selectedIdx = newIdx;
+                var loc = selectCell($("#" + selectedIdx + "_idx"));
+                showIGV(loc[0], loc[1]);
+            }
+        }
+    }
+    document.onkeydown = handleKeyDown;
+
+    $(".usercall_input").focusin(function() {
+        document.onkeydown = null;
+    }).focusout(function() {
+        document.onkeydown = handleKeyDown;
+    }).keyup(function(e) {
+        if (e.keyCode == 27) {  // ESC
+            this.value = $(this).parent().parent().find("span").text();
+            $(this).blur();
+        } else {
+            this.value = this.value.toLocaleUpperCase();
+        }
     });
 
     function showIGV(chrom, pos) {
-        var locus = chrom + ': ' + (pos - 100) + '-' + (pos + 100);
+        if (!igv.browser)
+            createIGV();
+        var locus = chrom + ': ' + (pos - 50) + '-' + (pos + 50);
         igv.browser.search(locus);
     }
 
     function createIGV() {
-        var get_bam_track_config = function(sample_name, bam_url) {
+        var get_bam_track_config = function(sample_name, file_url) {
             return {
-                type: 'bam',
+                type: 'alignment',
                 indexed: true,
-                alignmentShading: 'strand',
-                url: bam_url,
+                colorBy: 'strand',
+                url: file_url,
                 name: sample_name,
-                height: 300,
-                minHeight: 300,
-                autoHeight: false
+                height: 313,
+                minHeight: 313,
+                autoHeight: false,
+                alignmentRowHeight: 10,
             };
         };
 
         // global igv settings
         igv.CoverageMap.threshold=0.1;
 
-        //counts number of het/hom bam tracks displayed so far
-        var tracks_counter = 0;
-
         //initialize IGV tracks
         var tracks = [];
-
+        tracks.push({
+            type: 'annotation',
+            name: 'Fingerprint locations',
+            url: locationsBedFile,
+            height: 24,
+            minHeight: 24,
+            autoHeight: false,
+            color: '#000000',
+        });
         tracks.push(get_bam_track_config(sampleNameA, bamUrlA));
         tracks.push(get_bam_track_config(sampleNameB, bamUrlB));
 
@@ -177,16 +287,9 @@
             showCommandBar: true,
             reference: reference,
             showKaryo: false,
-            tracks: tracks
+            tracks: tracks,
         };
-
         igv.createBrowser($("#igv-container")[0], options);
-
-
-        //IGV browser customizations
-        $(".igv-ideogram-content-div").hide();  //hide the IGV ideogram
-
-        //$(".igv-logo").hide();
 
         // allow one more zoom-in level
         igv.browser.pixelPerBasepairThreshold = function() {
@@ -194,8 +297,7 @@
         };
 
         igv.browser.trackViews.forEach(function (panel) {
-            if(panel.track.name)
-            {
+            if(panel.track.name) {
                 //add border between tracks
                 panel.viewportDiv.style.borderBottom = panel.viewportDiv.style.borderLeft = "1px solid #cccccc";
 

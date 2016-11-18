@@ -7,7 +7,7 @@ import time
 import platform
 
 from os.path import abspath, join, dirname, splitext, basename
-from flask import Flask, render_template, send_from_directory, abort, redirect
+from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file
 from flask import Response, request
 
 from geventwebsocket.handler import WebSocketHandler
@@ -20,7 +20,7 @@ log.log_fpath = join(dirname(__file__), 'data', 'log.txt')
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample
-from fingerprinting.sample_view import send_bam_files, render_sample_page
+from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_prank_socket_handler, render_phylo_tree_page
 
 app = Flask(__name__)
@@ -28,7 +28,7 @@ app = Flask(__name__)
 
 @app.route('/favicon.ico/')
 def send_favicon():
-    return send_from_directory('static', 'dist/favicon.ico')
+    return send_from_directory('static', 'favicon.ico')
 
 
 @app.route("/<run_id>/run_prank/")
@@ -36,32 +36,55 @@ def run_prank(run_id):
     return run_prank_socket_handler(run_id)
 
 
-@app.route('/<run_id>/')
+@app.route('/<run_id>/tree/')
 def phylo_tree_page(run_id):
     return render_phylo_tree_page(run_id)
 
 
-@app.route('/<run_id>/<sample_id>')
-def sample_page(run_id, sample_id):
-    return render_sample_page(run_id, sample_id)
+@app.route('/<run_id>/tree/<int:sample_id>/')
+def closest_comparison_page(run_id, sample_id):
+    return render_closest_comparison_page(run_id, sample_id, request.args.get('snpIndex'))
 
 
-@app.route('/<run_id>/<prev_sample_id>/<edit_sample_id>/<snp_index>/add_usercall', methods=['POST'])
-def add_user_call(run_id, prev_sample_id, edit_sample_id, snp_index):
+@app.route('/<run_id>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
+def add_user_call(run_id, sample_id):
+    log.info('Adding user call for ' + str(sample_id))
+    edit_sample_id = request.form['editSampleId']
     sample = Sample.query.filter_by(id=edit_sample_id).first()
     if not sample:
-        log.err('Sample not found')
-        return redirect('/' + run_id + '/' + prev_sample_id)
+        log.err('Sample with ID=' + str(edit_sample_id) + ' not found')
+        return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id))
 
-    fingerprint = sample.fingerprints.filter_by(index=snp_index).first()
+    fingerprint = sample.fingerprints.filter_by(index=request.form['snpIndex']).first()
     fingerprint.usercall = request.form['usercall']
     db.session.commit()
-    return redirect('/' + run_id + '/' + prev_sample_id)
+    return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id,
+                            snpIndex=fingerprint.index))
 
 
-@app.route('/<run_id>/bamfiles/<bam_fname>')
-def bam_files_page(run_id, bam_fname):
-    return send_bam_files(run_id, bam_fname)
+@app.route('/<project_name>/bamfiles/<bam_fname>/')
+def bam_files_page(project_name, bam_fname):
+    return send_file_for_igv(join(config.DATA_DIR, project_name, 'bams', bam_fname))
+
+
+@app.route('/locations/locations.bed/')
+def locations_bed():
+    return send_file_for_igv(join('fingerprinting', 'locations', 'locations.bed'))
+
+
+@app.route('/locations/locations.bed.idx/')
+def locations_bed_idx():
+    return send_file_for_igv(join('fingerprinting', 'locations', 'locations.bed.idx'))
+
+
+@app.route('/<run_id>/')
+def project_page(run_id):
+    return redirect(url_for('phylo_tree_page', **locals()))
+
+
+@app.route('/<run_id>/<sample_id>/')
+def sample_page(run_id, sample_id):
+    return redirect(url_for('closest_comparison_page', **locals()))
 
 
 @app.route('/')
@@ -81,6 +104,11 @@ def homepage():
         } for p in projects],
     )
     return t
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('404.html'), 404
 
 
 if __name__ == "__main__":
