@@ -14,7 +14,7 @@ print "make sure you have bcftools loaded"
 print "usage: python genotyperswift.py sortedsnp.bed desiredSNPs.vcf ##fordepthcutoff<defaultto0please>"
 print "now with argparse please use python genotyperswiftV12longprint.py -h for help"
 
-parser = argparse.ArgumentParser(prog='genotyperswift', usage='%(prog)s --bed path/to/file.bed --vcf path/to/file.vcf --depth mindepth --denovo True/False')
+parser = argparse.ArgumentParser(prog='genotyperswift', usage='%(prog)s --bed path/to/file.bed --ref path/to/reffile.txt --depth mindepth ')
 parser.add_argument('-b', '--bed', help='sorted bedfile for all the snps', required=True)
 parser.add_argument('-r', '--ref', help='sorted reference file for all the mutations', required=True)
 parser.add_argument('-d', '--depth', default=5, type=int, help='minimum coverage depth for calls. Default = 5', required=True)
@@ -22,15 +22,12 @@ parser.add_argument('-d', '--depth', default=5, type=int, help='minimum coverage
 def fingerprint(homedir, basedir): #the purpose of this is to rip through the vcf and create dictionaries keyed on sample ID and containing chrid keyed ref,alt,AF,DP information
 	samplesdict = {}
 	fh = open('%s/work/%s/fingerprintvcf.txt'%(homedir, basedir))
-	print "these aren't annotated so they won't have the usual markers CODE IS MODIFIED"
 	for line in fh:
 		line2 = line.split('\t')
-		#if "rs" in line2[6] and "TYPE=SNV" in line:
 		if "SNV" in line:
 			chrid = line2[0]+"_"+line2[1]
 			ref = line2[2]
 			alt = line2[3]
-			vid = line2[6]
 			for item in line2:
 				if " AF=" in item: #figure out the sample names here
 					samplename = item.split(" AF")[0]
@@ -59,10 +56,7 @@ def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample 
 		for line in fh:
 			line2 = line.split('\t')
 			chrid = line2[0]+"_"+line2[2]
-			#print line
-			#print chrid, line2[4],line2[6]
 			if not depthdict.has_key(chrid):
-				#print line2, "TRISTAN NEW FIND"
 				depthdict[chrid]=(line2[-3],line2[-1].strip()) #identifier and depth
 			else:
 				print "FAIL DEPTH!!!!!!", line, depthdict[chrid]
@@ -85,9 +79,6 @@ def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample 
 			line2 = line.split('\t')
 			chrid = line2[0]+"_"+line2[1]
 			snpid = line2[3]
-			#print chrid, refdict[chrid]
-			#print snpid
-			#outstr +=refdict[chrid]
 			if depthdict.has_key(chrid):
 				if int(depthdict[chrid][1])>depthcut: #check if it's below the set depth.
 					if vcfdict[basedir].has_key(chrid): #see if we have a variant called
@@ -97,7 +88,6 @@ def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample 
 						elif line2[0] == 'chrY' and 0.25<=float(vcfdict[basedir][chrid][2]):
 							woc +=1
 							outstr += vcfdict[basedir][chrid][1]+"\t"
-						
 						else: #is not a sex chromosome or is chrX and needs to be two alleles
 							if 0.25<=float(vcfdict[basedir][chrid][2])<0.75: #heterozygous
 								woc +=1
@@ -106,7 +96,6 @@ def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample 
 								woc +=1
 								outstr += vcfdict[basedir][chrid][1]+vcfdict[basedir][chrid][1]+"\t"
 							else: #lower than 25% so we'll call this homozygous reference
-								print "variant Called but below 25%", vcfdict[basedir][chrid], refdict[chrid]
 								fhw2.write("Variant Called but below 25%%.\t%s\t%s\n"% (vcfdict[basedir][chrid], refdict[chrid]))
 								woc +=1
 								outstr += vcfdict[basedir][chrid][0]+vcfdict[basedir][chrid][0]+"\t"
@@ -118,10 +107,8 @@ def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample 
 							woc +=1
 							outstr+= line2[3].strip()+line2[3].strip()+"\t"
 				else: #lower depth for now print out NN because of low depth
-					print "low depth", line, depthdict[chrid]
 					if vcfdict[basedir].has_key(chrid): #see if we have a variant called
-						fhw2.write("variant called but LOW depth (<%s): %s\n"%(depthcut, line))
-						print vcfdict[basedir][chrid][3], "with variant low depth"
+						fhw2.write("variant called but LOW depth (<%s): %s\n"%(depthcut, line))						
 					fhw2.write("low depth\t%s\t%s\n"%('\t'.join(depthdict[chrid]), line))
 					if line2[0] == "chrY":
 						woc +=1
@@ -135,10 +122,8 @@ def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample 
 							outstr +="NN"+"\t"
 			else: #check for variant call but without depth this will require some deep dive
 				if vcfdict[basedir].has_key(chrid):
-					print "Dive Deep on ", line
 					fhw2.write("variant called but without depth: %s\n"%(line))
 				else: #no variant was called adn we lack depth
-					print "NO depth", line
 					fhw2.write("NO depth detected and no variant (likely chrY): %s\n"%(line))
 				if line2[0] == "chrY":
 					woc +=1
@@ -148,19 +133,16 @@ def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample 
 						woc +=1
 						outstr += "N"+"\t"
 					else:
-						print basedir, line
 						woc +=1
 						outstr +="NN"+"\t"
 			if not woc == rlc:
 				#the odd case
 				if woc >rlc:
 					fherror.write("woc is higher than the ref line, %s\n"%(line))
-					print woc, rlc
 					while rlc < woc:
 						rlc += 1
 				elif woc < rls: #more common
 					fherror.write("refline didn't get analyzed, %s\n"%line)
-					print woc, rlc
 					while woc <rlc:
 						woc +=1
 		fh.close()
@@ -176,7 +158,7 @@ def paircompare(samples): #this is the tool to compare a T/N vcf and provide the
 	tumor = 'final/%s/%s-Fingerprint.txt'%(samples.keys()[0], samples.keys()[0])
 	tumorbasedir = samples.keys()[0]
 	for samplekey in samples.keys()[1:]:
-		#commented out assuming no duplication here?
+		#commented out assuming no duplication here? 
 		# if not normals.has_key(samplekey):
 		# 	normals[samplekey]=[]
 		normals[samplekey]='final/%s/%s-Fingerprint.txt'%(samplekey, samplekey)
@@ -226,7 +208,7 @@ def paircompare(samples): #this is the tool to compare a T/N vcf and provide the
 
 
 ##main#####
-#step one gather up the needed files (some old stuff grabbed here bigwigs and vcf files (now using sambamba and vardict to quickly custom call the sites))
+#step one gather up the needed files and set up the data structures
 args=parser.parse_args()
 basedirs =[]
 if args.bed:
@@ -236,11 +218,6 @@ if args.ref:
 if args.depth:
 	depthcut = args.depth
 homedir = os.getcwd()
-#now making individual vcf files and not relying on the annotated output don't use bigwigs either. 
-# vcffiles = glob.glob('final/*/*-vardict*.anno.filt.vcf.gz')
-# if len(vcffiles) ==0:
-# 	vcffiles = glob.glob('final/*/varFilter/*-vardict*.anno.filt.vcf.gz')
-# bigwigfiles = glob.glob('final/*/*-ready.bigwig')
 bamfiles = glob.glob('final/*/*-ready.bam')
 bdvcf=set()
 bdbw=set()
@@ -253,7 +230,6 @@ if not os.path.exists(homedir+"/work"):
 ###NEW fingerprintvcf creation#################
 ##Step 2 ) quickly run vardict and create a new vcf for fingerprinting, then use bcftools to query => filter out the DP and AF (needed for tumor normal samples)
 #written to each dir/bcbio/final/subdir/ as idtfingervar.txt, idtfingervar.vcf.gz, and finally to fingerprintvcf.txt
-print "this code is running its own vardict to create a vcf for the IDT fingerprinting panel and will not use the annotated vcf file. "
 print bamfiles
 for bamfile in bamfiles:
 	basedir = bamfile.split('/')[1]
@@ -304,6 +280,7 @@ for line in fh:
 		print line, "WAS LONGER IN DEPTH" #just identify the longer than a SNP positions (make this an actual error later or save for gender calling)
 	bwdict[basedir][chrom+"_"+str(start)]=readcount
 fh.close()
+
 #now parse the dictionary according to the snp file (later delete this step and just output the sambamba directly )
 for basedir in bwdict:
 	#if not glob.glob('final/%s/fingerprintdepth.txt'%(basedir)):
@@ -320,10 +297,6 @@ for basedir in bwdict:
 	fhw.close()
 	fh.close()
 
-
-
-			
-
 #ok now parse through the checklist for each base directory that was analyzed and kick out the final files. (parallelize these (defs for each of the above) pool and set threads to 6(?) Do I need this here? maybe for the checking? single pipeline that? It's here now so I can print out the order and make sure things are going through correctly for the output.
 refdict = {} # to process the checklist
 fh=open(snpbedfile)
@@ -339,10 +312,6 @@ fh.close()
 if bdbw^bdvcf:
 	for bdir in bdbw^bdvcf:
 		print "lacking depth or vardict vcf in: %s" %(bdir)
-
-#old print loop
-# for item,y in enumerate(genelist): #iterate through the gene list and print out the genes in the analysis
-# 	print item,y 
 
 print bdbw, bdvcf
 printflag = True
