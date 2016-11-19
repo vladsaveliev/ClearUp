@@ -42,7 +42,7 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
 
     bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample_name + '.bam')
     bam_fpath_b = '/%s/bamfiles/%s' % (matching_sample.project.name, matching_sample.name + '.bam')
-    locations_bed = '/locations/locations.bed'
+    locations_bed = '/locations/locations_bed'
     sample_a = {
         'id': sample.id,
         'name': sample.name,

@@ -67,14 +67,9 @@ def bam_files_page(project_name, bam_fname):
     return send_file_for_igv(join(config.DATA_DIR, project_name, 'bams', bam_fname))
 
 
-@app.route('/locations/locations.bed/')
+@app.route('/locations/locations_bed/')
 def locations_bed():
-    return send_file_for_igv(join('fingerprinting', 'locations', 'locations.bed'))
-
-
-@app.route('/locations/locations.bed.idx/')
-def locations_bed_idx():
-    return send_file_for_igv(join('fingerprinting', 'locations', 'locations.bed.idx'))
+    return send_file(join('fingerprinting', 'locations', 'locations.bed'))
 
 
 @app.route('/<run_id>/')
