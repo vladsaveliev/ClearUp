@@ -1,6 +1,5 @@
 misc/Sequenom/* linguist-vendored
-misc/Sequenom/matches/* linguist-vendored
-misc/Sequenom/plates/* linguist-vendored
-misc/Sequenom/samples/* linguist-vendored
-fingerprinting/prank/ linguist-vendored
+misc/Sequenom/*/* linguist-vendored
+fingerprinting/prank/*/* linguist-vendored
+fingerprinting/prank/*/*/* linguist-vendored
 playground/ linguist-vendored
