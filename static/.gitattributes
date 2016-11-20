@@ -1,7 +1,7 @@
 * text=auto
-d3/* linguist-vendored=true
-igv/* linguist-vendored=true
-jquery/* linguist-vendored=true
-modernizr/* linguist-vendored=true
-table_sorter/* linguist-vendored=true
-bootstrap/* linguist-vendored=true
+d3/* linguist-vendored
+igv/* linguist-vendored
+jquery/* linguist-vendored
+modernizr/* linguist-vendored
+table_sorter/* linguist-vendored
+bootstrap/* linguist-vendored
