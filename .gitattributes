@@ -1,5 +1,12 @@
+static/d3/* linguist-vendored
+static/igv/* linguist-vendored
+static/jquery/* linguist-vendored
+static/modernizr/* linguist-vendored
+static/table_sorter/* linguist-vendored
+static/bootstrap/* linguist-vendored
+static/html5_boilerplate/* linguist-vendored
 misc/Sequenom/* linguist-vendored
 misc/Sequenom/*/* linguist-vendored
 fingerprinting/prank/*/* linguist-vendored
 fingerprinting/prank/*/*/* linguist-vendored
-playground/ linguist-vendored
+playground/* linguist-vendored
