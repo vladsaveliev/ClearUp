@@ -9,8 +9,8 @@ from os.path import abspath, join, dirname, splitext, basename
 from flask import Flask, render_template, send_from_directory, abort, redirect, send_file
 from flask import Response, request
 
-from Utils import logger as log
-from Utils.file_utils import safe_mkdir, file_transaction, can_reuse
+from ngs_utils import logger as log
+from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample, PairedSample

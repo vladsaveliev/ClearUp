@@ -1,10 +1,12 @@
+SQLAlchemy
+biopython
 gevent
 gevent-websocket
 git+https://github.com/mitsuhiko/flask.git
-Flask-Script
+flask-script
 flask-runner
-SQLAlchemy
-biopython
 flask_sqlalchemy
 flask-socketio
+flask-assets
 bx
+git+git://github.com/vladsaveliev/NGS_Utils.git

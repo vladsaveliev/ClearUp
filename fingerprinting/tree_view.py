@@ -13,9 +13,9 @@ from os.path import abspath, join, dirname, splitext, basename
 from Bio import SeqIO, Phylo
 from flask import Flask, render_template, abort, request
 
-from Utils import logger as log
-from Utils.file_utils import safe_mkdir, file_transaction, can_reuse
-from Utils.file_utils import can_reuse, safe_mkdir
+from ngs_utils import logger as log
+from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
+from ngs_utils.file_utils import can_reuse, safe_mkdir
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample, PairedSample

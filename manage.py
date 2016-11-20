@@ -11,8 +11,8 @@ from fingerprinting.model import Project, Sample, db
 from fingerprinting.utils import read_fasta, load_bam_file, get_fingerprints
 from start import app
 
-from Utils.file_utils import verify_file, verify_dir, safe_mkdir
-import Utils.logger as log
+from ngs_utils.file_utils import verify_file, verify_dir, safe_mkdir
+import ngs_utils.logger as log
 IS_DEBUG = log.is_debug = True
 
 

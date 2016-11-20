@@ -1,4 +1,4 @@
-import Utils.logger as log
+import ngs_utils.logger as log
 from fingerprinting.model import Project
 
 

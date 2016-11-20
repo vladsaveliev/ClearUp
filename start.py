@@ -1,29 +1,23 @@
 #!/usr/bin/env python2
-import json
-
-import os
-import subprocess
-import time
-import platform
-
 from os.path import abspath, join, dirname, splitext, basename
-from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file
-from flask import Response, request
+from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
+import flask_assets
 
 from geventwebsocket.handler import WebSocketHandler
 from gevent.pywsgi import WSGIServer
-
-from Utils.file_utils import safe_mkdir, file_transaction, can_reuse
-from Utils import logger as log
-log.is_debug = True
-log.log_fpath = join(dirname(__file__), 'data', 'log.txt')
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_prank_socket_handler, render_phylo_tree_page
 
+from ngs_utils import logger as log
+log.is_debug = True
+log.log_fpath = join(dirname(__file__), 'data', 'log.txt')
+
 app = Flask(__name__)
+assets = flask_assets.Environment()
+assets.init_app(app)
 
 
 @app.route('/favicon.ico/')

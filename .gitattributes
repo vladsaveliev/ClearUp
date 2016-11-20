@@ -1,0 +1,4 @@
+* text=auto
+misc/ linguist-vendored=true
+fingerprinting/prank/ linguist-vendored=true
+playground/ linguist-vendored=true

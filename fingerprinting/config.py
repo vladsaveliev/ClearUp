@@ -1,5 +1,5 @@
 from os.path import abspath, join, dirname
-import Utils.logger as log
+import ngs_utils.logger as log
 
 
 IS_DEBUG = log.is_debug = True

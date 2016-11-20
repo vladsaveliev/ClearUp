@@ -7,11 +7,11 @@ import os
 from os.path import isfile
 
 from Bio import SeqIO
-from Utils.call_process import run
+from ngs_utils.call_process import run
 from os.path import join, dirname
 
-from Utils.file_utils import verify_file, safe_mkdir, file_transaction, which
-import Utils.logger as log
+from ngs_utils.file_utils import verify_file, safe_mkdir, file_transaction, which
+import ngs_utils.logger as log
 
 from fingerprinting.model import Fingerprint
 

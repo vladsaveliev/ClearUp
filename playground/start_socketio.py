@@ -19,11 +19,11 @@ from geventwebsocket.handler import WebSocketHandler
 from gevent.pywsgi import WSGIServer
 import gevent
 
-from Utils import logger as log
+from ngs_utils import logger as log
 
 from fingerprinting.utils import read_fasta
 log.is_debug = True
-from Utils.file_utils import safe_mkdir, file_transaction, can_reuse
+from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample
