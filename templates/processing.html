@@ -41,7 +41,7 @@
                     console.log("WebSocket not supported");
                     $('#console_log').append("Processing...<br>");
                 } else {
-                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + "/{{ run_id }}/run_prank");
+                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + "/{{ run_id }}/run_prank/");
                     console.log("Connected");
                     ws.onstart = function() {
                         ws.send("started");

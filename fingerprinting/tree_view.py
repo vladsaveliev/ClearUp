@@ -48,6 +48,8 @@ class TreeRun:
 
 
 def run_prank_socket_handler(run_id):
+    log.debug('Recieved request to start prank for ' + run_id)
+
     ws = request.environ.get('wsgi.websocket', None)
     if not ws:
         raise RuntimeError('Environment lacks WSGI WebSocket support')
@@ -85,6 +87,7 @@ def render_phylo_tree_page(run_id):
     run = TreeRun(run_id)
 
     if not can_reuse(run.tree_fpath, run.merged_fasta_fpath):
+        log.debug('Tree for ' + run_id + ' was not found at ' + run.tree_fpath + ', renderring processing.html')
         return render_template(
             'processing.html',
             projects=[{
