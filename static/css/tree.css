@@ -1,0 +1,37 @@
+#tree_svg {
+  margin-left: -110px; }
+
+.link {
+  fill: none;
+  stroke: #555;
+  stroke-opacity: 0.4;
+  stroke-width: 1.5px; }
+
+.node text {
+  font: 10px sans-serif; }
+.node text.seq {
+  font: 10px "Lucida Console", Monaco, monospace; }
+.node a {
+  text-decoration: underline; }
+.node a:visited {
+  text-decoration: underline; }
+.node a:hover, .node a:active {
+  fill: darkred;
+  text-decoration: underline; }
+
+.c_nuc {
+  fill: #007a00; }
+
+.a_nuc {
+  fill: #002aba; }
+
+.t_nuc {
+  fill: #970035; }
+
+.g_nuc {
+  fill: #eecf00; }
+
+.n_nuc {
+  fill: #b2b2b2; }
+
+/*# sourceMappingURL=tree.css.map */

@@ -3,16 +3,8 @@
 {% block head %}
         <title>Fingerprints</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='table_sorter/style.css') }}">
-
-        <style>
-            #projects_list_table tbody tr:hover{
-                background-color: #f6f6f6;
-            }
-            #projects_list_table tbody tr.selected{
-                background-color: #b3d4fc;
-            }
-        </style>
 {% endblock %}
 
 {% block body %}
@@ -55,7 +47,8 @@
                     tbody.find('tr.selected').each(function() {
                         projectNames.push($(this).attr('project_name'));
                     });
-                    location.href = projectNames.join();
+                    var runId = projectNames.join();
+                    location.href = "/" + runId + "/tree";
                 });
 
                 tbody.on('click', 'tr', function () {

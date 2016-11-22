@@ -34,29 +34,6 @@
 {% endblock %}
 
 {% block js %}
-{#        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>#}
-{#        <script>#}
-{#            $(document).ready(function() {#}
-{#                var socket = io.connect('http://' + document.domain + ':' + location.port);#}
-{#                socket.on('connect', function() {#}
-{#                    socket.emit('connected', "{{ run_id }}");#}
-{#                });#}
-{#                console.log('Connected');#}
-{##}
-{#                socket.on('running', function (data) {#}
-{#                    data = JSON.parse(data);#}
-{#                    console.log('Data recieved ' + data);#}
-{#                    console.log("Adding lines data.lines: " + data.lines.join('\n'));#}
-{#                    var consoleDiv = $('#console_log');#}
-{#                    data.lines.forEach(function (line) {#}
-{#                        consoleDiv.append(line + '<br>');#}
-{#                    });#}
-{#                    if (data.finished == true) {#}
-{#                        location.href = "";#}
-{#                    }#}
-{#                });#}
-{#            });#}
-{#        </script>#}
         <script>
             $(document).ready(function() {
                 var ws;  // websocket
@@ -64,7 +41,7 @@
                     console.log("WebSocket not supported");
                     $('#console_log').append("Processing...<br>");
                 } else {
-                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + '/{{ run_id }}/run_prank/');
+                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + "/{{ run_id }}/run_prank");
                     console.log("Connected");
                     ws.onstart = function() {
                         ws.send("started");
@@ -75,7 +52,7 @@
                         if (typeof data.line != 'undefined') {
                             consoleDiv.append(data.line + "<br>");
                         } else if (data.finished) {
-                            location.href = "";
+                            location.href = "/{{ run_id }}/tree";
                         }
                     };
                 }

@@ -16,31 +16,35 @@ db = SQLAlchemy(app)
 
 class Fingerprint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    index = db.Column(db.Integer())
-    pos = db.Column(db.Integer())
-    chrom = db.Column(db.Integer())
-    nucl = db.Column(db.String())
-    usercall = db.Column(db.String())
+    index = db.Column(db.Integer)
+    chrom = db.Column(db.String)
+    pos = db.Column(db.Integer)
+    rsid = db.Column(db.String)
+    genotype = db.Column(db.String)
+    depth = db.Column(db.Integer)
+    usercall = db.Column(db.String)
 
     sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
     sample = db.relationship('Sample', backref=db.backref('fingerprints', lazy='dynamic'))
 
-    def __init__(self, sample, index, chrom, pos, nucl):
-        self.sample = sample
+    def __init__(self, index=None, sample=None, chrom=None, pos=None, rsid=None):
         self.index = index
+        self.sample = sample
         self.chrom = chrom
         self.pos = pos
-        self.nucl = nucl
+        self.rsid = rsid
+        self.genotype = None
+        self.depth = None
         self.usercall = None
 
     def __repr__(self):
-        return '<Fingerprint {}-{} for sample {}>'.format(str(self.pos), self.nucl, self.sample.name)
+        return '<Fingerprint {}-{} for sample {}>'.format(str(self.pos), self.genotype, self.sample.name)
 
 
 class Project(db.Model):
     name = db.Column(db.String(), primary_key=True)
-    bcbio_final_path = db.Column(db.String())
-    fingerprints_fasta_fpath = db.Column(db.String())
+    bcbio_final_path = db.Column(db.String)
+    fingerprints_fasta_fpath = db.Column(db.String)
     genome = db.Column(db.String(20))
 
     def __init__(self, name, bcbio_final_path, fp_fpath, genome):
@@ -57,14 +61,14 @@ class Project(db.Model):
 
 class Sample(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String())
-    bam_fpath = db.Column(db.String())
-    paired_sample_id = db.Column(db.Integer())
+    name = db.Column(db.String)
+    bam_fpath = db.Column(db.String)
+    paired_sample_id = db.Column(db.Integer)
 
     project_name = db.Column(db.String, db.ForeignKey('project.name'))
     project = db.relationship('Project', backref=db.backref('samples', lazy='dynamic'))
 
-    def __init__(self, name, project, bam_fpath):
+    def __init__(self, name, project, bam_fpath=None):
         self.name = name
         self.project = project
         self.bam_fpath = bam_fpath
@@ -75,8 +79,8 @@ class Sample(db.Model):
 
 class PairedSample(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    run_id = db.Column(db.String())
-    sample_id = db.Column(db.Integer())
+    run_id = db.Column(db.String)
+    sample_id = db.Column(db.Integer)
 
     matching_sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
     matching_sample = db.relationship('Sample', backref=db.backref('paired_samples', lazy='dynamic'))

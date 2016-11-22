@@ -19,15 +19,15 @@ from geventwebsocket.handler import WebSocketHandler
 from gevent.pywsgi import WSGIServer
 import gevent
 
-from Utils import logger as log
+from ngs_utils import logger as log
 
 from fingerprinting.utils import read_fasta
 log.is_debug = True
-from Utils.file_utils import safe_mkdir, file_transaction, can_reuse
+from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample
-from fingerprinting.sample_view import send_bam_files, render_sample_page
+from fingerprinting.sample_view import send_bam_files, render_closest_comparison_page
 from fingerprinting.tree_view import tree_to_json_for_d3, \
     prank_bin, merge_fasta, PROJ_COLORS
 
@@ -168,10 +168,10 @@ def phylo_tree_page(run_id):
 
 @app.route('/<run_id>/<sample_id>')
 def sample_page(run_id, sample_id):
-    return render_sample_page(run_id, sample_id)
+    return render_closest_comparison_page(run_id, sample_id)
 
 
-@app.route('/<run_id>/<prev_sample_id>/<edit_sample_id>/<snp_index>/add_usercall', methods=['POST'])
+@app.route('/<run_id>/tree/<prev_sample_id>/<edit_sample_id>/<snp_index>/add_usercall', methods=['POST'])
 def add_user_call(run_id, prev_sample_id, edit_sample_id, snp_index):
     sample = Sample.query.filter_by(id=edit_sample_id).first()
     if not sample:
