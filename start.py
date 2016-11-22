@@ -1,7 +1,7 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
 from os.path import abspath, join, dirname, splitext, basename
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
-import flask_assets
 
 from geventwebsocket.handler import WebSocketHandler
 from gevent.pywsgi import WSGIServer
@@ -16,8 +16,9 @@ log.is_debug = True
 log.log_fpath = join(dirname(__file__), 'data', 'log.txt')
 
 app = Flask(__name__)
-assets = flask_assets.Environment()
-assets.init_app(app)
+# import flask_assets
+# assets = flask_assets.Environment()
+# assets.init_app(app)
 
 
 @app.route('/favicon.ico/')
