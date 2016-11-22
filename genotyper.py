@@ -222,6 +222,7 @@ bamfiles = glob.glob('final/*/*-ready.bam')
 bdvcf=set()
 bdbw=set()
 genelist=[]
+finaldatefolder = glob.glob(homedir+'/final/*_bcbio') 
 
 #next check if folder structure for output is there. if not make it
 if not os.path.exists(homedir+"/work"):
@@ -257,12 +258,12 @@ for bamfile in bamfiles:
 
 
 ##Step 3 ) run sambamba to get depth at the positions for all samples simultaneously output to dir/bcbio/final/sambambadepth.txt
-cline = 'sambamba depth region -L %s -o %s/final/sambambadepth.txt %s/final/*/*-ready.bam'%(snpbedfile, homedir, homedir)
+cline = 'sambamba depth region -L %s -o %s/sambambadepth.txt %s/final/*/*-ready.bam'%(snpbedfile, finaldatefolder[0], homedir)
 print cline
 pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
 
 ##step 4) parse this info into dictionaries so taht you can check if it has a variatn called and what the depth is.
-fh =open(homedir+'/final/sambambadepth.txt')
+fh =open(finaldatefolder[0]+'/sambambadepth.txt')
 fh.readline() #gather infromatino and indexing from here if need be later
 bwdict={} #key this on sample names
 for line in fh:
@@ -342,8 +343,8 @@ if not printflag:
 
 ###new 7/11/16
 #now generate the comprehensive blast dictionary	
-#takes the -Fingerprint.txt output and creates a fasta 
-blastfasta = open('final/longprints.fasta','w')
+#takes the -Fingerprint.txt output and creates a fasta
+blastfasta = open(finaldatefolder[0]+'/longprints.fasta','w')
 fingerprinttexts = glob.glob('final/*/*-Fingerprint.txt')
 for fpfile in fingerprinttexts:
 	basedir = fpfile.split('/')[1]
