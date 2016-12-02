@@ -228,6 +228,8 @@ finaldatefolder = glob.glob(homedir+'/final/*_bcbio')
 if not os.path.exists(homedir+"/work"):
 	os.mkdir(homedir+"/work")
 
+
+
 ###NEW fingerprintvcf creation#################
 ##Step 2 ) quickly run vardict and create a new vcf for fingerprinting, then use bcftools to query => filter out the DP and AF (needed for tumor normal samples)
 #written to each dir/bcbio/final/subdir/ as idtfingervar.txt, idtfingervar.vcf.gz, and finally to fingerprintvcf.txt
@@ -258,7 +260,10 @@ for bamfile in bamfiles:
 
 
 ##Step 3 ) run sambamba to get depth at the positions for all samples simultaneously output to dir/bcbio/final/sambambadepth.txt
-cline = 'sambamba depth region -L %s -o %s/sambambadepth.txt %s/final/*/*-ready.bam'%(snpbedfile, finaldatefolder[0], homedir)
+if not os.path.exists(finaldatefolder[0]+"/fingerprints"):
+        os.mkdir(finaldatefolder[0]+"/fingerprints")
+
+cline = 'sambamba depth region -L %s -o %s/fingerprints/sambambadepth.txt %s/final/*/*-ready.bam'%(snpbedfile, finaldatefolder[0], homedir)
 print cline
 pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
 
@@ -344,7 +349,7 @@ if not printflag:
 ###new 7/11/16
 #now generate the comprehensive blast dictionary	
 #takes the -Fingerprint.txt output and creates a fasta
-blastfasta = open(finaldatefolder[0]+'/longprints.fasta','w')
+blastfasta = open(finaldatefolder[0]+'/fingerprints/longprints.fasta','w')
 fingerprinttexts = glob.glob('final/*/*-Fingerprint.txt')
 for fpfile in fingerprinttexts:
 	basedir = fpfile.split('/')[1]
