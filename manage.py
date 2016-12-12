@@ -1,5 +1,4 @@
-#!/usr/bin/env python2
-from genericpath import isfile
+#!/usr/bin/env python
 
 from os.path import join, abspath
 import sys

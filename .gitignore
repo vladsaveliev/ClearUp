@@ -91,3 +91,5 @@ ENV/
 venv_*
 data
 test
+
+fingerprinting/version.py
