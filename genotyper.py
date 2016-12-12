@@ -268,7 +268,7 @@ print cline
 pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
 
 ##step 4) parse this info into dictionaries so taht you can check if it has a variatn called and what the depth is.
-fh =open(finaldatefolder[0]+'/sambambadepth.txt')
+fh =open(finaldatefolder[0]+'/fingerprints/sambambadepth.txt')
 fh.readline() #gather infromatino and indexing from here if need be later
 bwdict={} #key this on sample names
 for line in fh:
