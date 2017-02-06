@@ -1,8 +1,11 @@
 # WebServer for fingerprinting
 ## Install
+- `cd /group/ngs/src`
+- `git clone /group/ngs/src/Fingerprinting && cd Fingerprinting`
 - `virtualenv venv_fp`
 - `source venv_fp/bin/activate`
 - `pip install requirements.txt`
+- `./setup.py develop`
 
 ## Set up
 - `python manage.py init_db`
