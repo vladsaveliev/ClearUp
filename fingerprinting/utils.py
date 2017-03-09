@@ -49,7 +49,7 @@ def load_bam_file(bcbio_final_path, project_work_dirpath, sample_id):
 def get_fingerprints(project, seq_by_sample_name):
     fp_by_loc_by_sample = defaultdict(dict)
     fp_by_index_by_sample = defaultdict(dict)
-    with open(join(dirname(__file__), 'locations', 'locations.bed')) as f:
+    with open(join(dirname(__file__), 'snps', 'idt_snps.bed')) as f:
         for i, l in enumerate(l for l in f if l[0] != '#'):
             chrom, pos0, pos1, ann = l.strip().split()
             for s in project.samples:

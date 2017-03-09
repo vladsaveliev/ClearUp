@@ -16,3 +16,11 @@ else:
 DATA_DIR = abspath(join(dirname(__file__), '..', 'data'))
 
 
+def get_version():
+    try:
+        from fingerprinting import version
+    except ImportError:
+        version = None
+    else:
+        version = version.__version__
+    return version

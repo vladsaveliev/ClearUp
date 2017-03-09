@@ -139,7 +139,7 @@
     var bamUrlA = "{{ sampleA.bam }}";
     var bamUrlB = "{{ sampleB.bam }}";
     var genome = "{{ genome }}";
-    var locationsBedFile = "{{ locations_bed }}";
+    var snpsBedFile = "{{ snps_bed }}";
     var selectedIdx = {{ selected_idx }};
 
     var selectedEls = null;
@@ -266,7 +266,7 @@
         tracks.push({
             type: 'annotation',
             name: 'Fingerprint locations',
-            url: locationsBedFile,
+            url: snpsBedFile,
             indexURL: null,
             height: 24,
             minHeight: 24,

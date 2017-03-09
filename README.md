@@ -1,8 +1,10 @@
 # WebServer for fingerprinting
 ## Install
+- `pip install --upgrade pip`
+- `pip install --upgrade --ignore-installed setuptools`
 - `cd /group/ngs/src`
 - `git clone /group/ngs/src/Fingerprinting && cd Fingerprinting`
-- `virtualenv venv_fp`
+- `virtualenv -p $(which python2) venv_fp`
 - `source venv_fp/bin/activate`
 - `pip install requirements.txt`
 - `./setup.py develop`

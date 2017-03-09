@@ -1,365 +1,205 @@
-#! python
+#!/usr/bin/env python
 
-#Author Tristan Lubinski
-#Date 3-15-16
-#purpose to rapidly genotype the samples after BCBio runs
-#date 6/21/16
-#modifications to speed up using bcftools instead of bedtools and now integrating the information from tumor normal/multiple samples when availble.
+import os
+import sys
+import glob
+import click
+from os.path import join, dirname, basename
+from variant_filtering.vcf import bgzip_and_tabix
 
-import sys, glob, subprocess, argparse, os
-from itertools import izip
+from ngs_utils import logger
+from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file
+from ngs_utils.logger import err, info, debug, critical
+from ngs_utils.call_process import run
+from ngs_utils.parallel import ParallelCfg
 
+from ngs_reporting.bcbio.bcbio import BcbioProject
 
-print "make sure you have bcftools loaded" 
-print "usage: python genotyperswift.py sortedsnp.bed desiredSNPs.vcf ##fordepthcutoff<defaultto0please>"
-print "now with argparse please use python genotyperswiftV12longprint.py -h for help"
+from fingerprinting.config import get_version
+from fingerprinting.genotype import fingerprint, fingerwriter, paircompare, run_vardict
 
-parser = argparse.ArgumentParser(prog='genotyperswift', usage='%(prog)s --bed path/to/file.bed --ref path/to/reffile.txt --depth mindepth ')
-parser.add_argument('-b', '--bed', help='sorted bedfile for all the snps', required=True)
-parser.add_argument('-r', '--ref', help='sorted reference file for all the mutations', required=True)
-parser.add_argument('-d', '--depth', default=5, type=int, help='minimum coverage depth for calls. Default = 5', required=True)
-
-def fingerprint(homedir, basedir): #the purpose of this is to rip through the vcf and create dictionaries keyed on sample ID and containing chrid keyed ref,alt,AF,DP information
-	samplesdict = {}
-	fh = open('%s/work/%s/fingerprintvcf.txt'%(homedir, basedir))
-	for line in fh:
-		line2 = line.split('\t')
-		if "SNV" in line:
-			chrid = line2[0]+"_"+line2[1]
-			ref = line2[2]
-			alt = line2[3]
-			for item in line2:
-				if " AF=" in item: #figure out the sample names here
-					samplename = item.split(" AF")[0]
-					print samplename, "sample name from AF"
-					if not samplesdict.has_key(samplename):
-						samplesdict[samplename]={}
-					AF = item.split('=')[1]
-					if not samplesdict[samplename].has_key(chrid):
-						samplesdict[samplename][chrid]=[ref,alt,AF,0]
-					else:
-						print "DOUBLE IDED CHRID IN SYSTEM", line, samplesdict[samplename][chrid]
-				if " DP=" in item:
-					samplename = item.split(" DP")[0]
-					DP = item.split('=')[1]
-					samplesdict[samplename][chrid][3]=DP
-	fh.close()
-	return samplesdict
-		
-def fingerwriter(homedir, vcfdict): #this takes in a dictionary keyed on sample names each keyed on chrid for each identified snp
-	for basedir in vcfdict: #for each sample go through the snps IDed #basedir is the key for samples
-		print basedir
-		depthdict = {}
-		ismale = False
-		ytotal = 0
-		fh = open('%s/work/%s/fingerprintdepth.txt'%(homedir, basedir)) #should open the depth and we shoudl have these because of bigwigs for each T/N pair
-		for line in fh:
-			line2 = line.split('\t')
-			chrid = line2[0]+"_"+line2[2]
-			if not depthdict.has_key(chrid):
-				depthdict[chrid]=(line2[-3],line2[-1].strip()) #identifier and depth
-			else:
-				print "FAIL DEPTH!!!!!!", line, depthdict[chrid]
-			if line2[0]=="chrY":
-				ytotal += int(line2[-1].strip())
-		fh.close()
-		if ytotal > depthcut: 
-			ismale = True
-		
-		fh =open(reffile)
-		fhw=open("%s/final/%s/%s-Fingerprint.txt"%(homedir, basedir, basedir),"w")
-		fhw2=open("%s/work/%s/%s-printcoverage.log"%(homedir, basedir, basedir),"w")
-		fherror=open("%s/work/%s/%s-error.log"%(homedir, basedir, basedir),"w")
-		outstr = ""
-		print basedir+" Processing..."
-		rlc = 0 #refline count
-		woc = 0 #write out count
-		for line in fh:
-			rlc+=1
-			line2 = line.split('\t')
-			chrid = line2[0]+"_"+line2[1]
-			snpid = line2[3]
-			if depthdict.has_key(chrid):
-				if int(depthdict[chrid][1])>depthcut: #check if it's below the set depth.
-					if vcfdict[basedir].has_key(chrid): #see if we have a variant called
-						if line2[0] == "chrX" and ismale and 0.25<=float(vcfdict[basedir][chrid][2]):
-							woc +=1
-							outstr += vcfdict[basedir][chrid][1]+"\t"
-						elif line2[0] == 'chrY' and 0.25<=float(vcfdict[basedir][chrid][2]):
-							woc +=1
-							outstr += vcfdict[basedir][chrid][1]+"\t"
-						else: #is not a sex chromosome or is chrX and needs to be two alleles
-							if 0.25<=float(vcfdict[basedir][chrid][2])<0.75: #heterozygous
-								woc +=1
-								outstr += vcfdict[basedir][chrid][0]+vcfdict[basedir][chrid][1]+"\t"
-							elif 0.75<=float(vcfdict[basedir][chrid][2]): #homozygous ALT
-								woc +=1
-								outstr += vcfdict[basedir][chrid][1]+vcfdict[basedir][chrid][1]+"\t"
-							else: #lower than 25% so we'll call this homozygous reference
-								fhw2.write("Variant Called but below 25%%.\t%s\t%s\n"% (vcfdict[basedir][chrid], refdict[chrid]))
-								woc +=1
-								outstr += vcfdict[basedir][chrid][0]+vcfdict[basedir][chrid][0]+"\t"
-					else: #no variant called so we just report reference if we have sufficient depth. Homozygous reference
-						if line2[0] == 'chrY':
-							woc +=1
-							outstr += line2[3].strip()+"\t"
-						else: #not a chrY 
-							woc +=1
-							outstr+= line2[3].strip()+line2[3].strip()+"\t"
-				else: #lower depth for now print out NN because of low depth
-					if vcfdict[basedir].has_key(chrid): #see if we have a variant called
-						fhw2.write("variant called but LOW depth (<%s): %s\n"%(depthcut, line))						
-					fhw2.write("low depth\t%s\t%s\n"%('\t'.join(depthdict[chrid]), line))
-					if line2[0] == "chrY":
-						woc +=1
-						outstr +="N"+"\t"
-					else:#Not a Y chr 
-						if line2[0]=='chrX' and ismale: #is there a Y somewhere?
-							woc +=1
-							outstr += "N"+"\t"
-						else:
-							woc +=1
-							outstr +="NN"+"\t"
-			else: #check for variant call but without depth this will require some deep dive
-				if vcfdict[basedir].has_key(chrid):
-					fhw2.write("variant called but without depth: %s\n"%(line))
-				else: #no variant was called adn we lack depth
-					fhw2.write("NO depth detected and no variant (likely chrY): %s\n"%(line))
-				if line2[0] == "chrY":
-					woc +=1
-					outstr +="N"+"\t"
-				else:#X or non-sex chromosome
-					if line2[0]=='chrX' and ismale:
-						woc +=1
-						outstr += "N"+"\t"
-					else:
-						woc +=1
-						outstr +="NN"+"\t"
-			if not woc == rlc:
-				#the odd case
-				if woc >rlc:
-					fherror.write("woc is higher than the ref line, %s\n"%(line))
-					while rlc < woc:
-						rlc += 1
-				elif woc < rls: #more common
-					fherror.write("refline didn't get analyzed, %s\n"%line)
-					while woc <rlc:
-						woc +=1
-		fh.close()
-		fhw.write(outstr+'\n')
-		fhw.close()
-		fhw2.close()
-		fherror.close()
-
-def paircompare(samples): #this is the tool to compare a T/N vcf and provide the statistics back for the pair identified takes in the dictionary of dictoionaries keyed on sample name (basedirs)
-	#initially the length should only be two. so I'm writing this for that (although I'm going to iterate so that the first is the main tumor sample and the rest are normals in this case)
-	normals={}
-
-	tumor = 'final/%s/%s-Fingerprint.txt'%(samples.keys()[0], samples.keys()[0])
-	tumorbasedir = samples.keys()[0]
-	for samplekey in samples.keys()[1:]:
-		#commented out assuming no duplication here? 
-		# if not normals.has_key(samplekey):
-		# 	normals[samplekey]=[]
-		normals[samplekey]='final/%s/%s-Fingerprint.txt'%(samplekey, samplekey)
-
-	for normalsample in normals:
-		fh = open(tumor)
-		a = fh.readline()
-		fh.close()
-		print normals, normalsample
-		fh = open(normals[normalsample])
-		b = fh.readline()
-		fh.close()
-		
-		if a == b:
-			print "Genotype matches 100 Percent between: %s and %s"%(tumorbasedir, normalsample)
-			print "%s\n%s"%(tumorbasedir, '\t'.join(a.strip().split()))
-			print "%s\n%s"%(normalsample, '\t'.join(b.strip().split()))
-			fhw2.write("Genotype matches 100 Percent between: %s and %s\n"%(tumorbasedir, normalsample))
-			fhw2.write("%s\n%s\n"%(tumorbasedir, '\t'.join(a.strip().split())))
-			fhw2.write("%s\n%s\n"%(normalsample, '\t'.join(b.strip().split())))
-
-		else: #if not an exact match print out metrics of how close we are
-			a2 = a.strip().split()
-			b2 = b.strip().split()
-			count = 0 #init matches
-			totalcount = 0
-			for c1,c2  in izip(a2,b2):
-				if c1==c2:
-					count +=1
-					totalcount+=1
-				else:
-					totalcount+=1
-			print "NO MATCH between: %s and %s"%(tumorbasedir, normalsample)
-			print '\t'.join(genelist)
-			print "%s\n%s"%(tumorbasedir, '\t'.join(a.strip().split()))
-			print "%s\n%s"%(normalsample, '\t'.join(b.strip().split()))
-			print "However we matched %s Percent of the reads (%s out of %s total)" % ((float(count)/float(totalcount)),count, totalcount)
-			print "Genes where we mismatch: "+",".join([genelist[i] for i,(c1,c2)  in enumerate(izip(a2,b2)) if c1!=c2])
-			fhw2.write("NO MATCH between: %s and %s\n"%(tumorbasedir, normalsample))
-			fhw2.write('\t'.join(genelist)+'\n')
-			fhw2.write("%s\n%s\n"%(tumorbasedir, '\t'.join(a.strip().split())))
-			fhw2.write("%s\n%s\n"%(normalsample, '\t'.join(b.strip().split())))
-			fhw2.write("However we matched %s Percent of the reads (%s out of %s total)\n" % ((float(count)/float(totalcount)),count, totalcount))
-			fhw2.write("Genes where we mismatch: "+",".join([genelist[i] for i,(c1,c2)  in enumerate(izip(a2,b2)) if c1!=c2])+'\n')
-			print "============================================================="
-			fhw2.write("=============================================================\n\n")
+import az
 
 
-##main#####
-#step one gather up the needed files and set up the data structures
-args=parser.parse_args()
-basedirs =[]
-if args.bed:
-	snpbedfile = args.bed
-if args.ref:
-	reffile = args.ref
-if args.depth:
-	depthcut = args.depth
-homedir = os.getcwd()
-bamfiles = glob.glob('final/*/*-ready.bam')
-bdvcf=set()
-bdbw=set()
-genelist=[]
-finaldatefolder = glob.glob(homedir+'/final/*_bcbio') 
+""" Rapidly genotype the samples after BCBio runs.
+    Make sure you have bcftools loaded"
+"""
 
-#next check if folder structure for output is there. if not make it
-if not os.path.exists(homedir+"/work"):
-	os.mkdir(homedir+"/work")
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument('bcbio_dir',
+                type=click.Path(exists=True, dir_okay=True),
+                default=os.getcwd(),
+                metavar="<bcbio directory>"
+                )
+@click.option('-b', '--bed',
+              type=click.Path(exists=True),
+              help='Sorted BED file for all the snps, in the following format.',
+              required=True,
+              )
+# @click.option('-v', '--vcf',
+#               type=click.Path(exists=True),
+#               help='Sorted VCF file only for sites for the snps.',
+#               required=True,
+#               )
+@click.option('-D', '--depth',
+              type=int,
+              help='Minimum coverage depth for calls.',
+              default=5,
+              )
+@click.option('-t', '--threads',
+              type=int,
+              help='Number of threads. Default is in corresponding system_info_*.yaml or 1. '
+                   'If set to 1, skip starting cluster even if scheduler is specified.',
+              )
+@click.option('-d', '--isdebug',
+              is_flag=True
+              )
+@click.version_option(version=get_version())
+def main(bcbio_dir, bed, depth, threads=None, isdebug=True):
+    """ Step one gather up the needed files and set up the data structures."""
+    snp_file = verify_file(bed)
+    depth_cutoff = depth
+
+    logger.init(isdebug)
+
+    info('Loading bcbio project from ' + bcbio_dir)
+    info('-' * 70)
+    proj = BcbioProject()
+    proj.load_from_bcbio_dir(bcbio_dir, proc_name='fingerprinting', need_coverage_interval=False)
+    safe_mkdir(proj.work_dir)
+    info('Loaded ' + proj.final_dir)
+    bam_files = [s.bam for s in proj.samples]
+    debug('Found BAM files: ' + str(bam_files))
+    
+    bigwig_file = set()
+    genelist = []
+
+    sys_cfg = az.init_sys_cfg()
+    if threads:
+        sys_cfg['threads'] = threads
+    parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
+                               sys_cfg.get('resources'), sys_cfg.get('threads'))
+    parallel_cfg.set_tag('fingerprinting')
+    genome_cfg = az.get_refdata(proj.genome_build)
+
+    info('** Running VarDict ** ')
+    run_vardict(proj, proj.work_dir, snp_file, parallel_cfg, genome_cfg)
+    info('** Finished running VarDict **')
+    
+    sys.exit(1)
+    
+    # NEW fingerprintvcf creation #################
+    # Step 2) quickly run vardict and create a new vcf for fingerprinting, then use bcftools to query => filter out the DP and AF (needed for tumor normal samples)
+    # Written to each dir/bcbio/final/subdir/ as idtfingervar.txt, idtfingervar.vcf.gz, and finally to fingerprintvcf.txt
+    for sample in proj.samples:
+        if not sample.bam:
+            critical('BAM file not found for sample ' + sample.nam)
+        fingerprintvcf_txt = join(safe_mkdir(join(proj.work_dir, sample.name)), 'fingerprintvcf.txt')
+        if not can_reuse(fingerprintvcf_txt, cmp_f=sample.bam):
+            info('Use vardict.pl to quickly scan the ready.bam for files')
+            vardict_out = join(proj.work_dir, sample.name, 'idtfingervar.txt')
+            run('vardict.pl -b {sample.bam} -N {sample.name} -f 0.005 {snp_bed_file} > {vardict_out}'.format(**locals()))
+            vardict_vcf = join(proj.work_dir, sample.name, 'idtfingervar.vcf')
+            run('var2vcf_valid.pl {vardict_out} > {vardict_vcf}'.format(**locals()))
+            vardict_vcf_gz = bgzip_and_tabix(vardict_vcf)
+            run('bcftools query -H -R {vcf_file} -f "%%CHROM\\t%%POS\\t%%REF\\t%%ALT[\\t%%SAMPLE AF=%%AF][\\t%%SAMPLE DP=%%DP]\\t%%ID\\t%%LINE"'
+                ' {vardict_vcf_gz} > {fingerprintvcf_txt}'.format(**locals()))
+
+    info('Running sambamba to get depth at the positions for all samples simultaneously output to dir/bcbio/final/sambambadepth.txt')
+    fingerpints_dir = safe_mkdir(join(proj.date_dir, 'fingerprints'))
+    depth_txt = join(fingerpints_dir, 'sambambadepth.txt')
+    if not can_reuse(depth_txt, cmp_f=bam_files):
+        bam_lines = ' '.join(bam_files)
+        run('sambamba depth region -L {snp_bed_file} -o {depth_txt} {bam_lines}'.format(**locals()))
+    
+    # Step 4) parse this info into dictionaries so taht you can check if it has a variatn called and what the depth is.
+    with open(depth_txt) as fh:
+        fh.readline()  # gather infromatino and indexing from here if need be later
+        bwdict = {}  # key this on sample names
+        for line in fh:
+            line2 = line.strip().split()
+            chrom = line2[0]
+            start = int(line2[1])
+            end = int(line2[2])
+            sample_name = line2[-1]
+            readcount = int(line2[-3])
+            avgcount = float(line2[-2])
+            if sample_name not in bigwig_file:  # add it and create a dictionary of dictionaries to contain the write outs at the end for depth file
+                bigwig_file.add(sample_name)
+                bwdict[sample_name] = {}  # key this on chrid
+            if max(int(start), int(end)) - min(int(start), int(end)) > 1:
+                err(line + " WAS LONGER IN DEPTH")  # just identify the longer than a SNP positions (make this an actual error later or save for gender calling)
+            bwdict[sample_name][chrom + "_" + str(start)] = readcount
+    
+    # Now parse the dictionary according to the snp file (later delete this step and just output the sambamba directly)
+    for sample_name in bwdict:
+        fingerprint_depth_file = join(proj.work_dir, sample_name, 'fingerprintdepth.txt')
+        if not can_reuse(fingerprint_depth_file, snp_file):
+            with open(snp_file) as fh, open(fingerprint_depth_file, 'w') as fhw:
+                ytotal = 0
+                for line in fh:
+                    line2 = line.split('\t')
+                    chrom = line2[0]
+                    start = int(line2[1])
+                    fhw.write(line.strip()+'\t1\t'+str(bwdict[sample_name][chrom + "_" + str(start)]) + '\n')
+                    # this has a 1 in it because bedtools puts the coverage fraction in the depth output so I'm matching in... going forward can remove and decrease the position later in teh code
+                    if chrom == "chrY":
+                        ytotal += bwdict[sample_name][chrom + "_" + str(start)]
+    
+    # Ok now parse through the checklist for each base directory that was analyzed and kick out the final files. (parallelize these (defs for each of the above) pool and set threads to 6(?) Do I need this here? maybe for the checking? single pipeline that? It's here now so I can print out the order and make sure things are going through correctly for the output.
+    refdict = {}  # to process the checklist
+    with open(snp_file) as fh:
+        for line in fh:
+            line2 = line.split('\t')
+            chrid = line2[0] + "_" + line2[2]
+            name = line2[-1].strip()
+            refdict[chrid] = name
+            genelist.append(name)
+    
+    info('Printing any files missing either the bigwig or vardict VCF')
+    if bigwig_file ^ vcf_file:
+        for bdir in bigwig_file ^ vcf_file:
+            err("lacking depth or vardict vcf in: %s" % bdir)
+    
+    info(str(bigwig_file), str(vcf_file))
+    finaldatefolder = glob.glob(join(bcbio_dir, 'final', '*_bcbio'))
+    with open(join(finaldatefolder[0], "Paired_FingerPrint_Comparison.txt"), 'w') as fhw2:
+        info('Running through things normally and check for inclusion of both bigwig and VCF (tumor normal will have all in one VCF')
+        for eachdir in bigwig_file & vcf_file:
+            info('Sending to the def and let it return a dictionary with keys')
+            info(eachdir + " eachdir")
+            data_by_sample = fingerprint(bcbio_dir, eachdir)  # this is a dictionary of dictionaries keyed on the sample name and then the chrid
+            
+            info('Writing files for samples')
+            fingerwriter(vcf_file, bcbio_dir, data_by_sample, depth_cutoff, refdict)  # this will write out the files
+        
+            # if paired then we want to make the immediate comparison. Else we want to run comparison later so def the comparison stuff into this.
+            if len(data_by_sample) > 1:  # we have a paired analysis.
+                if len(data_by_sample) > 2:
+                    info("Have more than pairs need to figure things out on pairing")
+                    # although if the first is the main sample the rest can be iterated through (Go back and take out of genotypecompareV2 to do this)
+                info("Paired sample")
+                if fhw2:
+                    paircompare(data_by_sample, fhw2, genelist)
+                # do something to tag the two files in the folder or
+            
+    # new 7/11/16
+    # now generate the comprehensive blast dictionary
+    # takes the -Fingerprint.txt output and creates a fasta
+    fingerprint_texts = glob.glob(join(proj.final_dir, '*', '*-Fingerprint.txt'))
+    longprints_fasta = join(fingerpints_dir, 'longprints.fasta')
+    if not can_reuse(longprints_fasta):
+        with open(longprints_fasta, 'w') as blastfasta:
+            for fpfile in fingerprint_texts:
+                sample_name = fpfile.split('/')[1]
+                blastfasta.write(">" + sample_name + "\n")
+                with open(fpfile) as fh:
+                    seqline = fh.readline()
+                    blastfasta.write(seqline.replace("\t", ''))
+                with open('final/%s/%s-longprint.fasta' % (sample_name, sample_name), 'w') as fhw:
+                    fhw.write(">%s\n" % sample_name)
+                    fhw.write(seqline.replace("\t",''))
 
 
-
-###NEW fingerprintvcf creation#################
-##Step 2 ) quickly run vardict and create a new vcf for fingerprinting, then use bcftools to query => filter out the DP and AF (needed for tumor normal samples)
-#written to each dir/bcbio/final/subdir/ as idtfingervar.txt, idtfingervar.vcf.gz, and finally to fingerprintvcf.txt
-print bamfiles
-for bamfile in bamfiles:
-	basedir = bamfile.split('/')[1]
-	if not os.path.exists(homedir+"/work/"+basedir):#check if there is a basedir in the work for temp files
-		os.mkdir(homedir+"/work/"+basedir)
-	if not glob.glob(homedir+'/work/%s/fingerprintvcf.txt'%(basedir)): #added to skip completed runs (should just add reuse option)
-		#use vardict.pl to quickly scan the ready.bam for files
-		cline = "vardict.pl -b %s -N %s -f 0.005 %s > %s/work/%s/idtfingervar.txt"%(bamfile, basedir, snpbedfile, homedir, basedir)
-		print cline
-		pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
-		cline = 'var2vcf_valid.pl %s/work/%s/idtfingervar.txt > %s/work/%s/idtfingervar.vcf'%(homedir, basedir, homedir, basedir)
-		print cline
-		pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
-		cline = 'bgzip -f %s/work/%s/idtfingervar.vcf'%(homedir, basedir)
-		print cline
-		pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
-		cline = 'tabix %s/work/%s/idtfingervar.vcf.gz'%(homedir, basedir)
-		print cline
-		pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
-		cline = "bcftools query -H -R %s -f '%%CHROM\\t%%POS\\t%%REF\\t%%ALT[\\t%%SAMPLE AF=%%AF][\\t%%SAMPLE DP=%%DP]\\t%%ID\\t%%LINE' %s/work/%s/idtfingervar.vcf.gz >%s/work/%s/fingerprintvcf.txt"%(reffile, homedir, basedir, homedir, basedir)
-		#cline = "bcftools query -H -R %s -f '%%CHROM\\t%%POS\\t%%REF\\t%%ALT[\\t%%SAMPLE AF=%%AF][\\t%%SAMPLE DP=%%DP][\\t%%SAMPLE GT=%%GT]\\t%%LINE' %s >final/%s/fingerprintvcf.txt"%(reffile, vcffile, basedir)
-		print cline
-		pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
-	bdvcf.add(basedir)
-
-
-##Step 3 ) run sambamba to get depth at the positions for all samples simultaneously output to dir/bcbio/final/sambambadepth.txt
-if not os.path.exists(finaldatefolder[0]+"/fingerprints"):
-        os.mkdir(finaldatefolder[0]+"/fingerprints")
-
-cline = 'sambamba depth region -L %s -o %s/fingerprints/sambambadepth.txt %s/final/*/*-ready.bam'%(snpbedfile, finaldatefolder[0], homedir)
-print cline
-pout, perr = subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True ).communicate()
-
-##step 4) parse this info into dictionaries so taht you can check if it has a variatn called and what the depth is.
-fh =open(finaldatefolder[0]+'/fingerprints/sambambadepth.txt')
-fh.readline() #gather infromatino and indexing from here if need be later
-bwdict={} #key this on sample names
-for line in fh:
-	line2 = line.strip().split()
-	chrom = line2[0]
-	start = int(line2[1])
-	end = int(line2[2])
-	basedir = line2[-1]
-	readcount = int(line2[-3])
-	avgcount = float(line2[-2])
-	if not basedir in bdbw: #add it and create a dictionary of dictionaries to contain the write outs at the end for depth file
-		bdbw.add(basedir)
-		bwdict[basedir]={} #key this on chrid
-	if max(int(start),int(end)) - min(int(start),int(end))>1:
-		print line, "WAS LONGER IN DEPTH" #just identify the longer than a SNP positions (make this an actual error later or save for gender calling)
-	bwdict[basedir][chrom+"_"+str(start)]=readcount
-fh.close()
-
-#now parse the dictionary according to the snp file (later delete this step and just output the sambamba directly )
-for basedir in bwdict:
-	#if not glob.glob('final/%s/fingerprintdepth.txt'%(basedir)):
-	fh = open(snpbedfile) #open the bed file and parse it 
-	fhw = open('%s/work/%s/fingerprintdepth.txt'%(homedir, basedir),'w')
-	ytotal = 0
-	for line in fh:
-		line2 = line.split('\t')
-		chrom = line2[0]
-		start = int(line2[1])
-		fhw.write(line.strip()+'\t1\t'+str(bwdict[basedir][chrom+"_"+str(start)])+'\n') #this has a 1 in it because bedtools puts the coverage fraction in the depth output so I'm matching in... going forward can remove and decrease the position later in teh code
-		if chrom == "chrY":
-			ytotal += bwdict[basedir][chrom+"_"+str(start)]		
-	fhw.close()
-	fh.close()
-
-#ok now parse through the checklist for each base directory that was analyzed and kick out the final files. (parallelize these (defs for each of the above) pool and set threads to 6(?) Do I need this here? maybe for the checking? single pipeline that? It's here now so I can print out the order and make sure things are going through correctly for the output.
-refdict = {} # to process the checklist
-fh=open(snpbedfile)
-for line in fh:
-	line2 = line.split('\t')
-	chrid = line2[0]+"_"+line2[2]
-	name = line2[-1].strip()
-	refdict[chrid]= name
-	genelist.append(name)
-fh.close()
-	
-#print any files missing either the bigwig or vardict vcf
-if bdbw^bdvcf:
-	for bdir in bdbw^bdvcf:
-		print "lacking depth or vardict vcf in: %s" %(bdir)
-
-print bdbw, bdvcf
-printflag = True
-#run through things normally and check for inclusion of both bigwig and vcf (tumor normal will have all in one vcf)
-for eachdir in bdbw&bdvcf:
-	#send to the def and let it return a dictionary with keys 
-	print eachdir, "eachdir"
-	samples= fingerprint(homedir, eachdir) #this is a dictionary of dictionaries keyed on the sample name and then the chrid
-	
-	#print samples
-	fingerwriter(homedir, samples) #this will write out the files
-	
-
-	#if paired then we want to make the immediate comparison. Else we want to run comparison later so def the comparison stuff into this. 
-	if len(samples)>1: # we have a paired analysis. 
-		if printflag:
-			finaldatefolder = glob.glob(homedir+'/final/*_bcbio')
-			fhw2 =open(finaldatefolder[0]+"/Paired_FingerPrint_Comparison.txt",'w')
-			printflag = False
-		if len(samples)>2:
-			print "have more than pairs need to figure things out on pairing"
-			#although if the first is the main sample the rest can be iterated through (Go back and take out of genotypecompareV2 to do this)
-		print "paired sample"
-		paircompare(samples)
-		#do something to tag the two files in the folder or
-if not printflag:
-	fhw2.close()
-
-###new 7/11/16
-#now generate the comprehensive blast dictionary	
-#takes the -Fingerprint.txt output and creates a fasta
-blastfasta = open(finaldatefolder[0]+'/fingerprints/longprints.fasta','w')
-fingerprinttexts = glob.glob('final/*/*-Fingerprint.txt')
-for fpfile in fingerprinttexts:
-	basedir = fpfile.split('/')[1]
-	blastfasta.write(">%s\n"%(basedir))
-	fh=open(fpfile)
-	seqline=fh.readline()
-	blastfasta.write(seqline.replace("\t",''))
-	fh.close()
-	fhw=open('final/%s/%s-longprint.fasta'%(basedir, basedir),'w')
-	fhw.write(">%s\n"%(basedir))
-	fhw.write(seqline.replace("\t",''))
-	fhw.close()
-blastfasta.close()
+if __name__ == '__main__':
+    main()

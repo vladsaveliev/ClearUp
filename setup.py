@@ -12,8 +12,8 @@ except ImportError:
 
 
 name = 'Fingerprinting'
-script_name = 'start.py'
 package_name = 'fingerprinting'
+
 
 version = setup_utils.init(name, package_name, __file__)
 
@@ -36,7 +36,7 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
-    scripts=[script_name, 'manage.py'],
+    scripts=['start.py', 'manage.py', 'genotyper.py'],
     install_requires=setup_utils.get_reqs(),
     classifiers=[
         'Environment :: Console',
@@ -62,6 +62,7 @@ if setup_utils.is_installing():
  Installation complete!
 -------------------------
 Usage:
+$ ./genotyper.py bcbio_dir --bed --ref ref --depth 5
 $ ./manage.py init_db
 $ ./manage.py load_project <bcbio_final_path_of_fingerprints_project> <project_name> hg19
 $ ./start.py

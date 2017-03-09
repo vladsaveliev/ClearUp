@@ -3,8 +3,8 @@
 from os.path import abspath, join, dirname, splitext, basename
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
 
-from geventwebsocket.handler import WebSocketHandler
 from gevent.pywsgi import WSGIServer
+from geventwebsocket.handler import WebSocketHandler
 
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample
@@ -62,9 +62,9 @@ def bam_files_page(project_name, bam_fname):
     return send_file_for_igv(join(config.DATA_DIR, project_name, 'bams', bam_fname))
 
 
-@app.route('/locations/locations_bed/')
+@app.route('/snps/snps_bed/')
 def locations_bed():
-    return send_file(join('fingerprinting', 'locations', 'locations.bed'))
+    return send_file(join('fingerprinting', 'snps', 'idt_snps.bed'))
 
 
 @app.route('/<run_id>/')
