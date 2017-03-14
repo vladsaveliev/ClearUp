@@ -46,10 +46,14 @@ def load_bam_file(bcbio_final_path, project_work_dirpath, sample_id):
     return bam_copy_fpath
 
 
+def get_snps_file():
+    return verify_file(join(dirname(__file__), 'snps', 'idt_snps.bed'), is_critical=True)
+
+
 def get_fingerprints(project, seq_by_sample_name):
     fp_by_loc_by_sample = defaultdict(dict)
     fp_by_index_by_sample = defaultdict(dict)
-    with open(join(dirname(__file__), 'snps', 'idt_snps.bed')) as f:
+    with open(get_snps_file()) as f:
         for i, l in enumerate(l for l in f if l[0] != '#'):
             chrom, pos0, pos1, ann = l.strip().split()
             for s in project.samples:
@@ -107,10 +111,10 @@ def get_fingerprints(project, seq_by_sample_name):
 
 
 def parse_sambambadepth(bcbio_final_path):
-    sambamba_glob = join(bcbio_final_path, '20??-??-??*', 'fingerprints', 'sambambadepth.txt')
-    sambamba_fpath = next(iter(glob.glob(sambamba_glob)), None)
-    if not verify_file(sambamba_fpath):
-        log.critical('Fingerprints sambambadepth file not found in ' + sambamba_glob)
+    # sambamba_glob = join(bcbio_final_path, '20??-??-??*', 'fingerprints', 'sambambadepth.txt')
+    # sambamba_fpath = next(iter(glob.glob(sambamba_glob)), None)
+    # if not verify_file(sambamba_fpath):
+    #     log.critical('Fingerprints sambambadepth file not found in ' + sambamba_glob)
     with open(sambamba_fpath) as in_f:
         for line in in_f:
             if not line or line.startswith('#'):

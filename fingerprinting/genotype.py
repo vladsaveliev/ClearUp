@@ -1,229 +1,182 @@
+import subprocess
 from itertools import izip
-
 from collections import defaultdict
+from os.path import join, dirname
+import sys
+import vcf
 
 from ngs_utils.sambamba import index_bam
-
 from ngs_utils.call_process import run
 from ngs_utils.utils import is_local, is_us
-from os.path import join
-
 from ngs_utils.parallel import ParallelCfg, parallel_view
-from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adjust_path
-from ngs_utils.logger import info, err, critical
+from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adjust_path, can_reuse, add_suffix, \
+    verify_file
+from ngs_utils.logger import info, err, critical, debug
+
+from ngs_reporting.bcbio.bcbio import BcbioProject
+
+import az
 
 
-def run_vardict(proj, work_dir, snp_file, parallel_cfg, genome_cfg):
+DEPTH_CUTOFF = 5
+
+
+def genotype_bcbio_dir(bcbio_dir, snp_file, sys_cfg, parallel_cfg, depth_cutoff=DEPTH_CUTOFF):
+    info('Loading bcbio project from ' + bcbio_dir)
+    info('-' * 70)
+    proj = BcbioProject()
+    proj.load_from_bcbio_dir(bcbio_dir, proc_name='fingerprinting', need_coverage_interval=False)
+    safe_mkdir(proj.work_dir)
+    info('Loaded ' + proj.final_dir)
+    bam_files = [s.bam for s in proj.samples]
+    debug('Found BAM files: ' + str(bam_files))
+
+    genome_cfg = az.get_refdata(proj.genome_build)
+
+    info('** Running VarDict ** ')
+    vcf_by_sample = _run_vardict_pileup(proj, proj.work_dir, snp_file, parallel_cfg, genome_cfg)
+    info('** Finished running VarDict **')
+
+    fingerpints_dir = safe_mkdir(join(proj.date_dir, 'fingerprints'))
+    fasta_by_sample = {s.name: join(fingerpints_dir, s.name + '.fasta') for s in proj.samples}
+    for s in proj.samples:
+        info('Writing Fasta for sample ' + s.name)
+        vcf_to_fasta(s, vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff)
+
+    info('Merging Fasta')
+    all_fasta = join(fingerpints_dir, 'longprints.fasta')
+    if not can_reuse(all_fasta, fasta_by_sample.values()):
+        with open(all_fasta, 'w') as out_f:
+            for s in proj.samples:
+                with open(fasta_by_sample[s.name]) as f:
+                    out_f.write(f.read())
+    info('All fasta saved to ' + all_fasta)
+    return all_fasta, vcf_by_sample
+
+
+def _run_vardict_pileup(proj, work_dir, snp_file, parallel_cfg, genome_cfg):
     with parallel_view(len(proj.samples), parallel_cfg, safe_mkdir(work_dir)) as view:
-        view.run(_vardict_one_sample, [[s, work_dir, genome_cfg, view.cores_per_job, snp_file] for s in proj.samples])
+        vcfs = view.run(_vardict_pileup_one_sample, [[s, work_dir, genome_cfg, view.cores_per_job, snp_file] for s in proj.samples])
+    return dict(zip([s.name for s in proj.samples], vcfs))
 
 
-def _vardict_one_sample(sample, work_dir, genome_cfg, threads, snp_file):
-    if is_local():
-        vardict_pl = '/Users/vlad/vagrant/VarDict/vardict.pl'
-    elif is_us():
-        vardict_pl = '/group/cancer_informatics/tools_resources/NGS/bin/vardict.pl'
-    else:
-        vardict_pl = which('vardict.pl')
-        if not vardict_pl:
-            critical('Error: vardict.pl is not in PATH')
-
-    index_bam(sample.bam)
-
-    ref_file = adjust_path(genome_cfg['seq'])
+def _vardict_pileup_one_sample(sample, work_dir, genome_cfg, threads, snp_file):
     sample_work_dir = safe_mkdir(join(work_dir, sample.name))
-    output_file = join(sample_work_dir, 'vardict_snp_vars.txt')
-    cmdl = '{vardict_pl} -G {ref_file} -c 1 -S 2 -E 2 -N {sample.name} -b {sample.bam} -p -D {snp_file}'.format(**locals())
-    run(cmdl, output_fpath=output_file)
-    return output_file
+    vardict_snp_vars_vcf = join(sample_work_dir, 'vardict_snp_vars.vcf')
+
+    if not can_reuse(vardict_snp_vars_vcf, [sample.bam, snp_file]):
+        if is_local():
+            vardict_dir = '/Users/vlad/vagrant/VarDict/'
+        elif is_us():
+            vardict_dir = '/group/cancer_informatics/tools_resources/NGS/bin/'
+        else:
+            vardict_pl = which('vardict.pl')
+            if not vardict_pl:
+                critical('Error: vardict.pl is not in PATH')
+            vardict_dir = dirname(vardict_pl)
+
+        index_bam(sample.bam)
+
+        vardict = join(vardict_dir, 'vardict.pl')
+        test_strandbias = join(vardict_dir, 'teststrandbias.R')
+        var2vcf_valid = join(vardict_dir, 'var2vcf_valid.pl')
+
+        ref_file = adjust_path(genome_cfg['seq'])
+        cmdl = ('{vardict} -G {ref_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'
+                ' | cut -f-34'
+                ' | {test_strandbias}'
+                ' | {var2vcf_valid}'
+                ' | grep "^#\|TYPE=SNV\|TYPE=REF" '
+                ).format(**locals())
+        run(cmdl, output_fpath=vardict_snp_vars_vcf)
+
+    return _fix_vcf(vardict_snp_vars_vcf)
 
 
-def fingerprint(bcbio_dir, sample_name):  # the purpose of this is to rip through the vcf and create dictionaries
-                                    # keyed on sample ID and containing chrid keyed ref,alt,AF,DP information
-    data_by_sample = defaultdict(dict())
-    with open('%s/work/%s/fingerprintvcf.txt' % (bcbio_dir, sample_name)) as fh:
-        for line in fh:
-            line2 = line.split('\t')
-            if "SNV" in line:
-                chrid = line2[0] + "_" + line2[1]
-                ref = line2[2]
-                alt = line2[3]
-                for item in line2:
-                    if " AF=" in item:  # figure out the sample names here
-                        samplename = item.split(" AF")[0]
-                        info(samplename + " sample name from AF")
-                        af = item.split('=')[1]
-                        if chrid not in data_by_sample[samplename]:
-                            data_by_sample[samplename][chrid] = [ref, alt, af, 0]
-                        else:
-                            info("DOUBLE IDED CHRID IN SYSTEM", line, data_by_sample[samplename][chrid])
-                    if " DP=" in item:
-                        samplename = item.split(" DP")[0]
-                        dp = item.split('=')[1]
-                        data_by_sample[samplename][chrid][3] = dp
-    return data_by_sample
+def _fix_vcf(vardict_snp_vars_vcf):
+    """ Fixes VCF generated by VarDict in puleup debug mode:
+        - Fix non-call records with empty REF and LAT, and "NA" values assigned to INFO's SN and HICOV
+    :param vardict_snp_vars_vcf: VarDict's VCF in pileup debug mode
+    """
+    vardict_snp_vars_fixed_vcf = add_suffix(vardict_snp_vars_vcf, 'fixed')
+    info('Fixing VCF, writing to ' + vardict_snp_vars_fixed_vcf)
+    with open(vardict_snp_vars_vcf) as inp, open(vardict_snp_vars_fixed_vcf, 'w') as out:
+        for l in inp:
+            if not l.startswith('#'):
+                fs = l.split('\t')
+                chrom, start, ref, alt, filt = fs[0], fs[1], fs[3], fs[4], fs[6]
+                # samtools = which('samtools')
+                # if not samtools:
+                #     sys.exit('Error: samtools not in PATH')
+                # cmdl = '{samtools} faidx {ref_file} {chrom}:{start}-{start}'.format(**locals())
+                # out = subprocess.check_output(cmdl, shell=True)
+                # fasta_ref = out.split('\n')[1].strip().upper()
+                # if ref:
+                #     assert ref == fasta_ref, ref + '   ' + fasta_ref + '   ' + l
+                if ref in ['.', '']:
+                    # assert alt == '', l  # ALT is empty too
+                    fs[3] = '.'
+                    fs[4] = '.'
+                    l = '\t'.join(fs)
+                    l = l.replace('=NA;', '=.;')
+                    l = l.replace('=;', '=.;')
+            out.write(l)
+    return vardict_snp_vars_fixed_vcf
 
 
-def fingerwriter(reffile, bcbio_dir, vcfdict, depthcut, refdict):  # this takes in a dictionary keyed on sample names each keyed on chrid for each identified snp
-    for sample_name in vcfdict:  # for each sample go through the snps IDed #basedir is the key for samples
-        info(sample_name)
-        depthdict = {}
-        ismale = False
-        ytotal = 0
-        with open('%s/work/%s/fingerprintdepth.txt' % (bcbio_dir, sample_name)) as fh:  # should open the depth and we shoudl have these because of bigwigs for each T/N pair
-            for line in fh:
-                line2 = line.split('\t')
-                chrid = line2[0] + "_" + line2[2]
-                if not depthdict.has_key(chrid):
-                    depthdict[chrid] = (line2[-3], line2[-1].strip())  # identifier and depth
-                else:
-                    err("FAIL DEPTH!!!!!! " + line + ' ' + str(depthdict[chrid]))
-                if line2[0] == "chrY":
-                    ytotal += int(line2[-1].strip())
-        if ytotal > depthcut:
-            ismale = True
-        
-        with open(reffile) as fh, \
-             open("%s/final/%s/%s-Fingerprint.txt" % (bcbio_dir, sample_name, sample_name), "w") as fhw, \
-             open("%s/work/%s/%s-printcoverage.log" % (bcbio_dir, sample_name, sample_name), "w") as fhw2, \
-             open("%s/work/%s/%s-error.log" % (bcbio_dir, sample_name, sample_name), "w") as fherror:
-            outstr = ""
-            info(sample_name + ": processing...")
-            rlc = 0  # refline count
-            woc = 0  # write out count
-            for line in fh:
-                rlc += 1
-                line2 = line.split('\t')
-                chrid = line2[0] + "_" + line2[1]
-                snpid = line2[3]
-                if chrid in depthdict:
-                    if int(depthdict[chrid][1]) > depthcut:  # check if it's below the set depth.
-                        if chrid in vcfdict[sample_name]:  # see if we have a variant called
-                            if line2[0] == "chrX" and ismale and 0.25 <= float(vcfdict[sample_name][chrid][2]):
-                                woc += 1
-                                outstr += vcfdict[sample_name][chrid][1] + "\t"
-                            elif line2[0] == 'chrY' and 0.25 <= float(vcfdict[sample_name][chrid][2]):
-                                woc += 1
-                                outstr += vcfdict[sample_name][chrid][1] + "\t"
-                            else:  # is not a sex chromosome or is chrX and needs to be two alleles
-                                if 0.25 <= float(vcfdict[sample_name][chrid][2]) < 0.75:  # heterozygous
-                                    woc += 1
-                                    outstr += vcfdict[sample_name][chrid][0] + vcfdict[sample_name][chrid][1] + "\t"
-                                elif 0.75 <= float(vcfdict[sample_name][chrid][2]):  # homozygous ALT
-                                    woc += 1
-                                    outstr += vcfdict[sample_name][chrid][1] + vcfdict[sample_name][chrid][1] + "\t"
-                                else:  # lower than 25% so we'll call this homozygous reference
-                                    fhw2.write("Variant Called but below 25%%.\t%s\t%s\n" % (
-                                    vcfdict[sample_name][chrid], refdict[chrid]))
-                                    woc += 1
-                                    outstr += vcfdict[sample_name][chrid][0] + vcfdict[sample_name][chrid][0] + "\t"
-                        else:  # no variant called so we just report reference if we have sufficient depth. Homozygous reference
-                            if line2[0] == 'chrY':
-                                woc += 1
-                                outstr += line2[3].strip() + "\t"
-                            else:  # not a chrY
-                                woc += 1
-                                outstr += line2[3].strip() + line2[3].strip() + "\t"
-                    else:  # lower depth for now print out NN because of low depth
-                        if vcfdict[sample_name].has_key(chrid):  # see if we have a variant called
-                            fhw2.write("variant called but LOW depth (<%s): %s\n" % (depthcut, line))
-                        fhw2.write("low depth\t%s\t%s\n" % ('\t'.join(depthdict[chrid]), line))
-                        if line2[0] == "chrY":
-                            woc += 1
-                            outstr += "N" + "\t"
-                        else:  # Not a Y chr
-                            if line2[0] == 'chrX' and ismale:  # is there a Y somewhere?
-                                woc += 1
-                                outstr += "N" + "\t"
-                            else:
-                                woc += 1
-                                outstr += "NN" + "\t"
-                else:  # check for variant call but without depth this will require some deep dive
-                    if vcfdict[sample_name].has_key(chrid):
-                        fhw2.write("variant called but without depth: %s\n" % (line))
-                    else:  # no variant was called adn we lack depth
-                        fhw2.write("NO depth detected and no variant (likely chrY): %s\n" % (line))
-                    if line2[0] == "chrY":
-                        woc += 1
-                        outstr += "N" + "\t"
-                    else:  # X or non-sex chromosome
-                        if line2[0] == 'chrX' and ismale:
-                            woc += 1
-                            outstr += "N" + "\t"
-                        else:
-                            woc += 1
-                            outstr += "NN" + "\t"
-                if not woc == rlc:
-                    # the odd case
-                    if woc > rlc:
-                        fherror.write("woc is higher than the ref line, %s\n" % (line))
-                        while rlc < woc:
-                            rlc += 1
-                    elif woc < rlc:  # more common
-                        fherror.write("refline didn't get analyzed, %s\n" % line)
-                        while woc < rlc:
-                            woc += 1
-            fhw.write(outstr + '\n')
+def __p(rec):
+    s = rec.samples[0]
+    gt_type = {
+        0: 'hom_ref',
+        1: 'het',
+        2: 'hom_alt',
+        None: 'uncalled'
+    }.get(s.gt_type)
+    gt_bases = s.gt_bases
+    return str(rec) + ' FILTER=' + str(rec.FILTER) + ' gt_bases=' + str(gt_bases) + ' gt_type=' + gt_type + ' GT=' + str(s['GT']) + ' Depth=' + str(s['VD']) + '/' + str(s['DP'])
 
 
-def paircompare(samples, fhw2, genelist):
-    # This is the tool to compare a T/N vcf and provide the statistics back for the pair identified takes
-    # in the dictionary of dictoionaries keyed on sample name (basedirs)
-    # initially the length should only be two. so I'm writing this for that (although I'm going to iterate so that
-    # the first is the main tumor sample and the rest are normals in this case)
-    normals = {}
-    
-    tumor = join('final', samples.keys()[0], samples.keys()[0] + '-Fingerprint.txt')
-    tumorbasedir = samples.keys()[0]
-    for samplekey in samples.keys()[1:]:
-        # commented out assuming no duplication here?
-        # if not normals.has_key(samplekey):
-        # 	normals[samplekey]=[]
-        normals[samplekey] = join('final', samplekey, samplekey + '-Fingerprint.txt')
-    
-    for normalsample in normals:
-        fh = open(tumor)
-        a = fh.readline()
-        fh.close()
-        info(str(normals))
-        info(str(normalsample))
-        with open(normals[normalsample]) as fh:
-            b = fh.readline()
-        
-        if a == b:
-            info("Genotype matches 100 Percent between: %s and %s" % (tumorbasedir, normalsample))
-            info("%s\n%s" % (tumorbasedir, '\t'.join(a.strip().split())))
-            info("%s\n%s" % (normalsample, '\t'.join(b.strip().split())))
-            fhw2.write("Genotype matches 100 Percent between: %s and %s\n" % (tumorbasedir, normalsample))
-            fhw2.write("%s\n%s\n" % (tumorbasedir, '\t'.join(a.strip().split())))
-            fhw2.write("%s\n%s\n" % (normalsample, '\t'.join(b.strip().split())))
-        
-        else:  # if not an exact match print out metrics of how close we are
-            a2 = a.strip().split()
-            b2 = b.strip().split()
-            count = 0  # init matches
-            totalcount = 0
-            for c1, c2 in izip(a2, b2):
-                if c1 == c2:
-                    count += 1
-                    totalcount += 1
-                else:
-                    totalcount += 1
-            info("NO MATCH between: %s and %s" % (tumorbasedir, normalsample))
-            info('\t'.join(genelist))
-            info("%s\n%s" % (tumorbasedir, '\t'.join(a.strip().split())))
-            info("%s\n%s" % (normalsample, '\t'.join(b.strip().split())))
-            info("However we matched %s Percent of the reads (%s out of %s total)" %
-                 ((float(count) / float(totalcount)), count, totalcount))
-            info("Genes where we mismatch: " + ",".join(
-                [genelist[i] for i, (c1, c2) in enumerate(izip(a2, b2)) if c1 != c2]))
-            fhw2.write("NO MATCH between: %s and %s\n" % (tumorbasedir, normalsample))
-            fhw2.write('\t'.join(genelist) + '\n')
-            fhw2.write("%s\n%s\n" % (tumorbasedir, '\t'.join(a.strip().split())))
-            fhw2.write("%s\n%s\n" % (normalsample, '\t'.join(b.strip().split())))
-            fhw2.write("However we matched %s Percent of the reads (%s out of %s total)\n" % (
-            (float(count) / float(totalcount)), count, totalcount))
-            fhw2.write("Genes where we mismatch: " + ",".join(
-                [genelist[i] for i, (c1, c2) in enumerate(izip(a2, b2)) if c1 != c2]) + '\n')
-            info("=============================================================")
-            fhw2.write("=============================================================\n\n")
+def vcfrec_to_seq(rec, is_male, depth_cutoff):
+    var = rec.samples[0]
+
+    depth_failed = var['DP'] < depth_cutoff
+    filter_failed = any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
+    if depth_failed or filter_failed:
+        var.called = False
+
+    if var.called:
+        gt_bases = ''.join(sorted(var.gt_bases.split('/')))
+    else:
+        gt_bases = 'NN'
+
+    if rec.CHROM == 'chrY' or rec.CHROM == 'chrX' and is_male:  # a single chromosome
+        assert not var.is_het, str(rec) + ' | ' + __p(rec)
+        gt_bases = gt_bases[0]
+
+    return gt_bases
+
+
+def check_if_male(recs):
+    y_total_depth = 0
+    for rec in recs:
+        depth = rec.INFO['DP']
+        if 'Y' in rec.CHROM:
+            y_total_depth += depth
+    return y_total_depth >= 5
+
+
+def vcf_to_fasta(sample, vcf_file, fasta_file, depth_cutoff):
+    if can_reuse(fasta_file, vcf_file):
+        return fasta_file
+
+    info('Parsing VCF ' + vcf_file)
+    with open(vcf_file) as f:
+        vcf_reader = vcf.Reader(f)
+        recs = [r for r in vcf_reader]
+
+    is_male = check_if_male(recs)
+    with open(fasta_file, 'w') as fhw:
+        fhw.write('>' + sample.name + '\n')
+        fhw.write(''.join(vcfrec_to_seq(rec, is_male, depth_cutoff) for rec in recs) + '\n')
+
+    info('Fasta saved to ' + fasta_file)
