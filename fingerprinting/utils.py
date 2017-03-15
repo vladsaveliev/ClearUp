@@ -28,18 +28,14 @@ def read_fasta(fasta_fpath):
     return seq_by_id
 
 
-def load_bam_file(bcbio_final_path, project_work_dirpath, sample_id):
+def load_bam_file(bam_fpath, bams_dir, sample_name):
+    """ Assuming the BAM files are sliced to fingerprint locations
     """
-    Assuming the BAM files are sliced to fingerprints locations
-    """
-    bam_glob = join(bcbio_final_path, sample_id, '*-ready.bam')
-    bam_fpath = next(iter(glob.glob(bam_glob)), None)
-    if not verify_file(bam_fpath):
-        log.critical('BAM file not found in ' + bam_glob)
+    # TODO: slice BAM here
     bam_index_fpath = bam_fpath + '.bai'
     if not verify_file(bam_index_fpath):
         log.critical('BAM index file not found in ' + bam_index_fpath)
-    bam_copy_fpath = join(safe_mkdir(join(project_work_dirpath, 'bams')), sample_id + '.bam')
+    bam_copy_fpath = join(bams_dir, sample_name + '.bam')
     bam_index_copy_fpath = bam_copy_fpath + '.bai'
     shutil.copy(bam_fpath, bam_copy_fpath)
     shutil.copy(bam_index_fpath, bam_index_copy_fpath)
@@ -50,29 +46,29 @@ def get_snps_file():
     return verify_file(join(dirname(__file__), 'snps', 'idt_snps.bed'), is_critical=True)
 
 
-def get_fingerprints(project, seq_by_sample_name):
-    fp_by_loc_by_sample = defaultdict(dict)
-    fp_by_index_by_sample = defaultdict(dict)
-    with open(get_snps_file()) as f:
-        for i, l in enumerate(l for l in f if l[0] != '#'):
-            chrom, pos0, pos1, ann = l.strip().split()
-            for s in project.samples:
-                fp = Fingerprint(index=i + 1, sample=s, chrom=chrom, pos=int(pos1), rsid=ann.split('-')[1])
-                fp_by_loc_by_sample[s.name][(chrom, int(pos1))] = fp
-                fp_by_index_by_sample[s.name][i + 1] = fp
-
-    for (chrom, _1, pos, rsid, depth, _2, sname) in parse_sambambadepth(project.bcbio_final_path):
-        if sname in fp_by_loc_by_sample:
-            assert (chrom, int(pos)) in fp_by_loc_by_sample[sname], (chrom + ':' + str(pos) + ' not found in ' + sname)
-            fp_by_loc_by_sample[sname][(chrom, int(pos))].depth = depth
-
-    for sname, seq in seq_by_sample_name.items():
-        for i in range(0, len(seq), 2):
-            index0 = i / 2
-            genotype = str(seq[i: i + 2]).upper()
-            fp_by_index_by_sample[sname][index0 + 1].genotype = genotype
-
-    return fp_by_loc_by_sample
+# def get_fingerprints(project, seq_by_sample_name):
+#     fp_by_loc_by_sample = defaultdict(dict)
+#     fp_by_index_by_sample = defaultdict(dict)
+#     with open(get_snps_file()) as f:
+#         for i, l in enumerate(l for l in f if l[0] != '#'):
+#             chrom, pos0, pos1, ann = l.strip().split()
+#             for s in project.samples:
+#                 fp = Fingerprint(index=i + 1, sample=s, chrom=chrom, pos=int(pos1), rsid=ann.split('-')[1])
+#                 fp_by_loc_by_sample[s.name][(chrom, int(pos1))] = fp
+#                 fp_by_index_by_sample[s.name][i + 1] = fp
+#
+#     for (chrom, _1, pos, rsid, depth, _2, sname) in parse_sambambadepth(project.bcbio_final_path):
+#         if sname in fp_by_loc_by_sample:
+#             assert (chrom, int(pos)) in fp_by_loc_by_sample[sname], (chrom + ':' + str(pos) + ' not found in ' + sname)
+#             fp_by_loc_by_sample[sname][(chrom, int(pos))].depth = depth
+#
+#     for sname, seq in seq_by_sample_name.items():
+#         for i in range(0, len(seq), 2):
+#             index0 = i / 2
+#             genotype = str(seq[i: i + 2]).upper()
+#             fp_by_index_by_sample[sname][index0 + 1].genotype = genotype
+#
+#     return fp_by_loc_by_sample
 
 
 #     alt_by_loc = dict()
@@ -110,17 +106,17 @@ def get_fingerprints(project, seq_by_sample_name):
 #     return vcf_fpath + '.idx'
 
 
-def parse_sambambadepth(bcbio_final_path):
-    # sambamba_glob = join(bcbio_final_path, '20??-??-??*', 'fingerprints', 'sambambadepth.txt')
-    # sambamba_fpath = next(iter(glob.glob(sambamba_glob)), None)
-    # if not verify_file(sambamba_fpath):
-    #     log.critical('Fingerprints sambambadepth file not found in ' + sambamba_glob)
-    with open(sambamba_fpath) as in_f:
-        for line in in_f:
-            if not line or line.startswith('#'):
-                continue
-            chrom, _1, pos, id, depth, _2, sample = line.strip().split('\t')
-            yield chrom, _1, int(pos), id, int(depth), _2, sample
+# def parse_sambambadepth(bcbio_final_path):
+#     # sambamba_glob = join(bcbio_final_path, '20??-??-??*', 'fingerprints', 'sambambadepth.txt')
+#     # sambamba_fpath = next(iter(glob.glob(sambamba_glob)), None)
+#     # if not verify_file(sambamba_fpath):
+#     #     log.critical('Fingerprints sambambadepth file not found in ' + sambamba_glob)
+#     with open(sambamba_fpath) as in_f:
+#         for line in in_f:
+#             if not line or line.startswith('#'):
+#                 continue
+#             chrom, _1, pos, id, depth, _2, sample = line.strip().split('\t')
+#             yield chrom, _1, int(pos), id, int(depth), _2, sample
 
 
 def parse_vardict_txt(bcbio_final_path):
@@ -157,3 +153,8 @@ def calculate_distance_matrix(tree):
             distance_matrix[clade] = (distance, clade2)
             distance_matrix[clade2] = (distance, clade)
     return distance_matrix
+
+
+def is_sex_chrom(chrom):
+    # type: (object) -> object
+    return chrom in ['X', 'Y', 'chrX', 'chrY']

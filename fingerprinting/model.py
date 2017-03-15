@@ -27,12 +27,13 @@ class Fingerprint(db.Model):
     sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
     sample = db.relationship('Sample', backref=db.backref('fingerprints', lazy='dynamic'))
 
-    def __init__(self, index=None, sample=None, chrom=None, pos=None, rsid=None):
+    def __init__(self, index=None, sample=None, chrom=None, pos=None, rsid=None, gene=None):
         self.index = index
         self.sample = sample
         self.chrom = chrom
         self.pos = pos
         self.rsid = rsid
+        self.gene = gene
         self.genotype = None
         self.depth = None
         self.usercall = None
@@ -63,15 +64,16 @@ class Sample(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     bam_fpath = db.Column(db.String)
+    sex = db.Column(db.String)
     paired_sample_id = db.Column(db.Integer)
 
     project_name = db.Column(db.String, db.ForeignKey('project.name'))
     project = db.relationship('Project', backref=db.backref('samples', lazy='dynamic'))
 
-    def __init__(self, name, project, bam_fpath=None):
+    def __init__(self, name, project, sex=None):
         self.name = name
         self.project = project
-        self.bam_fpath = bam_fpath
+        self.sex = sex
 
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
