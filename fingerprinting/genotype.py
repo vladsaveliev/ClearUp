@@ -1,69 +1,89 @@
-import subprocess
-from itertools import izip
-from collections import defaultdict
+import os
 from os.path import join, dirname
 import sys
 import vcf
 
-from ngs_utils.sambamba import index_bam
 from ngs_utils.call_process import run
 from ngs_utils.utils import is_local, is_us
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adjust_path, can_reuse, add_suffix, \
-    verify_file
+    verify_file, intermediate_fname
 from ngs_utils.logger import info, err, critical, debug
-
-from ngs_reporting.bcbio.bcbio import BcbioProject
-
+from ngs_utils.sambamba import index_bam
+from ngs_reporting.coverage import get_gender, determine_sex
 import az
+
+from fingerprinting.utils import is_sex_chrom
 
 
 DEPTH_CUTOFF = 5
 
 
-def genotype_bcbio_dir(bcbio_dir, snp_file, sys_cfg, parallel_cfg, depth_cutoff=DEPTH_CUTOFF):
-    info('Loading bcbio project from ' + bcbio_dir)
-    info('-' * 70)
-    proj = BcbioProject()
-    proj.load_from_bcbio_dir(bcbio_dir, proc_name='fingerprinting', need_coverage_interval=False)
-    safe_mkdir(proj.work_dir)
-    info('Loaded ' + proj.final_dir)
-    bam_files = [s.bam for s in proj.samples]
-    debug('Found BAM files: ' + str(bam_files))
-
+def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
+                        output_dir=None, work_dir=None):
+    output_dir = output_dir or safe_mkdir(join(proj.date_dir, 'fingerprints'))
+    work_dir = work_dir or safe_mkdir(proj.work_dir)
+    
+    autosomal_bed, sex_bed = _split_bed(snp_bed, work_dir)
+    
     genome_cfg = az.get_refdata(proj.genome_build)
-
     info('** Running VarDict ** ')
-    vcf_by_sample = _run_vardict_pileup(proj, proj.work_dir, snp_file, parallel_cfg, genome_cfg)
+    with parallel_view(len(proj.samples), parallel_cfg, work_dir) as view:
+        vcfs = view.run(_vardict_pileup_sample,
+                        [[s, safe_mkdir(join(output_dir, 'vcf')), genome_cfg, view.cores_per_job, autosomal_bed]
+                         for s in proj.samples])
+    vcf_by_sample = dict(zip([s.name for s in proj.samples], vcfs))
     info('** Finished running VarDict **')
-
-    fingerpints_dir = safe_mkdir(join(proj.date_dir, 'fingerprints'))
-    fasta_by_sample = {s.name: join(fingerpints_dir, s.name + '.fasta') for s in proj.samples}
+    
+    info('** Annotate variants with gene names and rsIDs **')
     for s in proj.samples:
-        info('Writing Fasta for sample ' + s.name)
+        vcf_by_sample[s.name] = _annotate_vcf(vcf_by_sample[s.name], snp_bed)
+
+    info('** Writing fasta **')
+    fasta_by_sample = {s.name: join(work_dir, s.name + '.fasta') for s in proj.samples}
+    for s in proj.samples:
+        info('Writing fasta for sample ' + s.name)
         vcf_to_fasta(s, vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff)
 
-    info('Merging Fasta')
-    all_fasta = join(fingerpints_dir, 'longprints.fasta')
+    info('** Merging fasta **')
+    all_fasta = join(output_dir, 'longprints.fasta')
     if not can_reuse(all_fasta, fasta_by_sample.values()):
         with open(all_fasta, 'w') as out_f:
             for s in proj.samples:
                 with open(fasta_by_sample[s.name]) as f:
                     out_f.write(f.read())
     info('All fasta saved to ' + all_fasta)
-    return all_fasta, vcf_by_sample
+
+    info('** Determining sexes **')
+    sex_by_sample = dict()
+    for s in proj.samples:
+        avg_depth = calc_avg_depth(vcf_by_sample[s.name])
+        sex = determine_sex(safe_mkdir(join(work_dir, s.name)), s.bam, avg_depth, s.genome_build,
+                            target_bed=sex_bed, min_male_size=1)
+        sex_by_sample[s.name] = sex
+
+    return all_fasta, vcf_by_sample, sex_by_sample
 
 
-def _run_vardict_pileup(proj, work_dir, snp_file, parallel_cfg, genome_cfg):
-    with parallel_view(len(proj.samples), parallel_cfg, safe_mkdir(work_dir)) as view:
-        vcfs = view.run(_vardict_pileup_one_sample, [[s, work_dir, genome_cfg, view.cores_per_job, snp_file] for s in proj.samples])
-    return dict(zip([s.name for s in proj.samples], vcfs))
+def _split_bed(bed_file, work_dir):
+    """ Splits into autosomal and sex chromosomes
+    """
+    autosomal_bed = intermediate_fname(work_dir, bed_file, 'autosomal')
+    sex_bed = intermediate_fname(work_dir, bed_file, 'sex')
+    if not can_reuse(autosomal_bed, bed_file) or not can_reuse(sex_bed, bed_file):
+        with open(bed_file) as f, open(autosomal_bed, 'w') as a_f, open(sex_bed, 'w') as s_f:
+            for l in f:
+                chrom = l.split()[0]
+                if is_sex_chrom(chrom):
+                    s_f.write(l)
+                else:
+                    a_f.write(l)
+    return autosomal_bed, sex_bed
 
 
-def _vardict_pileup_one_sample(sample, work_dir, genome_cfg, threads, snp_file):
-    sample_work_dir = safe_mkdir(join(work_dir, sample.name))
-    vardict_snp_vars_vcf = join(sample_work_dir, 'vardict_snp_vars.vcf')
-
+def _vardict_pileup_sample(sample, output_dir, genome_cfg, threads, snp_file):
+    vardict_snp_vars_vcf = join(output_dir, sample.name + '.vcf')
+    
     if not can_reuse(vardict_snp_vars_vcf, [sample.bam, snp_file]):
         if is_local():
             vardict_dir = '/Users/vlad/vagrant/VarDict/'
@@ -89,7 +109,7 @@ def _vardict_pileup_one_sample(sample, work_dir, genome_cfg, threads, snp_file):
                 ' | grep "^#\|TYPE=SNV\|TYPE=REF" '
                 ).format(**locals())
         run(cmdl, output_fpath=vardict_snp_vars_vcf)
-
+    
     return _fix_vcf(vardict_snp_vars_vcf)
 
 
@@ -104,7 +124,7 @@ def _fix_vcf(vardict_snp_vars_vcf):
         for l in inp:
             if not l.startswith('#'):
                 fs = l.split('\t')
-                chrom, start, ref, alt, filt = fs[0], fs[1], fs[3], fs[4], fs[6]
+                chrom, start, ref, alt = fs[0], fs[1], fs[3], fs[4]
                 # samtools = which('samtools')
                 # if not samtools:
                 #     sys.exit('Error: samtools not in PATH')
@@ -121,7 +141,38 @@ def _fix_vcf(vardict_snp_vars_vcf):
                     l = l.replace('=NA;', '=.;')
                     l = l.replace('=;', '=.;')
             out.write(l)
-    return vardict_snp_vars_fixed_vcf
+            
+    assert verify_file(vardict_snp_vars_fixed_vcf) and \
+           len(open(vardict_snp_vars_vcf).readlines()) == len(open(vardict_snp_vars_fixed_vcf).readlines()), \
+        vardict_snp_vars_fixed_vcf
+    os.rename(vardict_snp_vars_fixed_vcf, vardict_snp_vars_vcf)
+    return vardict_snp_vars_vcf
+
+
+def _annotate_vcf(vcf_file, snp_bed):
+    gene_by_snp = dict()
+    rsid_by_snp = dict()
+    with open(snp_bed) as bed:
+        for l in bed:
+            chrom, _, pos, ann = l.strip().split('\t')[:4]
+            rsid, gene = ann.split('|')
+            gene_by_snp[(chrom, int(pos))] = gene
+            rsid_by_snp[(chrom, int(pos))] = rsid
+    
+    annotated_vcf = add_suffix(vcf_file, 'ann')
+    with open(vcf_file) as f, open(annotated_vcf, 'w') as out:
+        vcf_reader = vcf.Reader(f)
+        vcf_writer = vcf.Writer(out, vcf_reader)
+        for rec in vcf_reader:
+            rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
+            rec.ID = rsid_by_snp[(rec.CHROM, rec.POS)]
+            vcf_writer.write_record(rec)
+
+    assert verify_file(annotated_vcf) and \
+           len(open(vcf_file).readlines()) == len(open(annotated_vcf).readlines()), \
+        annotated_vcf
+    os.rename(annotated_vcf, vcf_file)
+    return vcf_file
 
 
 def __p(rec):
@@ -136,33 +187,40 @@ def __p(rec):
     return str(rec) + ' FILTER=' + str(rec.FILTER) + ' gt_bases=' + str(gt_bases) + ' gt_type=' + gt_type + ' GT=' + str(s['GT']) + ' Depth=' + str(s['VD']) + '/' + str(s['DP'])
 
 
-def vcfrec_to_seq(rec, is_male, depth_cutoff):
+def vcfrec_to_seq(rec, depth_cutoff):
     var = rec.samples[0]
 
-    depth_failed = var['DP'] < depth_cutoff
+    depth_failed = rec.INFO['DP'] < depth_cutoff
     filter_failed = any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
     if depth_failed or filter_failed:
         var.called = False
 
-    if var.called:
+    if is_sex_chrom(rec.CHROM):  # We cannot confidentelly determine sex, and thus determine X heterozygocity,
+        gt_bases = ''            # so we can't promise constant fingerprint length across all samples
+
+    elif var.called:
         gt_bases = ''.join(sorted(var.gt_bases.split('/')))
     else:
         gt_bases = 'NN'
-
-    if rec.CHROM == 'chrY' or rec.CHROM == 'chrX' and is_male:  # a single chromosome
-        assert not var.is_het, str(rec) + ' | ' + __p(rec)
-        gt_bases = gt_bases[0]
-
+    
     return gt_bases
 
 
-def check_if_male(recs):
-    y_total_depth = 0
-    for rec in recs:
-        depth = rec.INFO['DP']
-        if 'Y' in rec.CHROM:
-            y_total_depth += depth
-    return y_total_depth >= 5
+def calc_avg_depth(vcf_file):
+    with open(vcf_file) as f:
+        vcf_reader = vcf.Reader(f)
+        recs = [r for r in vcf_reader]
+    depths = [r.INFO['DP'] for r in recs]
+    return float(sum(depths)) / len(depths)
+    
+
+# def check_if_male(recs):
+#     y_total_depth = 0
+#     for rec in recs:
+#         depth = rec.INFO['DP']
+#         if 'Y' in rec.CHROM:
+#             y_total_depth += depth
+#     return y_total_depth >= 5
 
 
 def vcf_to_fasta(sample, vcf_file, fasta_file, depth_cutoff):
@@ -174,9 +232,8 @@ def vcf_to_fasta(sample, vcf_file, fasta_file, depth_cutoff):
         vcf_reader = vcf.Reader(f)
         recs = [r for r in vcf_reader]
 
-    is_male = check_if_male(recs)
     with open(fasta_file, 'w') as fhw:
         fhw.write('>' + sample.name + '\n')
-        fhw.write(''.join(vcfrec_to_seq(rec, is_male, depth_cutoff) for rec in recs) + '\n')
+        fhw.write(''.join(vcfrec_to_seq(rec, depth_cutoff) for rec in recs) + '\n')
 
     info('Fasta saved to ' + fasta_file)

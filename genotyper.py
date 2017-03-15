@@ -3,12 +3,14 @@
 import os
 import click
 
-from ngs_utils import logger
+from ngs_utils import logger as log
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file
 from ngs_utils.parallel import ParallelCfg
 
+from ngs_reporting.bcbio.bcbio import BcbioProject
+
 from fingerprinting.config import get_version
-from fingerprinting.genotype import genotype_bcbio_dir, DEPTH_CUTOFF
+from fingerprinting.genotype import genotype_bcbio_proj, DEPTH_CUTOFF
 
 import az
 
@@ -24,11 +26,6 @@ import az
               help='Sorted BED file for all the snps, in the following format.',
               required=True,
               )
-# @click.option('-v', '--vcf',
-#               type=click.Path(exists=True),
-#               help='Sorted VCF file only for sites for the snps.',
-#               required=True,
-#               )
 @click.option('-D', '--depth',
               type=int,
               help='Minimum coverage depth for calls.',
@@ -47,16 +44,22 @@ def main(bcbio_dir, bed, depth, threads=None, isdebug=True):
     snp_file = verify_file(bed)
     depth_cutoff = depth
 
-    logger.init(isdebug)
+    log.init(isdebug)
 
     sys_cfg = az.init_sys_cfg()
-    if threads:
-        sys_cfg['threads'] = threads
-    parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
-                               sys_cfg.get('resources'), sys_cfg.get('threads'))
-    parallel_cfg.set_tag('fingerprinting')
+    parallel_cfg = ParallelCfg(
+        scheduler=sys_cfg.get('scheduler'),
+        queue=sys_cfg.get('queue'),
+        resources=sys_cfg.get('resources'),
+        threads=threads or sys_cfg.get('threads'),
+        tag='fingerprinting')
 
-    genotype_bcbio_dir(bcbio_dir, snp_file, sys_cfg, parallel_cfg, depth_cutoff)
+    log.info('Loading bcbio project from ' + bcbio_dir)
+    log.info('-' * 70)
+    proj = BcbioProject()
+    proj.load_from_bcbio_dir(bcbio_dir, proc_name='fingerprinting', need_coverage_interval=False)
+    log.info('Loaded ' + proj.final_dir)
+    genotype_bcbio_proj(proj, snp_file, parallel_cfg, depth_cutoff)
 
 
 if __name__ == '__main__':
