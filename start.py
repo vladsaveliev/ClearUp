@@ -11,9 +11,8 @@ from fingerprinting.model import Project, db, Sample
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_prank_socket_handler, render_phylo_tree_page
 
-from ngs_utils import logger as log
-log.is_debug = True
-log.log_fpath = join(dirname(__file__), 'data', 'log.txt')
+from ngs_utils import logger
+
 
 app = Flask(__name__)
 # import flask_assets
@@ -102,6 +101,7 @@ def page_not_found(error):
 
 
 if __name__ == "__main__":
+    logger.init(True, join(dirname(__file__), 'data', 'log.txt'))
     # app.run(host=config.HOST_IP, debug=config.IS_DEBUG)
 
     # if start_local_browser:
@@ -111,5 +111,5 @@ if __name__ == "__main__":
         # threading.Timer(1.25, lambda: wb.open(url)).start()
 
     http_server = WSGIServer((config.HOST_IP, config.PORT), app, handler_class=WebSocketHandler)
-    log.info('Starting a webserver at ' + config.HOST_IP + ':' + str(config.PORT))
+    logger.info('Starting a webserver at ' + config.HOST_IP + ':' + str(config.PORT))
     http_server.serve_forever()
