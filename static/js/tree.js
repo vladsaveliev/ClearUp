@@ -2,7 +2,8 @@
 
 function buildTree(svgElemId, treeWidth, treeHeight, data) {
     var treeSampleSpace = 8,
-        sampleSeqSpace = 15;
+        sampleSeqSpace = 15,
+        genderSpace = 15;
 
     var svg = d3.select(svgElemId);
     svg.attr("width", treeWidth);
@@ -16,7 +17,9 @@ function buildTree(svgElemId, treeWidth, treeHeight, data) {
         .parentId(function(d) { return d.id.substring(0, d.id.lastIndexOf(".")); });
 
     var root = stratify(data)
-        .sort(function(a, b) { return (a.height - b.height) || a.id.localeCompare(b.id); });
+        .sort(function(a, b) {
+            return (a.height - b.height) || a.id.localeCompare(b.id);
+        });
 
     tree(root);
 
@@ -51,17 +54,26 @@ function buildTree(svgElemId, treeWidth, treeHeight, data) {
     leafsTexts.each(function() { labelSizes.push(this.getComputedTextLength()); });
     var maxTextWidth = d3.max(labelSizes);
 
+    var genderWidth = g.selectAll(".node--leaf")
+      .append("text")
+        .text(function(d) {return d.data.sex; })
+        .attr("dy", 3)
+        .attr("x", function() { return maxTextWidth + genderSpace; })
+        .attr("class", function(d) { return "gender " + (d.data.sex ? d.data.sex.toLowerCase() : ""); })
+        .node()
+        .getComputedTextLength();
+
     var seqWidth = g.selectAll(".node--leaf")
       .append("text")
         .attr("dy", 3)
-        .attr("x", function() { return maxTextWidth + sampleSeqSpace; })
+        .attr("x", function() { return maxTextWidth + genderSpace + genderWidth + sampleSeqSpace; })
         .attr("class", "seq")
         .each(function(d, i) {
           d3.select(this)
             .selectAll(".nuc")
               .data(d.data.seq)
             .enter().append("tspan")
-              .attr("class", function(d) { return d[1]; })
+              .attr("class", function(d) { return d.toLowerCase(); })
               .text(function(d) { return d[0]; })
             .append("tspan")
               .attr("width", (i > 0 && i % 2 == 0) ? 3 : 0 );
@@ -73,6 +85,8 @@ function buildTree(svgElemId, treeWidth, treeHeight, data) {
         treeWidth +
         treeSampleSpace +
         maxTextWidth +
+        genderSpace +
+        genderWidth +
         sampleSeqSpace +
         seqWidth +
         50);

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import json
 from genericpath import isfile
 
@@ -143,6 +144,7 @@ def tree_to_json_for_d3(tree, seq_by_id, color_by_proj, run_id):
     distance_matrix = calculate_distance_matrix(tree)
     _clade_to_json(tree.root, distance_matrix, cur_name='', clade_dicts=clade_dicts,
                    seq_by_id=seq_by_id, color_by_proj=color_by_proj, run_name=run_id)
+    clade_dicts.sort(key=lambda c: c['id'])
     json_str = json.dumps(clade_dicts)
     return json_str
 
@@ -154,32 +156,28 @@ def _clade_to_json(clade, distance_matrix, cur_name, clade_dicts, seq_by_id, col
         clade_d = {
             'id': cur_name + '.' + sample_name if cur_name else sample_name,
             'sample_id': sample.id if sample else None,
-            'seq': _seq_to_json(seq_by_id[clade.name]),
+            'seq': [nt for nt in seq_by_id[clade.name]],
+            'sex': sample.sex if sample else None,
             'project': project,
             'color': color_by_proj.get(project, 'black'),
         }
+        _add_paired_sample(run_name, clade, distance_matrix)
     else:  # internal node
-        cur_name = cur_name + '.' + str(id(clade)) if cur_name else str(id(clade))
+        cur_name = cur_name + '.' + _clade_id(clade) if cur_name else _clade_id(clade)
         clade_d = {
             'id': cur_name,
             'seq': None
         }
-    clade_dicts.append(clade_d)
-    if clade.clades:
         for child in clade:
             _clade_to_json(child, distance_matrix, cur_name, clade_dicts, seq_by_id, color_by_proj, run_name)
+    clade_dicts.append(clade_d)
+
+
+def _clade_id(clade):
+    if clade.name:
+        return str(clade.name)
     else:
-        _add_paired_sample(run_name, clade, distance_matrix)
-
-
-def _seq_to_json(seq):
-    return [(nuc, {
-        'C': 'c_nuc',
-        'A': 'a_nuc',
-        'T': 't_nuc',
-        'G': 'g_nuc',
-        'N': 'n_nuc',
-    }[nuc.upper()]) for nuc in seq]
+        return str(hash('__'.join(_clade_id(child) for child in clade)))
 
 
 def _add_paired_sample(run_name, clade, distance_matrix):
