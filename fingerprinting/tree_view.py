@@ -105,13 +105,13 @@ def render_phylo_tree_page(run_id):
 
     all_samples_count = sum(len(p.samples.all()) for p in run.projects)
     return render_template(
-        'tree.html',
+        'tree_new.html',
         projects=[{
             'name': p.name,
             'color': run.color_by_proj[p.name],
         } for i, p in enumerate(run.projects)],
         title=', '.join(p.name for p in run.projects),
-        data=tree_json,
+        data=open(run.tree_fpath).read(),
         tree_height=20 * all_samples_count,
         tree_width=5 * all_samples_count,
     )
