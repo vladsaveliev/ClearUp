@@ -82,35 +82,41 @@ def _split_bed(bed_file, work_dir):
 
 
 def _vardict_pileup_sample(sample, output_dir, genome_cfg, threads, snp_file):
+    vardict_snp_vars = join(output_dir, sample.name + '_vars.txt')
     vardict_snp_vars_vcf = join(output_dir, sample.name + '.vcf')
     
-    if not can_reuse(vardict_snp_vars_vcf, [sample.bam, snp_file]):
-        if is_local():
-            vardict_dir = '/Users/vlad/vagrant/VarDict/'
-        elif is_us():
-            vardict_dir = '/group/cancer_informatics/tools_resources/NGS/bin/'
-        else:
-            vardict_pl = which('vardict.pl')
-            if not vardict_pl:
-                critical('Error: vardict.pl is not in PATH')
-            vardict_dir = dirname(vardict_pl)
-
-        index_bam(sample.bam)
-
-        vardict = join(vardict_dir, 'vardict.pl')
-        test_strandbias = join(vardict_dir, 'teststrandbias.R')
-        var2vcf_valid = join(vardict_dir, 'var2vcf_valid.pl')
-
-        ref_file = adjust_path(genome_cfg['seq'])
-        cmdl = ('{vardict} -G {ref_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'
-                ' | cut -f-34'
-                ' | {test_strandbias}'
-                ' | {var2vcf_valid}'
-                ' | grep "^#\|TYPE=SNV\|TYPE=REF" '
-                ).format(**locals())
-        run(cmdl, output_fpath=vardict_snp_vars_vcf)
+    if can_reuse(vardict_snp_vars, [sample.bam, snp_file]) and can_reuse(vardict_snp_vars_vcf, vardict_snp_vars):
+        return vardict_snp_vars_vcf
     
-    return _fix_vcf(vardict_snp_vars_vcf)
+    if is_local():
+        vardict_dir = '/Users/vlad/vagrant/VarDict/'
+    elif is_us():
+        vardict_dir = '/group/cancer_informatics/tools_resources/NGS/bin/'
+    else:
+        vardict_pl = which('vardict.pl')
+        if not vardict_pl:
+            critical('Error: vardict.pl is not in PATH')
+        vardict_dir = dirname(vardict_pl)
+
+    # Run VarDict
+    index_bam(sample.bam)
+    vardict = join(vardict_dir, 'vardict.pl')
+    ref_file = adjust_path(genome_cfg['seq'])
+    cmdl = '{vardict} -G {ref_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'.format(**locals())
+    run(cmdl, output_fpath=vardict_snp_vars)
+    
+    # Convert to VCF
+    test_strandbias = join(vardict_dir, 'teststrandbias.R')
+    var2vcf_valid = join(vardict_dir, 'var2vcf_valid.pl')
+    cmdl = ('cut -f-34 {vardict_snp_vars}'
+            ' | {test_strandbias}'
+            ' | {var2vcf_valid}'
+            ' | grep "^#\|TYPE=SNV\|TYPE=REF" '
+            ).format(**locals())
+    run(cmdl, output_fpath=vardict_snp_vars_vcf)
+    _fix_vcf(vardict_snp_vars_vcf)
+    
+    return vardict_snp_vars_vcf
 
 
 def _fix_vcf(vardict_snp_vars_vcf):
