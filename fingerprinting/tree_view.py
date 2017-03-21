@@ -107,13 +107,14 @@ def render_phylo_tree_page(run_id):
     return render_template(
         'tree_new.html',
         projects=[{
-            'name': p.name,
-            'color': run.color_by_proj[p.name],
+            'name': str(p.name),
+            'color': str(run.color_by_proj[p.name]),
+            'samples': [str(sample.name) for sample in p.samples],
+            'ids': [str(sample.id) for sample in p.samples]
         } for i, p in enumerate(run.projects)],
         title=', '.join(p.name for p in run.projects),
         data=open(run.tree_fpath).read(),
-        tree_height=20 * all_samples_count,
-        tree_width=5 * all_samples_count,
+        samples_count=all_samples_count
     )
 
 

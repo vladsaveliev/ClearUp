@@ -65,7 +65,7 @@
             </label>
         </div>
         <div id="data_json" style="display: none;">{{ data|safe }}</div>
-        <svg id="tree_svg" width="{{ width }}" height="{{ height }}"></svg>
+        <svg id="tree_svg"></svg>
 
 
 {% endblock %}
@@ -78,46 +78,37 @@
 
         <script>
 
-        var outerRadius = 960 / 2,
-            innerRadius = outerRadius - 170;
+        var numSamples = {{ samples_count }};
 
-        var color = d3.scaleOrdinal()
-            .domain([])
-            .range(d3.schemeCategory10);
+        var minTreeWidth = 600,
+            minTreeHeight = 300,
+            minSvgWigth = 960,
+            sampleHeight = 10,
+            sampleWidth = 5;
+
+        var linksExtensionsSpacing = 100,
+            outerRadius = d3.max([numSamples * sampleWidth, minTreeWidth]) / 2,
+            innerRadius = outerRadius - linksExtensionsSpacing,
+            height = d3.max([numSamples * sampleHeight, minTreeHeight]),
+            svgWidth = d3.max([outerRadius * 2, minSvgWigth]),
+            svgHeight = height + sampleHeight;
 
         var cluster = d3.cluster()
-            .size([360, innerRadius])
-            // .separation(function(a, b) { return 1; });
+            .size([height, innerRadius])
+            .separation(function(a, b) { return 1; });
 
-        var svg = d3.select("svg")
-            .attr("width", outerRadius * 2)
-            .attr("height", outerRadius * 2);
+        var svg = d3.select("#tree_svg")
+            .attr("width", svgWidth)
+            .attr("height", svgHeight);
 
-        var legend = svg.append("g")
-            .attr("class", "legend")
-          .selectAll("g")
-          .data(color.domain())
-          .enter().append("g")
-            .attr("transform", function(d, i) { return "translate(" + (outerRadius * 2 - 10) + "," + (i * 20 + 10) + ")"; });
-
-        legend.append("rect")
-            .attr("x", -18)
-            .attr("width", 18)
-            .attr("height", 18)
-            .attr("fill", color);
-
-        legend.append("text")
-            .attr("x", -24)
-            .attr("y", 9)
-            .attr("dy", ".35em")
-            .attr("text-anchor", "end")
-            .text(function(d) { return d; });
-
+        var offsetX = 20;
         var chart = svg.append("g")
-            .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
+            .attr("transform", "translate(" + offsetX + "," + svgHeight + ")rotate(-90)");
 
+        var projects = {{ projects|safe }};
+        var data = $('#data_json').text();
         $(function() {
-          var root = d3.hierarchy(parseNewick($('#data_json').text()), function(d) { return d.branchset; })
+          var root = d3.hierarchy(parseNewick(data), function(d) { return d.branchset; })
               .sum(function(d) { return d.branchset ? 0 : 1; })
               .sort(function(a, b) { return (a.value - b.value) || d3.ascending(a.data.length, b.data.length); });
 
@@ -146,15 +137,23 @@
               .attr("d", linkVariable)
               .attr("stroke", function(d) { return d.target.color; });
 
+          var labelSpacing = 5;
           chart.append("g")
               .attr("class", "labels")
             .selectAll("text")
             .data(root.leaves())
-            .enter().append("text")
-              .attr("dy", ".31em")
-              .attr("transform", function(d) { console.log(d.x); return "rotate(" + (d.x - 90) + ")translate(" + (innerRadius + 4) + ",0)" + (d.x < 180 ? "" : "rotate(180)"); })
-              .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+            .enter().append("a")
+              .attr("xlink:href", function(d) { return getSampleId(d.data.name); })
+              .attr("pointer", "cursor")
+              .append("text")
+              .attr("transform", function(d) {
+                return "translate(" + d.x + "," + (labelSpacing + outerRadius) + ")rotate(90)";
+              })
+              .attr("text-anchor", "start")
               .text(function(d) { return d.data.name.replace(/_/g, " "); })
+              .style("fill", function(d) {
+                  return setColor(d);
+              })
               .on("mouseover", mouseovered(true))
               .on("mouseout", mouseovered(false));
 
@@ -185,15 +184,48 @@
 
         // Set the radius of each node by recursively summing and scaling the distance from the root.
         function setRadius(d, y0, k) {
-          d.radius = (y0 += d.data.length) * k;
-          if (d.children) d.children.forEach(function(d) { setRadius(d, y0, k); });
+            if (!d.parent) d.radius = 0;
+            else d.radius = (y0 += d.data.length) * k;
+            if (d.children) d.children.forEach(function(d) { setRadius(d, y0, k); });
         }
 
         // Set the color of each node by recursively inheriting.
         function setColor(d) {
-          var name = d.data.name;
-          d.color = color.domain().indexOf(name) >= 0 ? color(name) : d.parent ? d.parent.color : null;
-          if (d.children) d.children.forEach(setColor);
+            var name = d.data.name;
+            if (!name && d.children) {
+                var colors = [];
+                $.each(d.children, function(i, node){
+                    color = setColor(node)
+                    if($.inArray(color, colors) === -1) colors.push(color);
+                });
+                if (colors.length == 1) d.color = colors[0];
+                else d.color = '#ccc';
+            }
+            else if (name) {
+                project = getSampleProject(name);
+                d.color = project.color;
+            }
+            return d.color;
+        }
+
+        function splitSampleName(name) {
+            return name.split('____PROJECT_');
+        }
+
+        function getSampleId(name) {
+            project = getSampleProject(name);
+            return project.ids[project.samples.indexOf(splitSampleName(name)[0])];
+        }
+
+        function getSampleProject(name) {
+            name = splitSampleName(name);
+            var sampleName = name[0],
+                projectName = name.length > 1 ? name[1] : null;
+            for (var i = 0; i < projects.length; i++) {
+                if (projects[i].samples.indexOf(sampleName) != -1 && (!projectName || projects[i].name == projectName)) {
+                    return projects[i];
+                }
+            }
         }
 
         function linkVariable(d) {
@@ -205,22 +237,15 @@
         }
 
         function linkExtensionVariable(d) {
-          return linkStep(d.target.x, d.target.radius, d.target.x, innerRadius);
+          return linkStep(d.target.x, d.target.radius, d.target.x, outerRadius);
         }
 
         function linkExtensionConstant(d) {
-          return linkStep(d.target.x, d.target.y, d.target.x, innerRadius);
+          return linkStep(d.target.x, d.target.y, d.target.x, outerRadius);
         }
 
-        // Like d3.svg.diagonal.radial, but with square corners.
-        function linkStep(startAngle, startRadius, endAngle, endRadius) {
-          var c0 = Math.cos(startAngle = (startAngle - 90) / 180 * Math.PI),
-              s0 = Math.sin(startAngle),
-              c1 = Math.cos(endAngle = (endAngle - 90) / 180 * Math.PI),
-              s1 = Math.sin(endAngle);
-          return "M" + startRadius * c0 + "," + startRadius * s0
-              + (endAngle === startAngle ? "" : "A" + startRadius + "," + startRadius + " 0 0 " + (endAngle > startAngle ? 1 : 0) + " " + startRadius * c1 + "," + startRadius * s1)
-              + "L" + endRadius * c1 + "," + endRadius * s1;
+        function linkStep(sourceX, sourceY, targetX, targetY) {
+          return "M" + sourceX + "," + sourceY + "A 0,0 0 0,0 " + targetX + "," + sourceY + "L" + targetX + "," + targetY;
         }
 
         </script>
