@@ -86,15 +86,13 @@
             sampleHeight = 10,
             sampleWidth = 5;
 
-        var linksExtensionsSpacing = 100,
-            outerRadius = d3.max([numSamples * sampleWidth, minTreeWidth]) / 2,
-            innerRadius = outerRadius - linksExtensionsSpacing,
+        var treeWidth = d3.max([numSamples * sampleWidth, minTreeWidth]) / 2,
             height = d3.max([numSamples * sampleHeight, minTreeHeight]),
-            svgWidth = d3.max([outerRadius * 2, minSvgWigth]),
+            svgWidth = d3.max([treeWidth * 2, minSvgWigth]),
             svgHeight = height + sampleHeight;
 
         var cluster = d3.cluster()
-            .size([height, innerRadius])
+            .size([height, treeWidth])
             .separation(function(a, b) { return 1; });
 
         var svg = d3.select("#tree_svg")
@@ -117,7 +115,7 @@
           var input = d3.select("#show-length input").on("change", changed),
               timeout = setTimeout(function() { input.property("checked", true).each(changed); }, 2000);
 
-          setRadius(root, root.data.length = 0, innerRadius / maxLength(root));
+          setRadius(root, root.data.length = 0, treeWidth / maxLength(root));
           setColor(root);
 
           var linkExtension = chart.append("g")
@@ -147,7 +145,7 @@
               .attr("pointer", "cursor")
               .append("text")
               .attr("transform", function(d) {
-                return "translate(" + d.x + "," + (labelSpacing + outerRadius) + ")rotate(90)";
+                return "translate(" + d.x + "," + (labelSpacing + treeWidth) + ")rotate(90)";
               })
               .attr("text-anchor", "start")
               .text(function(d) { return d.data.name.replace(/_/g, " "); })
@@ -237,11 +235,11 @@
         }
 
         function linkExtensionVariable(d) {
-          return linkStep(d.target.x, d.target.radius, d.target.x, outerRadius);
+          return linkStep(d.target.x, d.target.radius, d.target.x, treeWidth);
         }
 
         function linkExtensionConstant(d) {
-          return linkStep(d.target.x, d.target.y, d.target.x, outerRadius);
+          return linkStep(d.target.x, d.target.y, d.target.x, treeWidth);
         }
 
         function linkStep(sourceX, sourceY, targetX, targetY) {
