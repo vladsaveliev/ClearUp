@@ -1,38 +1,48 @@
 #tree_svg {
-  margin-left: -110px; }
+  margin-left: -90px; }
 
-.link {
+.links {
   fill: none;
-  stroke: #555;
-  stroke-opacity: 0.4;
+  stroke: #000; }
+
+.link-extensions {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: 0.25; }
+
+.link--active {
+  stroke: #000 !important;
   stroke-width: 1.5px; }
 
-.node text {
+.link-extension--active {
+  stroke-opacity: 0.6; }
+
+.leaf text {
   font: 10px sans-serif; }
-.node text.seq {
+.leaf text.seq {
   font: 10px "Lucida Console", Monaco, monospace; }
-  .node text.seq .c {
+  .leaf text.seq .c {
     fill: #007a00; }
-  .node text.seq .a {
+  .leaf text.seq .a {
     fill: #002aba; }
-  .node text.seq .t {
+  .leaf text.seq .t {
     fill: #970035; }
-  .node text.seq .g {
+  .leaf text.seq .g {
     fill: #eecf00; }
-  .node text.seq .n {
+  .leaf text.seq .n {
     fill: #b2b2b2; }
-.node a {
+.leaf a {
   text-decoration: underline; }
-.node a:visited {
+.leaf a:visited {
   text-decoration: underline; }
-.node a:hover, .node a:active {
+.leaf a:hover, .leaf a:active {
   fill: darkred;
   text-decoration: underline; }
-.node .gender {
+.leaf .gender {
   font: 10px "Lucida Console", Monaco, monospace; }
-.node .gender.m {
+.leaf .gender_m {
   fill: #2c78ba; }
-.node .gender.f {
+.leaf .gender_f {
   fill: #ba5484; }
 
 /*# sourceMappingURL=tree.css.map */

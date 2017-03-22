@@ -1,13 +1,32 @@
 #tree_svg
-    margin-left: -110px
+    margin-left: -90px
 
-.link
+//.link
+//    fill: none
+//    stroke: #555
+//    stroke-opacity: 0.4
+//    stroke-width: 1.5px
+
+.links
     fill: none
-    stroke: #555
-    stroke-opacity: 0.4
+    stroke: #000
+
+.link-extensions
+    fill: none
+    stroke: #000
+    stroke-opacity: .25
+
+.link--active
+    stroke: #000 !important
     stroke-width: 1.5px
 
-.node
+.link-extension--active
+    stroke-opacity: .6
+
+//.label--active
+//    font-weight: bold
+
+.leaf
     text
         font: 10px sans-serif
     text.seq
@@ -33,7 +52,8 @@
 
     .gender
         font: 10px "Lucida Console", Monaco, monospace
-    .gender.m
+    .gender_m
         fill: #2c78ba
-    .gender.f
+    .gender_f
         fill: #ba5484
+

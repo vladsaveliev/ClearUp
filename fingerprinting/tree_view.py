@@ -91,21 +91,31 @@ def render_phylo_tree_page(run_id):
         log.debug('Tree for ' + run_id + ' was not found at ' + run.tree_fpath + ', renderring processing.html')
         return render_template(
             'processing.html',
-            projects=[{
-                'name': p.name,
-            } for i, p in enumerate(run.projects)],
+            projects=[{'name': p.name} for p in run.projects],
             run_id=run_id,
             title='Processing ' + ', '.join(p.name for p in run.projects),
         )
 
     log.debug('Prank results found, rendering tree!')
-    tree = next(Phylo.parse(run.tree_fpath, 'newick'))
     seq_by_id = read_fasta(run.merged_fasta_fpath)
-    tree_json = tree_to_json_for_d3(tree, seq_by_id, run.color_by_proj, run_id=run_id)
-
+    # tree = next(Phylo.parse(run.tree_fpath, 'newick'))
+    # tree_json = tree_to_json_for_d3(tree, seq_by_id, run.color_by_proj, run_id=run_id)
+    info_by_sample_by_project = dict()
+    for p in run.projects:
+        info_by_sample_by_project[p.name] = dict()
+        info_by_sample_by_project[p.name]['name'] = p.name
+        info_by_sample_by_project[p.name]['color'] = run.color_by_proj.get(p.name, 'black')
+        info_by_sample_by_project[p.name]['samples'] = dict()
+        for s in p.samples:
+            info_by_sample_by_project[p.name]['samples'][s.name] = {
+                'name': s.name,
+                'id': s.id,
+                'sex': s.sex,
+                'seq': [nt for nt in seq_by_id[s.name + FASTA_ID_PROJECT_SEPARATOR + p.name]],
+            }
     all_samples_count = sum(len(p.samples.all()) for p in run.projects)
     return render_template(
-        'tree_new.html',
+        'tree.html',
         projects=[{
             'name': str(p.name),
             'color': str(run.color_by_proj[p.name]),
@@ -113,31 +123,28 @@ def render_phylo_tree_page(run_id):
             'ids': [str(sample.id) for sample in p.samples]
         } for i, p in enumerate(run.projects)],
         title=', '.join(p.name for p in run.projects),
-        data=open(run.tree_fpath).read(),
+        tree_newick=open(run.tree_fpath).read(),
+        info_by_sample_by_project=json.dumps(info_by_sample_by_project),
         samples_count=all_samples_count
     )
 
 
 def merge_fasta(projects, work_dirpath):
     fasta_fpaths = [p.fingerprints_fasta_fpath for p in projects]
-    if len(projects) > 1:
-        merged_fasta_fpath = join(work_dirpath, 'fingerprints.fasta')
-        if not can_reuse(merged_fasta_fpath, fasta_fpaths):
-            all_records = []
-            for proj, fasta in zip(projects, fasta_fpaths):
-                with open(fasta) as f:
-                    recs = SeqIO.parse(f, 'fasta')
-                    for rec in recs:
-                        rec.id += FASTA_ID_PROJECT_SEPARATOR + proj.name
-                        rec.name = rec.description = ''
-                        all_records.append(rec)
-            with file_transaction(None, merged_fasta_fpath) as tx:
-                with open(tx, 'w') as out:
-                    SeqIO.write(all_records, out, 'fasta')
-    else:
-        merged_fasta_fpath = fasta_fpaths[0]
+    merged_fasta_fpath = join(work_dirpath, 'fingerprints.fasta')
+    if not can_reuse(merged_fasta_fpath, fasta_fpaths):
+        all_records = []
+        for proj, fasta in zip(projects, fasta_fpaths):
+            with open(fasta) as f:
+                recs = SeqIO.parse(f, 'fasta')
+                for rec in recs:
+                    rec.id += FASTA_ID_PROJECT_SEPARATOR + proj.name
+                    rec.name = rec.description = ''
+                    all_records.append(rec)
+        with file_transaction(None, merged_fasta_fpath) as tx:
+            with open(tx, 'w') as out:
+                SeqIO.write(all_records, out, 'fasta')
     return merged_fasta_fpath
-
 
 
 def tree_to_json_for_d3(tree, seq_by_id, color_by_proj, run_id):

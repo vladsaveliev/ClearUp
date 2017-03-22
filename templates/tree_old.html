@@ -1,0 +1,37 @@
+{% extends "_base.html" %}
+
+{% block head %}
+        <!--suppress ALL -->
+        <title>{{ title }}</title>
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}">
+{% endblock %}
+
+{% block body %}
+        <p style="font-size: 1.5em;">
+            <a href="/" style="margin-left: -1.1em;">
+            < AZ projects with pre-computed fingerprints</a>
+            <br><br>
+            <span style="font-weight: bold;">Phylogeny tree based on fingerprints</span>
+        </p>
+
+        <ul style="margin-left: -23px;">
+        <span style="margin-left: -16px;">Samples from the following projects are used:</span>
+        {% for project in projects %}
+            <li style="color: {{ project.color }}">{{ project.name }}</li>
+        {% endfor %}
+        </ul>
+        <br>
+
+        <svg id="tree_svg" width="{{ width }}" height="{{ height }}"></svg>
+        <div id="data_json" style="display: none;">{{ data|safe }}</div>
+{% endblock %}
+
+{% block js %}
+        <script src="{{ url_for('static', filename='d3/d3.v4.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/tree.js') }}"></script>
+        <script>
+            var data = JSON.parse($('#data_json').text());
+            buildTree("svg", {{ tree_width }}, {{ tree_height }}, data);
+        </script>
+{% endblock %}
