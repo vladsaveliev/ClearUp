@@ -42,11 +42,11 @@ def closest_comparison_page(run_id, sample_id):
 
 @app.route('/<run_id>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
 def add_user_call(run_id, sample_id):
-    log.info('Adding user call for ' + str(sample_id))
+    logger.info('Adding user call for ' + str(sample_id))
     edit_sample_id = request.form['editSampleId']
     sample = Sample.query.filter_by(id=edit_sample_id).first()
     if not sample:
-        log.err('Sample with ID=' + str(edit_sample_id) + ' not found')
+        logger.err('Sample with ID=' + str(edit_sample_id) + ' not found')
         return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id))
 
     fingerprint = sample.fingerprints.filter_by(index=request.form['snpIndex']).first()

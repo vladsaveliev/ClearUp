@@ -6,6 +6,8 @@ import vcf
 from ngs_utils.call_process import run
 from ngs_utils.utils import is_local, is_us
 from ngs_utils.parallel import ParallelCfg, parallel_view
+from pybedtools import BedTool
+
 from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adjust_path, can_reuse, add_suffix, \
     verify_file, intermediate_fname
 from ngs_utils.logger import info, err, critical, debug
@@ -19,50 +21,55 @@ from fingerprinting.utils import is_sex_chrom
 DEPTH_CUTOFF = 5
 
 
-def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
-                        output_dir=None, work_dir=None):
-    output_dir = output_dir or safe_mkdir(join(proj.date_dir, 'fingerprints'))
-    work_dir = work_dir or safe_mkdir(proj.work_dir)
-    
+def genotype(samples, snp_bed, parallel_cfg, output_dir, work_dir, genome_build,
+             depth_cutoff=DEPTH_CUTOFF):
     autosomal_bed, sex_bed = _split_bed(snp_bed, work_dir)
     
-    genome_cfg = az.get_refdata(proj.genome_build)
+    genome_cfg = az.get_refdata(genome_build)
     info('** Running VarDict ** ')
-    with parallel_view(len(proj.samples), parallel_cfg, work_dir) as view:
+    with parallel_view(len(samples), parallel_cfg, work_dir) as view:
         vcfs = view.run(_vardict_pileup_sample,
-                        [[s, safe_mkdir(join(output_dir, 'vcf')), genome_cfg, view.cores_per_job, autosomal_bed]
-                         for s in proj.samples])
-    vcf_by_sample = dict(zip([s.name for s in proj.samples], vcfs))
+            [[s, safe_mkdir(join(output_dir, 'vcf')), genome_cfg, view.cores_per_job, autosomal_bed]
+             for s in samples])
+    vcf_by_sample = dict(zip([s.name for s in samples], vcfs))
     info('** Finished running VarDict **')
     
     info('** Annotate variants with gene names and rsIDs **')
-    for s in proj.samples:
+    for s in samples:
         vcf_by_sample[s.name] = _annotate_vcf(vcf_by_sample[s.name], snp_bed)
 
     info('** Writing fasta **')
-    fasta_by_sample = {s.name: join(work_dir, s.name + '.fasta') for s in proj.samples}
-    for s in proj.samples:
+    fasta_by_sample = {s.name: join(work_dir, s.name + '.fasta') for s in samples}
+    for s in samples:
         info('Writing fasta for sample ' + s.name)
         vcf_to_fasta(s, vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff)
 
     info('** Merging fasta **')
-    all_fasta = join(output_dir, 'longprints.fasta')
+    all_fasta = join(output_dir, 'fingerprints.fasta')
     if not can_reuse(all_fasta, fasta_by_sample.values()):
         with open(all_fasta, 'w') as out_f:
-            for s in proj.samples:
+            for s in samples:
                 with open(fasta_by_sample[s.name]) as f:
                     out_f.write(f.read())
     info('All fasta saved to ' + all_fasta)
 
     info('** Determining sexes **')
     sex_by_sample = dict()
-    for s in proj.samples:
+    for s in samples:
         avg_depth = calc_avg_depth(vcf_by_sample[s.name])
-        sex = determine_sex(safe_mkdir(join(work_dir, s.name)), s.bam, avg_depth, s.genome_build,
+        sex = determine_sex(safe_mkdir(join(work_dir, s.name)), s.bam, avg_depth, genome_build,
                             target_bed=sex_bed, min_male_size=1)
         sex_by_sample[s.name] = sex
 
     return all_fasta, vcf_by_sample, sex_by_sample
+
+
+def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
+                        output_dir=None, work_dir=None):
+    output_dir = output_dir or safe_mkdir(join(proj.date_dir, 'fingerprints'))
+    work_dir = work_dir or safe_mkdir(proj.work_dir)
+    return genotype(proj.samples, snp_bed, parallel_cfg, output_dir, work_dir,
+                    proj.genome_build, depth_cutoff=depth_cutoff)
 
 
 def _split_bed(bed_file, work_dir):
@@ -158,12 +165,11 @@ def _fix_vcf(vardict_snp_vars_vcf):
 def _annotate_vcf(vcf_file, snp_bed):
     gene_by_snp = dict()
     rsid_by_snp = dict()
-    with open(snp_bed) as bed:
-        for l in bed:
-            chrom, _, pos, ann = l.strip().split('\t')[:4]
-            rsid, gene = ann.split('|')
-            gene_by_snp[(chrom, int(pos))] = gene
-            rsid_by_snp[(chrom, int(pos))] = rsid
+    for interval in BedTool(snp_bed):
+        rsid, gene = interval.name.split('|')
+        pos = int(interval.start) + 1
+        gene_by_snp[(interval.chrom, pos)] = gene
+        rsid_by_snp[(interval.chrom, pos)] = rsid
     
     annotated_vcf = add_suffix(vcf_file, 'ann')
     with open(vcf_file) as f, open(annotated_vcf, 'w') as out:
@@ -203,7 +209,6 @@ def vcfrec_to_seq(rec, depth_cutoff):
 
     if is_sex_chrom(rec.CHROM):  # We cannot confidentelly determine sex, and thus determine X heterozygocity,
         gt_bases = ''            # so we can't promise constant fingerprint length across all samples
-
     elif var.called:
         gt_bases = ''.join(sorted(var.gt_bases.split('/')))
     else:

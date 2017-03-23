@@ -46,12 +46,14 @@
             minTreeHeight = 300,
             minSvgWigth = 960,
             sampleHeight = 10,
-            sampleWidth = 5;
+            sampleWidth = 5,
+            topAnnoHeight = 70,
+            bottomAnnoHeight = 70;
 
         var treeWidth = d3.max([numSamples * sampleWidth, minTreeWidth]) / 2,
             height = d3.max([numSamples * sampleHeight, minTreeHeight]),
             svgWidth = d3.max([treeWidth * 2, minSvgWigth]),
-            svgHeight = height + sampleHeight;
+            svgHeight = height + topAnnoHeight;
 
         var cluster = d3.cluster()
             .size([height, treeWidth])
@@ -59,13 +61,16 @@
 
         var svg = d3.select("#tree_svg")
             .attr("width", svgWidth)
-            .attr("height", svgHeight);
+            .attr("height", svgHeight + bottomAnnoHeight)
+            .attr("style", "margin-top: -" + (topAnnoHeight))
+            // .attr("style", "margin-bottom: -" + bottomAnnoHeight);
 
         var offsetX = 20;
         var chart = svg.append("g")
             .attr("transform", "translate(" + offsetX + "," + svgHeight + ")rotate(-90)");
 
         var projects = {{ info_by_sample_by_project|safe }};
+        var locations = {{ locations|safe }};  // [dict(chrom=l.chrom, pos=l.pos, rsid=l.rsid, gene=l.gene) for l in run.locations]
         var tree_newick_data = $('#tree_newick_json').text();
         $(function() {
           var root = d3.hierarchy(parseNewick(tree_newick_data), function(d) { return d.branchset; })
@@ -99,13 +104,16 @@
 
           var treeLabelSpace = 8,
               sampleSeqSpace = 20,
-              genderSpace = 15;
+              genderSpace = 15,
+              ncInterPairSpace = 2,
+              ncIntraPairSpace = -1;
 
           chart.selectAll()
               .data(root.leaves())
             .enter().append("g")
               .attr("class", "leaf")
-              .attr("transform", function(d) { return "translate(" + d.x + "," + (treeLabelSpace + treeWidth) + ")rotate(90)"; })
+              .attr("transform", function(d) { return "translate(" + d.x + "," + (treeLabelSpace + treeWidth) + ")rotate(90)"; })  
+              // Remember that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
 
           var leafsTexts = chart.selectAll(".leaf")
             .append("a")
@@ -142,14 +150,47 @@
                   .selectAll(".nuc")
                     .data(getSample(d.data.name).seq)
                   .enter().append("tspan")
+                    .attr("dx", function(_, i) { return (i%2 == 0) ? ncInterPairSpace : ncIntraPairSpace; })
                     .attr("class", function(d) { return d.toLowerCase(); })
                     .text(function(d) { return d[0]; })
-                  .append("tspan")
-                    .attr("width", (i > 0 && i % 2 == 0) ? 3 : 0 );
               })
               .node()
-              .getComputedTextLength();
-;
+              .getComputedTextLength() + (ncInterPairSpace+ncIntraPairSpace)*locations.length;
+
+          annoX = treeWidth +
+              treeLabelSpace +
+              maxTextWidth +
+              genderSpace +
+              genderWidth +
+              sampleSeqSpace;
+          topAnnoY = svgHeight;
+          locWidth = (seqWidth)/locations.length;
+          chart.append("g")
+              .attr("transform", function(d) { return "translate(" + topAnnoY + "," + (annoX+8) + ")rotate(90)"; })
+            .selectAll(".loc")
+              .data(locations)
+            .enter().append("text")
+              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")rotate(-90)"; })  
+              .attr("class", "loc_anno")
+            .append("tspan")
+              .attr("fill", "#black")
+              .text(function(d) { return d.chrom + ':'; })
+            .append("tspan")
+              .attr("fill", "#999")
+              .text(function(d) { return ' ' + d.rsid; })
+
+          bottomAnnoY = -5;
+          chart.append("g")
+              .attr("transform", function(d) { return "translate(" + bottomAnnoY + "," + (annoX+4) + ")rotate(90)"; })
+            .selectAll(".loc")
+              .data(locations)
+            .enter().append("text")
+              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + 0 + ")rotate(90)"; })  
+              .attr("class", "loc_anno")
+            .append("tspan")
+              .attr("fill", "#999")
+              .text(function(d) { return d.gene; })
+
           svg.attr("width", treeWidth +
               treeLabelSpace +
               maxTextWidth +

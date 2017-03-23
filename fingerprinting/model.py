@@ -1,11 +1,24 @@
 #!/usr/bin/env python2
+from copy import copy
 
-from os.path import abspath, join, dirname
+import os
+
+from Bio import SeqIO
+from ngs_reporting.bcbio.bcbio import BcbioSample
+from os.path import abspath, join, dirname, splitext, basename
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from logging import info
-from fingerprinting import config
+from pybedtools import BedTool
+import vcf
 
+from fingerprinting import config
+from fingerprinting.genotype import genotype_bcbio_proj, genotype, vcfrec_to_seq, DEPTH_CUTOFF
+from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, get_snps_by_type, load_bam_file
+from ngs_utils.Sample import BaseSample
+from ngs_utils.file_utils import safe_mkdir, can_reuse, file_transaction
+from ngs_utils.logger import info, debug, err
+from ngs_utils.parallel import ParallelCfg
+import az
 
 app = Flask(__name__)
 db_path = join(config.DATA_DIR, 'projects.db')
@@ -14,66 +27,263 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
-class Fingerprint(db.Model):
+run_to_project_assoc_table = db.Table(
+    'run_to_project_association', db.Model.metadata,
+    db.Column('run_id', db.Integer, db.ForeignKey('run.id')),
+    db.Column('project_name', db.String, db.ForeignKey('project.name')))
+
+
+class Location(db.Model):
+    __tablename__ = 'location'
     id = db.Column(db.Integer, primary_key=True)
     index = db.Column(db.Integer)
+    rsid = db.Column(db.String)
     chrom = db.Column(db.String)
     pos = db.Column(db.Integer)
-    rsid = db.Column(db.String)
+    gene = db.Column(db.String)
+    # ref = db.Column(db.String)
+    # alt = db.Column(db.String)
+    
+    run_id = db.Column(db.String, db.ForeignKey('run.id'))
+    run = db.relationship('Run', backref=db.backref('locations', lazy='dynamic'))
+
+    def __init__(self, rsid, index, chrom=None, pos=None, gene=None):
+        self.rsid = rsid
+        self.index = index
+        self.chrom = chrom
+        self.pos = pos
+        self.gene = gene
+        # self.ref = None
+        # self.alt = None
+
+    def __repr__(self):
+        return '<Location {}:{} {} at gene {}>'.format(self.chrom, str(self.pos), self.rsid, self.gene)
+
+
+class SNP(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    index = db.Column(db.Integer)
     genotype = db.Column(db.String)
     depth = db.Column(db.Integer)
     usercall = db.Column(db.String)
 
-    sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
-    sample = db.relationship('Sample', backref=db.backref('fingerprints', lazy='dynamic'))
+    location_id = db.Column(db.String, db.ForeignKey('location.id'))
+    location = db.relationship('Location')
 
-    def __init__(self, index=None, sample=None, chrom=None, pos=None, rsid=None, gene=None):
+    sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
+    sample = db.relationship('Sample', backref=db.backref('all_snps', lazy='dynamic'))
+
+    def __init__(self, index, location=None):
         self.index = index
-        self.sample = sample
-        self.chrom = chrom
-        self.pos = pos
-        self.rsid = rsid
-        self.gene = gene
+        self.location = location
         self.genotype = None
         self.depth = None
         self.usercall = None
 
     def __repr__(self):
-        return '<Fingerprint {}-{} for sample {}>'.format(str(self.pos), self.genotype, self.sample.name)
+        return '<SNP {}:{} {} {} for sample {}>'.format(
+            str(self.location.chrom), str(self.location.pos), self.location.rsid,
+            self.genotype, self.sample.name)
+
+
+
+def _get_snps_not_calls(snps_file, samples):
+    # TODO: select and save only snps per sample that are not called in taht sample (special treatment for gender?)
+    # lines_to_rerun = []
+    # for i, interval in enumerate(BedTool(snps_file)):
+    #     rsid, gene = interval.name.split('|')
+    #     if all(s.all_snps.filter_by(snps=loc.id) for s in samples)
+    #                 snp = .first()
+    return snps_file
+
+
+PROJ_COLORS = ['#000000', '#90ed7d', '#f7a35c', '#8085e9', '#f15c80',
+               '#e4d354', '#2b908f', '#f45b5b', '#91e8e1', '#7cb5ec']
+
+class Run(db.Model):
+    __tablename__ = 'run'
+    id = db.Column(db.String, primary_key=True)
+    snps_file = db.Column(db.String)
+    work_dir = db.Column(db.String)
+    fasta_file = db.Column(db.String)
+    tree_file = db.Column(db.String)
+    projects = db.relationship("Project", secondary=run_to_project_assoc_table,
+                               backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
+    
+    def __init__(self, run_id):
+        self.id = run_id
+        self.snps_file = None
+        self.work_dir = None
+        self.fasta_file = None
+        self.tree_file = None
+        
+    @staticmethod
+    def create(projects):
+        project_names = sorted([p.name for p in projects])
+        run = Run(run_id=','.join(project_names))
+        db.session.add(run)
+        for p in projects:
+            run.projects.append(p)
+            
+        genome_builds = [p.genome for p in projects]
+        assert len(set(genome_builds)) == 1, 'Error: different genome builds in projects'
+        genome_build = genome_builds[0]
+        
+        panel_types = [p.panel_type for p in projects]
+        if len(set(panel_types)) > 1:
+            raise NotImplementedError('Multiple panel types are not yet supported')
+        panel_type = panel_types[0]
+        run.snps_file = get_snps_by_type(panel_type)
+        locations = run._extract_locations_from_file(run.snps_file)
+        location_by_rsid = {l.rsid: l for l in locations}
+    
+        info('Genotyping')
+        run.work_dir = safe_mkdir(join(config.DATA_DIR, '__AND__'.join(project_names)))
+        sys_cfg = az.init_sys_cfg()
+        parallel_cfg = ParallelCfg(threads=sys_cfg.get('threads'))
+        samples = [s for p in projects for s in p.samples]
+        snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
+        # TODO: run vardict interactively
+        fasta_file, vcf_by_sample, sex_by_sample = genotype(
+            [BaseSample(s.long_name(), bam=s.bam) for s in samples],
+            snps_left_to_call_file, parallel_cfg, output_dir=run.work_dir,
+            work_dir=safe_mkdir(join(run.work_dir, 'genotyping')), genome_build=genome_build)
+    
+        info('Loading BAMs sliced to fingerprints')
+        for s in samples:
+            load_bam_file(s.bam, safe_mkdir(join(run.work_dir, 'bams')), s.long_name())
+    
+        info('Loading called SNPs into the DB')
+        for s in samples:
+            if s.sex:
+                assert s.sex == sex_by_sample[s.long_name()], \
+                    'Error: different sex called for sample ' + s.long_name() +\
+                    ': ' + sex_by_sample[s.long_name()] + ', vs. previous ' + s.sex
+            else:
+                s.sex = sex_by_sample[s.long_name()]
+            with open(vcf_by_sample[s.long_name()]) as vcf_f:
+                vcf_reader = vcf.Reader(vcf_f)
+                recs = [r for r in vcf_reader]
+                for i, rec in enumerate(recs):
+                    loc = location_by_rsid[rec.ID]
+                    assert loc.pos == rec.POS
+                    snp = s.all_snps.join(Location).filter(Location.rsid==loc.rsid).first()
+                    if snp:
+                        assert snp.depth == rec.samples[0]['DP']
+                        assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
+                    else:
+                        snp = SNP(index=i + 1, location=loc)
+                        snp.depth = rec.samples[0]['DP']
+                        snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
+                        s.all_snps.append(snp)
+                        db.session.add(snp)
+        for snp in samples[0].all_snps:
+            run.locations.append(snp.location)
+        db.session.commit()
+        
+        run.fasta_file = fasta_file
+        run.tree_file = join(run.work_dir, splitext(basename(run.fasta_file))[0]) + '.newick'
+        db.session.commit()
+        return run
+    
+    @staticmethod
+    def _extract_locations_from_file(snps_file):
+        locs = []
+        for i, interval in enumerate(BedTool(snps_file)):
+            pos = int(interval.start) + 1
+            rsid, gene = interval.name.split('|')
+            loc = Location(
+                rsid=rsid,
+                index=i + 1,
+                chrom=interval.chrom,
+                pos=pos,
+                gene=gene)
+            db.session.add(loc)
+            locs.append(loc)
+        return locs
+
+
+def get_run(run_id):
+    run = Run.query.filter_by(id=run_id).first()
+    if not run:
+        debug('Creating new run ' + run_id)
+        project_names = run_id.split(',')
+        projects = []
+        not_found = []
+        for pn in project_names:
+            p = Project.query.filter_by(name=pn).first()
+            if p:
+                projects.append(p)
+            else:
+                not_found.append(pn)
+        if not_found:
+            err('Some projects not found in the database: ' + ', '.join(project_names))
+            return None
+        run = Run.create(projects)
+        db.session.add(run)
+        db.session.commit()
+        debug('Done creating new run ' + run_id)
+        debug()
+    return run
+
+
+# def merge_fasta(projects, work_dirpath):
+#     fasta_fpaths = [p.fingerprints_fasta_fpath for p in projects]
+#     merged_fasta_fpath = join(work_dirpath, 'fingerprints.fasta')
+#     if not can_reuse(merged_fasta_fpath, fasta_fpaths):
+#         all_records = []
+#         for proj, fasta in zip(projects, fasta_fpaths):
+#             with open(fasta) as f:
+#                 recs = SeqIO.parse(f, 'fasta')
+#                 for rec in recs:
+#                     rec.id += FASTA_ID_PROJECT_SEPARATOR + proj.name
+#                     rec.name = rec.description = ''
+#                     all_records.append(rec)
+#         with file_transaction(None, merged_fasta_fpath) as tx:
+#             with open(tx, 'w') as out:
+#                 SeqIO.write(all_records, out, 'fasta')
+#     return merged_fasta_fpath
 
 
 class Project(db.Model):
+    __tablename__ = 'project'
     name = db.Column(db.String(), primary_key=True)
-    bcbio_final_path = db.Column(db.String)
-    fingerprints_fasta_fpath = db.Column(db.String)
-    genome = db.Column(db.String(20))
 
-    def __init__(self, name, bcbio_final_path, fp_fpath, genome):
+    bcbio_final_path = db.Column(db.String)
+    bed_fpath = db.Column(db.String)
+    panel_type = db.Column(db.String)
+    genome = db.Column(db.String(20))
+    
+    def __init__(self, name, bcbio_final_path, genome, panel_type):
         self.name = name
         self.bcbio_final_path = bcbio_final_path
-        self.fingerprints_fasta_fpath = fp_fpath
         self.genome = genome
+        self.panel_type = panel_type
         self.date = None
         self.region = None
 
     def __repr__(self):
-        return '<Project {}>'.format(self.name)
+        return '<Project {} {}>'.format(self.name, self.genome)
 
 
 class Sample(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    bam_fpath = db.Column(db.String)
+    bam = db.Column(db.String)
     sex = db.Column(db.String)
     paired_sample_id = db.Column(db.Integer)
 
     project_name = db.Column(db.String, db.ForeignKey('project.name'))
     project = db.relationship('Project', backref=db.backref('samples', lazy='dynamic'))
 
-    def __init__(self, name, project, sex=None):
+    def __init__(self, name, project, bam, sex=None):
         self.name = name
         self.project = project
+        self.bam = bam
         self.sex = sex
+
+    def long_name(self):
+        return self.name + FASTA_ID_PROJECT_SEPARATOR + self.project.name
 
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
@@ -99,7 +309,3 @@ class PairedSample(db.Model):
 
 if __name__ == '__main__':
     db.create_all()
-
-
-
-

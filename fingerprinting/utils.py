@@ -40,8 +40,19 @@ def load_bam_file(bam_fpath, bams_dir, sample_name):
     return bam_copy_fpath
 
 
-def get_snps_file():
-    return verify_file(join(dirname(__file__), 'snps', 'idt_snps.bed'), is_critical=True)
+BED_BY_TYPE = {
+    'idt': 'idt_snps.bed',
+    'exome': None,
+    'wgs': None,
+}
+def get_snps_by_type(panel_type):
+    snps_fname = BED_BY_TYPE.get(panel_type)
+    if not panel_type:
+        log.critical('SNPs for panel type ' + panel_type + ' is not defined')
+    return get_snps_file(snps_fname)
+
+def get_snps_file(fname):
+    return verify_file(join(dirname(__file__), 'snps', fname), is_critical=True)
 
 
 def get_sample_and_project_name(name, fingerprint_project=None):
