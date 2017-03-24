@@ -113,7 +113,7 @@
             .enter().append("g")
               .attr("class", "leaf")
               .attr("transform", function(d) { return "translate(" + d.x + "," + (treeLabelSpace + treeWidth) + ")rotate(90)"; })  
-              // Remember that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
+              // Keep in mind that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
 
           var leafsTexts = chart.selectAll(".leaf")
             .append("a")
