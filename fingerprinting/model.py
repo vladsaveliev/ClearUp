@@ -71,7 +71,7 @@ class SNP(db.Model):
     location = db.relationship('Location')
 
     sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
-    sample = db.relationship('Sample', backref=db.backref('all_snps', lazy='dynamic'))
+    sample = db.relationship('Sample', backref=db.backref('snps', lazy='dynamic'))
 
     def __init__(self, index, location=None):
         self.index = index
@@ -92,7 +92,7 @@ def _get_snps_not_calls(snps_file, samples):
     # lines_to_rerun = []
     # for i, interval in enumerate(BedTool(snps_file)):
     #     rsid, gene = interval.name.split('|')
-    #     if all(s.all_snps.filter_by(snps=loc.id) for s in samples)
+    #     if all(s.snps.filter_by(snps=loc.id) for s in samples)
     #                 snp = .first()
     return snps_file
 
@@ -167,7 +167,7 @@ class Run(db.Model):
                 for i, rec in enumerate(recs):
                     loc = location_by_rsid[rec.ID]
                     assert loc.pos == rec.POS
-                    snp = s.all_snps.join(Location).filter(Location.rsid==loc.rsid).first()
+                    snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
                     if snp:
                         assert snp.depth == rec.samples[0]['DP']
                         assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
@@ -175,9 +175,11 @@ class Run(db.Model):
                         snp = SNP(index=i + 1, location=loc)
                         snp.depth = rec.samples[0]['DP']
                         snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
-                        s.all_snps.append(snp)
+                        s.snps.append(snp)
                         db.session.add(snp)
-        for snp in samples[0].all_snps:
+
+        info('Adding locations into the DB')
+        for snp in samples[0].snps:
             run.locations.append(snp.location)
         db.session.commit()
         
@@ -203,7 +205,7 @@ class Run(db.Model):
         return locs
 
 
-def get_run(run_id):
+def get_or_create_run(run_id):
     run = Run.query.filter_by(id=run_id).first()
     if not run:
         debug('Creating new run ' + run_id)
@@ -223,6 +225,9 @@ def get_run(run_id):
         db.session.add(run)
         db.session.commit()
         debug('Done creating new run ' + run_id)
+        debug()
+    else:
+        debug('Found run ' + run.id)
         debug()
     return run
 
@@ -271,7 +276,6 @@ class Sample(db.Model):
     name = db.Column(db.String)
     bam = db.Column(db.String)
     sex = db.Column(db.String)
-    paired_sample_id = db.Column(db.Integer)
 
     project_name = db.Column(db.String, db.ForeignKey('project.name'))
     project = db.relationship('Project', backref=db.backref('samples', lazy='dynamic'))
@@ -287,24 +291,6 @@ class Sample(db.Model):
 
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
-
-
-class PairedSample(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    run_id = db.Column(db.String)
-    sample_id = db.Column(db.Integer)
-
-    matching_sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
-    matching_sample = db.relationship('Sample', backref=db.backref('paired_samples', lazy='dynamic'))
-
-    def __init__(self, name, run_id, sample_id, matching_sample):
-        self.name = name
-        self.run_id = run_id
-        self.sample_id = sample_id
-        self.matching_sample = matching_sample
-
-    def __repr__(self):
-        return '<Sample {} is matched with {}>'.format(self.name, self.sample.name)
 
 
 if __name__ == '__main__':

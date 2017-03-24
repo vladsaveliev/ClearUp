@@ -20,8 +20,8 @@
 
         <ul style="margin-left: -23px;">
         <span style="margin-left: -16px;">Samples from the following projects are used:</span>
-        {% for project in projects %}
-            <li style="color: {{ project.color }}">{{ project.name }}</li>
+        {% for project_name in projects %}
+            <li>{{ project_name }}</li>
         {% endfor %}
         </ul>
         <br>
@@ -41,7 +41,7 @@
                     console.log("WebSocket not supported");
                     $('#console_log').append("Processing...<br>");
                 } else {
-                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + "/{{ run_id }}/run_prank/");
+                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + "/{{ run_id }}/run_analysis/");
                     console.log("Connected");
                     ws.onstart = function() {
                         ws.send("started");

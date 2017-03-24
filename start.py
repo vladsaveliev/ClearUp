@@ -9,7 +9,7 @@ from geventwebsocket.handler import WebSocketHandler
 from fingerprinting import config
 from fingerprinting.model import Project, db, Sample
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
-from fingerprinting.tree_view import run_prank_socket_handler, render_phylo_tree_page
+from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
 
 from ngs_utils import logger
 
@@ -25,9 +25,9 @@ def send_favicon():
     return send_from_directory('static', 'favicon.ico')
 
 
-@app.route("/<run_id>/run_prank/")
-def run_prank(run_id):
-    return run_prank_socket_handler(run_id)
+@app.route("/<run_id>/run_analysis/")
+def run_analysis(run_id):
+    return run_analysis_socket_handler(run_id)
 
 
 @app.route('/<run_id>/tree/')
@@ -97,7 +97,7 @@ def homepage():
 
 @app.errorhandler(404)
 def page_not_found(error):
-    return render_template('404.html'), 404
+    return render_template('404.html', error=error.description['message']), 404
 
 
 if __name__ == "__main__":

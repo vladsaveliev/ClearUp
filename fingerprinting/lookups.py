@@ -6,8 +6,11 @@ def get_snp_record(snps_dict, snp_a, snp_b):
     seq_a, seq_b = snp_a.usercall or snp_a.genotype, snp_b.usercall or snp_b.genotype
     seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
     snp_record = {'index': snp_a.index,
-                  'chrom': snp_a.chrom,
-                  'pos': snp_a.pos,
+                  'chrom': snp_a.location.chrom,
+                  'pos': snp_a.location.pos,
+                  'rsid': snp_a.location.rsid,
+                  'gene': snp_a.location.gene,
+                  'depth': snp_a.depth,
                   'snpA': seq_a,
                   'snpB': seq_b,
                   'usercallA': 'usercall' if snp_a.usercall else '',

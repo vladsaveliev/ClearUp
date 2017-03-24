@@ -111,6 +111,17 @@
                     </td>
                 {% endfor %}
             </tr>
+            <tr class="table_variant">
+                <td class="abSmall depth_row" style="text-align: right; padding-top: 3px;">Depth&nbsp;</td>
+                {% for snp_record in snp_records %}
+                    <td class="cell depth_row"
+                           id="{{ snp_record.index }}_depth"
+                        chrom="{{ snp_record.chrom }}"
+                          pos="{{ snp_record.pos }}">
+                        {{ snp_record.depth }}<span style="color: gray;">x</span>
+                    </td>
+                {% endfor %}
+            </tr>
         </table>
         {% endfor %}
 
@@ -308,5 +319,28 @@
             }
         });
     }
+
+    // // Depth heatmap
+    // var BLUE_HUE = 240,
+    //     RED_HUE = 0,
+
+    // function get_color(hue, lightness) {
+    //     if (!lightness) {
+    //         lightness = 92;
+    //         [r, g, b] = hslToRgb(hue / 360, 0.8, lightness / 100)
+    //     return '#' + r.toString(16) + g.toString(16) + b.toString(16)
+    // }
+
+
+
+
+
+
+
+
+
     </script>
 {% endblock %}
+
+
+

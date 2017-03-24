@@ -5,6 +5,8 @@ import subprocess
 import time
 
 from collections import defaultdict
+
+from Bio import Phylo
 from os.path import abspath, join, dirname, splitext, basename
 from flask import Flask, render_template, send_from_directory, abort, redirect, send_file
 from flask import Response, request
@@ -13,34 +15,52 @@ from ngs_utils import logger as log
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 
 from fingerprinting import config
-from fingerprinting.model import Project, db, Sample, PairedSample
+from fingerprinting.model import Project, db, Sample, Run
 from fingerprinting.lookups import get_snp_record, get_sample_by_name
+
+from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, calculate_distance_matrix
+
+
+def _find_closest_match(sample, run):
+    tree = next(Phylo.parse(run.tree_file, 'newick'))
+    distance_matrix = calculate_distance_matrix(tree)
+    
+    paired_clade = distance_matrix[sample.long_name()][1]
+    if paired_clade:
+        sn, pn = paired_clade.name.split(FASTA_ID_PROJECT_SEPARATOR)
+        p = run.projects.filter_by(name=pn).first()
+        matching_sample = p.samples.filter_by(name=sn).first()
+        return matching_sample
+    else:
+        return None
 
 
 def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
+    run = Run.query.filter_by(id=run_id).first()
+    if not run:
+        log.err('Run ' + run_id + ' not found')
+        abort(404, {'message': 'Phylogenetic comparison for ' + run_id + ' is not found'})
     sample = Sample.query.filter_by(id=sample_id).first()
     if not sample:
         log.err('Sample ' + sample_id + ' not found in ' + run_id)
-        abort(404)
-    sample_name = sample.name
-    matching_sample_id = sample.paired_samples.filter_by(run_id=run_id).first().sample_id
-    if not matching_sample_id:
-        log.err('No matched sample for ' + sample_name)
-        abort(404)
-    matching_sample = Sample.query.filter_by(id=matching_sample_id).first()
+        abort(404, {'message': 'Sample ' + sample_id + ' not found in ' + run_id})
+    matching_sample = _find_closest_match(sample, run)
+    if not matching_sample:
+        log.err('No matching sample for ' + sample.name)
+        abort(404, {'message': 'No matching sample for ' + sample.name})
     snps_dict = defaultdict(int)
     # snps_dict['total_score'] = 0
     # snps_dict['confidence'] = 'Low'
     snp_tables = []
     snp_records = []
-    for snp_a, snp_b in zip(sample.fingerprints, matching_sample.fingerprints):
+    for snp_a, snp_b in zip(sample.snps, matching_sample.snps):
         snp_records.append(get_snp_record(snps_dict, snp_a, snp_b))
         if snp_a.index % 41 == 0:
             snp_tables.append(snp_records)
             snp_records = []
     snp_tables.append(snp_records)
 
-    bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample_name + '.bam')
+    bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample.name + '.bam')
     bam_fpath_b = '/%s/bamfiles/%s' % (matching_sample.project.name, matching_sample.name + '.bam')
     snps_bed = '/snps/snps_bed'
     sample_a = {

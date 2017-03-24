@@ -157,6 +157,7 @@
               .node()
               .getComputedTextLength() + (ncInterPairSpace+ncIntraPairSpace)*locations.length;
 
+          // TODO: join all annotation 3 elements
           annoX = treeWidth +
               treeLabelSpace +
               maxTextWidth +
@@ -165,8 +166,9 @@
               sampleSeqSpace;
           topAnnoY = svgHeight;
           locWidth = (seqWidth)/locations.length;
+          indexHeight = 8;
           chart.append("g")
-              .attr("transform", function(d) { return "translate(" + topAnnoY + "," + (annoX+8) + ")rotate(90)"; })
+              .attr("transform", function(d) { return "translate(" + (topAnnoY+indexHeight) + "," + (annoX+10) + ")rotate(90)"; })
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
@@ -177,7 +179,18 @@
               .text(function(d) { return d.chrom + ':'; })
             .append("tspan")
               .attr("fill", "#999")
-              .text(function(d) { return ' ' + d.rsid; })
+              .text(function(d) { return ' ' + d.rsid; });
+
+          chart.append("g")
+              .attr("transform", function(d) { return "translate(" + (topAnnoY-3) + "," + (annoX+4) + ")rotate(90)"; })
+            .selectAll(".loc")
+              .data(locations)
+            .enter().append("text")
+              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")"; })  
+              .attr("class", "loc_index")
+            .append("tspan")
+              .attr("fill", "#999")
+              .text(function(d) { return d.index; });
 
           bottomAnnoY = -5;
           chart.append("g")
@@ -189,7 +202,7 @@
               .attr("class", "loc_anno")
             .append("tspan")
               .attr("fill", "#999")
-              .text(function(d) { return d.gene; })
+              .text(function(d) { return d.gene; });
 
           svg.attr("width", treeWidth +
               treeLabelSpace +

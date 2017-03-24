@@ -336,8 +336,7 @@ td.ab  {
 }
 
 td.abSmall {
-	font-size: 0.9em;
-	font-style: italic;
+	font-size: 0.8em;
 	text-align: right;
     padding-right: 3px;
 }
@@ -377,11 +376,11 @@ table.match td.cell {
     text-align: center;
 	padding: 2px 2px 2px 2px;
 }
-td.toprow, td.bottomrow, td.scorerow, td.snpIndex  {
+td.toprow, td.bottomrow, td.scorerow, td.snpIndex {
 	font-size: 11px;
 	font-family: monospace;
 }
-td.snpIndex  {
+td.snpIndex {
 	text-align: center;
 	font-size: 8px;
     border-top: 1px solid white;
@@ -389,6 +388,10 @@ td.snpIndex  {
 td.scorerow  {
 	text-align: center;
     border-bottom: 1px solid white;
+}
+td.depth_row {
+	text-align: center;
+	font-size: 8px;
 }
 .usercall_input {
     width: 13px;
@@ -439,7 +442,7 @@ td.quality_E, td.quality_F, td.usercall  {
 /* Match Value */
 td.hom_match, td.het_match, td.match
 {
-	background: #00c800;
+	background: #44cd40;
 }
 
 td.het_mismatch

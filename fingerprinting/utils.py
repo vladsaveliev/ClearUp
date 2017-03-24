@@ -72,9 +72,9 @@ def calculate_distance_matrix(tree):
     distance_matrix = defaultdict(lambda: (1, None))
     for clade, clade2 in list(itertools.combinations(clades, 2)):
         distance = tree.distance(clade, clade2)
-        if distance < distance_matrix[clade][0]:
-            distance_matrix[clade] = (distance, clade2)
-            distance_matrix[clade2] = (distance, clade)
+        if distance < distance_matrix[clade.name][0]:
+            distance_matrix[clade.name] = (distance, clade2)
+            distance_matrix[clade2.name] = (distance, clade)
     return distance_matrix
 
 
