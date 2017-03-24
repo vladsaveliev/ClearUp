@@ -157,7 +157,6 @@
               .node()
               .getComputedTextLength() + (ncInterPairSpace+ncIntraPairSpace)*locations.length;
 
-          // TODO: join all annotation 3 elements
           annoX = treeWidth +
               treeLabelSpace +
               maxTextWidth +
@@ -180,7 +179,6 @@
             .append("tspan")
               .attr("fill", "#999")
               .text(function(d) { return ' ' + d.rsid; });
-
           chart.append("g")
               .attr("transform", function(d) { return "translate(" + (topAnnoY-3) + "," + (annoX+4) + ")rotate(90)"; })
             .selectAll(".loc")
@@ -191,7 +189,6 @@
             .append("tspan")
               .attr("fill", "#999")
               .text(function(d) { return d.index; });
-
           bottomAnnoY = -5;
           chart.append("g")
               .attr("transform", function(d) { return "translate(" + bottomAnnoY + "," + (annoX+4) + ")rotate(90)"; })

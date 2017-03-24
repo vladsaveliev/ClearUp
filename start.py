@@ -49,11 +49,11 @@ def add_user_call(run_id, sample_id):
         logger.err('Sample with ID=' + str(edit_sample_id) + ' not found')
         return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id))
 
-    fingerprint = sample.fingerprints.filter_by(index=request.form['snpIndex']).first()
-    fingerprint.usercall = request.form['usercall']
+    snp = sample.snps.filter_by(index=request.form['snpIndex']).first()
+    snp.usercall = request.form['usercall']
     db.session.commit()
     return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id,
-                            snpIndex=fingerprint.index))
+                            snpIndex=snp.index))
 
 
 @app.route('/<project_name>/bamfiles/<bam_fname>/')
@@ -88,7 +88,6 @@ def homepage():
             'samples': [{
                 'id': s.id,
                 'name': s.name,
-                # 'fingerprint': s.fingerprint,
             } for s in p.samples]
         } for p in projects],
     )

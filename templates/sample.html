@@ -100,10 +100,10 @@
                     </td>
                 {% endfor %}
             </tr>
-            <tr class="table_variant penalty_row">
-                <td class=abSmall>Penalties&nbsp;</td>
+            <tr class="table_variant penaltyrow">
+                <td class=abSmall>Penalty&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="hom_match scorerow bottomrow cell {{ snp_record.class }}"
+                    <td class="hom_match scorerow cell {{ snp_record.class }}"
                            id="{{ snp_record.index }}_penalty"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
@@ -111,14 +111,25 @@
                     </td>
                 {% endfor %}
             </tr>
-            <tr class="table_variant">
-                <td class="abSmall depth_row" style="text-align: right; padding-top: 3px;">Depth&nbsp;</td>
+            <tr class="table_variant depthrow">
+                <td class="abSmall depthrow" style="text-align: right; padding-top: 2px;">Depth&nbsp;A&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="cell depth_row"
+                    <td class="cell depthrow"
                            id="{{ snp_record.index }}_depth"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
-                        {{ snp_record.depth }}<span style="color: gray;">x</span>
+                        {{ snp_record.depthA }}<span style="color: gray;">x</span>
+                    </td>
+                {% endfor %}
+            </tr>
+            <tr class="table_variant depthrow">
+                <td class="abSmall depthrow" style="text-align: right; padding-top: 1px;">Depth&nbsp;B&nbsp;</td>
+                {% for snp_record in snp_records %}
+                    <td class="cell depthrow"
+                           id="{{ snp_record.index }}_depth"
+                        chrom="{{ snp_record.chrom }}"
+                          pos="{{ snp_record.pos }}">
+                        {{ snp_record.depthB }}<span style="color: gray;">x</span>
                     </td>
                 {% endfor %}
             </tr>
@@ -199,7 +210,7 @@
         showIGV(loc[0], loc[1]);
     });
 
-    $('.index_row .cell, .penalty_row .cell').on("click", function() {
+    $('.index_row .cell, .penaltyrow .cell').on("click", function() {
         var loc = selectCell($(this));
         showIGV(loc[0], loc[1]);
     });
@@ -214,10 +225,10 @@
             e = e || window.event;
             var newIdx = -1;
             if (e.keyCode == '38') {       // up arrow
-                newIdx = selectedIdx - 41;
+                newIdx = selectedIdx - 40;
             }
             else if (e.keyCode == '40') {  // down arrow
-                newIdx = selectedIdx + 41;
+                newIdx = selectedIdx + 40;
             }
             else if (e.keyCode == '37') {  // left arrow
                 newIdx = selectedIdx - 1;
@@ -225,7 +236,7 @@
             else if (e.keyCode == '39') {  // right arrow
                 newIdx = selectedIdx + 1;
             }
-            if (newIdx > 0 && newIdx <= 244) {
+            if (newIdx > 0 && newIdx <= {{ total_snps }}) {
                 selectedIdx = newIdx;
                 var loc = selectCell($("#" + selectedIdx + "_idx"));
                 showIGV(loc[0], loc[1]);

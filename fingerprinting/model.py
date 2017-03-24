@@ -143,7 +143,6 @@ class Run(db.Model):
         parallel_cfg = ParallelCfg(threads=sys_cfg.get('threads'))
         samples = [s for p in projects for s in p.samples]
         snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
-        # TODO: run vardict interactively
         fasta_file, vcf_by_sample, sex_by_sample = genotype(
             [BaseSample(s.long_name(), bam=s.bam) for s in samples],
             snps_left_to_call_file, parallel_cfg, output_dir=run.work_dir,

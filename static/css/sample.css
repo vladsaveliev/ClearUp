@@ -273,21 +273,18 @@ table.samplePair td.sampleIntoTd {
 }
 
 table.sampleInfo {
-	margin-left: 30px;
+	margin-left: 10px;
 	margin-bottom: 0;
 }
-
 td.sampleInfoName, td.sampleInfoValue, td.sampleInfoValueB  {
 	padding-top: 3px;
 	padding-bottom: 3px;
     white-space: nowrap;
 }
-
 td.sampleInfoValue {
 	text-align: left;
 	font-weight: bold;
 }
-
 td.sampleInfoValueB  {
 	text-align: center;
 	padding-left: 10px;
@@ -353,7 +350,7 @@ td.scoreValue  {
 
 /* Main table */
 table.match {
-	margin-top: 25px;
+	margin-top: 15px;
 	border-collapse: collapse;
     border-spacing: 0;
     max-width: 1000px;
@@ -374,7 +371,7 @@ table.match td.cell {
     min-width: 14px;
     max-width: 14px;
     text-align: center;
-	padding: 2px 2px 2px 2px;
+	padding: 1px 2px 1px 2px;
 }
 td.toprow, td.bottomrow, td.scorerow, td.snpIndex {
 	font-size: 11px;
@@ -384,15 +381,20 @@ td.snpIndex {
 	text-align: center;
 	font-size: 8px;
     border-top: 1px solid white;
+    padding-bottom: 0 !important;
 }
 td.scorerow  {
 	text-align: center;
     border-bottom: 1px solid white;
 }
-td.depth_row {
+td.depthrow {
 	text-align: center;
 	font-size: 8px;
 }
+tr.penaltyrow td {
+    padding-top: 0 !important;
+}
+
 .usercall_input {
     width: 13px;
     padding: 0;
@@ -403,21 +405,21 @@ td.selectedIdxCell {
     border-left: 1px solid black;
     border-right: 1px solid black;
     /*padding-top: 1px !important;*/
-    padding-left: 1px !important;
-    padding-right: 1px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 td.selectedInnerCell {
     border-left: 1px solid black;
     border-right: 1px solid black;
-    padding-left: 1px !important;
-    padding-right: 1px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 td.selectedPenaltyCell {
     border-left: 1px solid black;
     border-right: 1px solid black;
     border-bottom: 1px solid black;
-    padding-left: 1px !important;
-    padding-right: 1px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     /*padding-bottom: 1px !important;*/
 }
 
@@ -440,39 +442,34 @@ td.quality_E, td.quality_F, td.usercall  {
 
 
 /* Match Value */
-td.hom_match, td.het_match, td.match
-{
+td.hom_match, td.het_match, td.match {
 	background: #44cd40;
 }
 
-td.het_mismatch
-{
+td.het_mismatch {
 	background: #FFDD00;
 }
 
-td.hom_mismatch
-{
+td.hom_mismatch {
 	background: #EE0000;
 }
 
-td.nocall
-{
+td.nocall {
 	background: #EEEEEE;
 }
 
 
-
 /* Legend */
 table.legend {
-	margin-top: 25px;
-	border: 0px solid #888888;
+	margin-top: 15px;
+	border: 0 solid #888888;
 	border-collapse: collapse;
 }
 
 table.legend td.legendHeader {
 	font-weight: bold;
     padding-left: 0;
-	border-bottom: 0px solid #888888;
+	border-bottom: 0 solid #888888;
 }
 
 table.legend td.thirdcol {

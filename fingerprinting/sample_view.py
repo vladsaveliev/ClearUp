@@ -55,7 +55,7 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
     snp_records = []
     for snp_a, snp_b in zip(sample.snps, matching_sample.snps):
         snp_records.append(get_snp_record(snps_dict, snp_a, snp_b))
-        if snp_a.index % 41 == 0:
+        if snp_a.index % 40 == 0:
             snp_tables.append(snp_records)
             snp_records = []
     snp_tables.append(snp_records)
@@ -85,6 +85,7 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
         snp_tables=snp_tables,
         snps_bed=snps_bed,
         selected_idx=selected_idx or "null",
+        total_snps=sum([len(snps) for snps in snp_tables])
     )
     return t
 
