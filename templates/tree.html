@@ -42,19 +42,15 @@
 
         var numSamples = {{ samples_count }};
 
-        var minTreeWidth = 600,
-            minTreeHeight = 300,
-            minSvgWigth = 960,
-            sampleHeight = 18,
-            sampleWidth = 5,
+        var sampleHeight = 17,
             topAnnoHeight = 70,
             bottomAnnoHeight = 70;
-
-        var treeWidth = d3.max([numSamples * sampleWidth, minTreeWidth]) / 2,
+            
+        var treeWidth = numSamples * 15,
             height = numSamples * sampleHeight,
-            svgWidth = d3.max([treeWidth * 2, minSvgWigth]),
+            svgWidth = treeWidth,
             svgHeight = height + topAnnoHeight;
-
+            
         var cluster = d3.cluster()
             .size([height, treeWidth])
             .separation(function(a, b) { return 1; });

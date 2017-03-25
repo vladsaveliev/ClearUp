@@ -89,3 +89,4 @@ data
 *.bam
 
 fingerprinting/version.py
+fingerprinting/snps/evaluation
