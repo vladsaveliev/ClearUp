@@ -42,17 +42,13 @@
 
         var numSamples = {{ samples_count }};
 
-        var minTreeWidth = 600,
-            minTreeHeight = 300,
-            minSvgWigth = 960,
-            sampleHeight = 18,
-            sampleWidth = 5,
+        var sampleHeight = 17,
             topAnnoHeight = 70,
             bottomAnnoHeight = 70;
-
-        var treeWidth = d3.max([numSamples * sampleWidth, minTreeWidth]) / 2,
+            
+        var treeWidth = numSamples * 15,
             height = numSamples * sampleHeight,
-            svgWidth = d3.max([treeWidth * 2, minSvgWigth]),
+            svgWidth = treeWidth,
             svgHeight = height + topAnnoHeight;
 
         var cluster = d3.cluster()
@@ -103,7 +99,7 @@
               .attr("stroke", function(d) { return d.target.color; });
 
           var treeLabelSpace = 8,
-              sampleSeqSpace = 20,
+              sampleSeqSpace = 17,
               genderSpace = 15,
               ncInterPairSpace = 2,
               ncIntraPairSpace = -1;
@@ -140,22 +136,52 @@
               .node()
               .getComputedTextLength();
 
+       // var seqWidth = chart.selectAll(".leaf")
+       //   .append("text")
+       //     .attr("dy", 3)
+       //     .attr("x", function() { return maxTextWidth + genderSpace + genderWidth + sampleSeqSpace; })
+       //     .attr("class", "seq")
+       //     .each(function(d, i) {
+       //       d3.select(this)
+       //         .selectAll(".nuc")
+       //           .data(getSample(d.data.name).seq)
+       //         .enter().append("tspan")
+       //           .attr("dx", function(_, i) { return (i%2 == 0) ? ncInterPairSpace : ncIntraPairSpace; })
+       //           // .attr("class", function(d) { return d.toLowerCase(); })
+       //           .text(function(d) { return d[0]; })
+       //         .node()
+       //         .getBBox();
+       //     })
+       //     .node()
+       //     .getComputedTextLength() + (ncInterPairSpace+ncIntraPairSpace)*locations.length;
+       // locWidth = (seqWidth)/locations.length;
+          var seqX = maxTextWidth + genderSpace + genderWidth + sampleSeqSpace,
+              locWidth = 7;
           var seqWidth = chart.selectAll(".leaf")
-            .append("text")
-              .attr("dy", 3)
-              .attr("x", function() { return maxTextWidth + genderSpace + genderWidth + sampleSeqSpace; })
+            .append("g")
+              .attr("x", function() { return seqX; })
               .attr("class", "seq")
               .each(function(d, i) {
-                d3.select(this)
-                  .selectAll(".nuc")
-                    .data(getSample(d.data.name).seq)
-                  .enter().append("tspan")
-                    .attr("dx", function(_, i) { return (i%2 == 0) ? ncInterPairSpace : ncIntraPairSpace; })
+                var nucEl = d3.select(this).selectAll(".nucRect")
+                    .data(getSample(d.data.name).snps)
+                  .enter().append("g")
+                    .attr("transform", function(_, i) { return "translate(" + (seqX + i*locWidth) + "," + -4 + ")"; });
+                nucEl.append("rect")
+                    .attr("y", -5)
+                    .attr("width", locWidth)
+                    .attr("height", sampleHeight)
                     .attr("class", function(d) { return d.toLowerCase(); })
-                    .text(function(d) { return d[0]; })
+                nucEl.append("text")
+                    .attr("x", 1)
+                    .attr("y", 3)
+                    .text(function(d) { return d[0]; });
+                nucEl.append("text")
+                    .attr("x", 1)
+                    .attr("y", 9)
+                    .text(function(d) { return d[1]; });
               })
               .node()
-              .getComputedTextLength() + (ncInterPairSpace+ncIntraPairSpace)*locations.length;
+              .getBBox().width + (ncInterPairSpace+ncIntraPairSpace)*locations.length;
 
           annoX = treeWidth +
               treeLabelSpace +
@@ -164,10 +190,9 @@
               genderWidth +
               sampleSeqSpace;
           topAnnoY = svgHeight;
-          locWidth = (seqWidth)/locations.length;
-          indexHeight = 8;
+          indexHeight = 12;
           chart.append("g")
-              .attr("transform", function(d) { return "translate(" + (topAnnoY+indexHeight) + "," + (annoX+10) + ")rotate(90)"; })
+              .attr("transform", function(d) { return "translate(" + (topAnnoY+indexHeight) + "," + (annoX+5) + ")rotate(90)"; })
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
@@ -180,18 +205,18 @@
               .attr("fill", "#999")
               .text(function(d) { return ' ' + d.rsid; });
           chart.append("g")
-              .attr("transform", function(d) { return "translate(" + (topAnnoY-3) + "," + (annoX+4) + ")rotate(90)"; })
+              .attr("transform", function(d) { return "translate(" + (topAnnoY-3) + "," + (annoX+5.5) + ")rotate(90)"; })
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
-              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")"; })  
+              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")rotate(-90)"; })  
               .attr("class", "loc_index")
             .append("tspan")
               .attr("fill", "#999")
               .text(function(d) { return d.index; });
           bottomAnnoY = -5;
           chart.append("g")
-              .attr("transform", function(d) { return "translate(" + bottomAnnoY + "," + (annoX+4) + ")rotate(90)"; })
+              .attr("transform", function(d) { return "translate(" + bottomAnnoY + "," + (annoX) + ")rotate(90)"; })
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")

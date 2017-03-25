@@ -19,18 +19,6 @@
 
 .leaf text {
   font: 10px sans-serif; }
-.leaf text.seq {
-  font: 10px "Lucida Console", Monaco, monospace; }
-  .leaf text.seq .c {
-    fill: #007a00; }
-  .leaf text.seq .a {
-    fill: #002aba; }
-  .leaf text.seq .t {
-    fill: #970035; }
-  .leaf text.seq .g {
-    fill: #eecf00; }
-  .leaf text.seq .n {
-    fill: #b2b2b2; }
 .leaf a {
   text-decoration: underline; }
 .leaf a:visited {
@@ -44,6 +32,30 @@
   fill: #2c78ba; }
 .leaf .gender_f {
   fill: #ba5484; }
+.leaf .seq text {
+  font: 8px "Lucida Console", Monaco, monospace; }
+.leaf .seq .ac {
+  fill: #fdbf6f; }
+.leaf .seq .ag {
+  fill: #ffff99; }
+.leaf .seq .at {
+  fill: #b2df8a; }
+.leaf .seq .cg {
+  fill: #cab2d6; }
+.leaf .seq .ct {
+  fill: #fb9a99; }
+.leaf .seq .gt {
+  fill: #a6cee3; }
+.leaf .seq .cc {
+  fill: #e34b4a; }
+.leaf .seq .aa {
+  fill: #1f78b4; }
+.leaf .seq .tt {
+  fill: #33a02c; }
+.leaf .seq .gg {
+  fill: #ff7f00; }
+.leaf .seq .nn {
+  fill: #b2b2b2; }
 
 .loc_anno {
   font: 8px sans-serif; }

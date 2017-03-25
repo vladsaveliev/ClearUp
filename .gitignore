@@ -86,6 +86,6 @@ celerybeat-schedule
 .idea
 venv_*
 data
-*.bam
+fingerprinting/snps/evaluation
 
 fingerprinting/version.py

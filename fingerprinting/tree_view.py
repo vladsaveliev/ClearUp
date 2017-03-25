@@ -116,6 +116,7 @@ def render_phylo_tree_page(run_id):
                 'name': s.name,
                 'id': s.id,
                 'sex': s.sex,
+                'snps': [snp.genotype for snp in s.snps],
                 'seq': [nt for nt in seq_by_id[s.name + FASTA_ID_PROJECT_SEPARATOR + p.name]],
             }
     all_samples_count = sum(len(p.samples.all()) for p in run.projects)
