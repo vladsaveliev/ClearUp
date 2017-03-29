@@ -17,7 +17,7 @@ db = SQLAlchemy(app)
 
 if is_us():
     HOST_IP = '172.18.72.171'
-    PORT = 5001
+    PORT = 5002
 else:
     HOST_IP = 'localhost'
     PORT = 5003
