@@ -3,21 +3,18 @@ import os
 import re
 import subprocess
 import time
-
+from os.path import abspath, join, dirname, splitext, basename
 from collections import defaultdict
 
 from Bio import Phylo
-from os.path import abspath, join, dirname, splitext, basename
 from flask import Flask, render_template, send_from_directory, abort, redirect, send_file
 from flask import Response, request
 
 from ngs_utils import logger as log
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 
-from fingerprinting import config
 from fingerprinting.model import Project, db, Sample, Run
 from fingerprinting.lookups import get_snp_record, get_sample_by_name
-
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, calculate_distance_matrix
 
 
@@ -46,8 +43,8 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
         abort(404, {'message': 'Sample ' + sample_id + ' not found in ' + run_id})
     matching_sample = _find_closest_match(sample, run)
     if not matching_sample:
-        log.err('No matching sample for ' + sample.name)
-        abort(404, {'message': 'No matching sample for ' + sample.name})
+        log.err('No matching sample for ' + sample.long_name())
+        abort(404, {'message': 'No matching sample for ' + sample.long_name()})
     snps_dict = defaultdict(int)
     # snps_dict['total_score'] = 0
     # snps_dict['confidence'] = 'Low'
@@ -60,8 +57,8 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
             snp_records = []
     snp_tables.append(snp_records)
 
-    bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample.name + '.bam')
-    bam_fpath_b = '/%s/bamfiles/%s' % (matching_sample.project.name, matching_sample.name + '.bam')
+    bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample.long_name() + '.bam')
+    bam_fpath_b = '/%s/bamfiles/%s' % (matching_sample.project.name, matching_sample.long_name() + '.bam')
     snps_bed = '/snps/snps_bed'
     sample_a = {
         'id': sample.id,

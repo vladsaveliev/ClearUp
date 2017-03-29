@@ -19,6 +19,7 @@ from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adj
 from ngs_utils.logger import info, err, critical, debug
 from ngs_utils.sambamba import index_bam
 from ngs_reporting.coverage import get_gender, determine_sex
+
 import az
 
 from fingerprinting.utils import is_sex_chrom
@@ -27,16 +28,15 @@ from fingerprinting.utils import is_sex_chrom
 DEPTH_CUTOFF = 5
 
 
-def genotype(samples, snp_bed, parallel_cfg, output_dir, work_dir, genome_build,
+def genotype(samples, snp_bed, parall_view, output_dir, work_dir, genome_build,
              depth_cutoff=DEPTH_CUTOFF):
     autosomal_bed, sex_bed = _split_bed(snp_bed, work_dir)
     
     genome_cfg = az.get_refdata(genome_build)
     info('** Running VarDict ** ')
-    with parallel_view(len(samples), parallel_cfg, work_dir) as view:
-        vcfs = view.run(_vardict_pileup_sample,
-            [[s, safe_mkdir(join(output_dir, 'vcf')), genome_cfg, view.cores_per_job, autosomal_bed]
-             for s in samples])
+    vcfs = parall_view.run(_vardict_pileup_sample,
+        [[s, safe_mkdir(join(output_dir, 'vcf')), genome_cfg, parall_view.cores_per_job, autosomal_bed]
+         for s in samples])
     vcf_by_sample = OrderedDict(zip([s.name for s in samples], vcfs))
     info('** Finished running VarDict **')
     
@@ -106,8 +106,9 @@ def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
                         output_dir=None, work_dir=None):
     output_dir = output_dir or safe_mkdir(join(proj.date_dir, 'fingerprints'))
     work_dir = work_dir or safe_mkdir(proj.work_dir)
-    return genotype(proj.samples, snp_bed, parallel_cfg, output_dir, work_dir,
-                    proj.genome_build, depth_cutoff=depth_cutoff)
+    with parallel_view(len(proj.samples), parallel_cfg, work_dir) as parall_view:
+        return genotype(proj.samples, snp_bed, parall_view, output_dir, work_dir,
+                        proj.genome_build, depth_cutoff=depth_cutoff)
 
 
 def _split_bed(bed_file, work_dir):

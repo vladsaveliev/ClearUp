@@ -2,29 +2,27 @@
 import os
 from collections import defaultdict
 from os.path import join, abspath
+
+from flask import Flask
 from flask_script import Manager
 from sqlalchemy.exc import OperationalError
 
-from ngs_utils.utils import is_local
-from start import app
-
 import ngs_utils.logger as log
+from ngs_utils.utils import is_local
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
 from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run
-from fingerprinting.utils import load_bam_file, get_snps_by_type
+from fingerprinting import app
 
 manager = Manager(app)
 
 
 @manager.command
-def load_project(bcbio_dir, project_name, genome, panel_type):
+def load_project(bcbio_dir, project_name):
     log.init(is_debug_=True)
-    
-    get_snps_by_type(panel_type)  # Just to verify the type correctness
 
     log.info('-' * 70)
-    log.info('Loading project ' + project_name + ' into the fingerprints database with SNPs ' + panel_type)
+    log.info('Loading project ' + project_name + ' into the fingerprints database')
     log.info('-' * 70)
     log.info()
 
@@ -38,8 +36,8 @@ def load_project(bcbio_dir, project_name, genome, panel_type):
     fp_proj = Project(
         name=bcbio_proj.project_name,
         bcbio_final_path=bcbio_proj.final_dir,
-        genome=genome,
-        panel_type=panel_type)
+        genome=bcbio_proj.genome_build,
+        panel=bcbio_proj.coverage_bed)
     db.session.add(fp_proj)
     for s in bcbio_proj.samples:
         db_sample = Sample(s.name, fp_proj, s.bam)
@@ -68,10 +66,11 @@ def init_db():
 @manager.command
 def reload_all_data():
     if is_local():
+        db.init_app(app)
         db.drop_all()
         db.create_all()
-        load_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle', 'hg19', 'idt')
-        load_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy', 'hg19', 'idt')
+        load_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle')
+        load_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
 
 
 if __name__ == "__main__":

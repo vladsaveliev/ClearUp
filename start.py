@@ -1,23 +1,18 @@
 #!/usr/bin/env python
 
 from os.path import abspath, join, dirname, splitext, basename
+
+from fingerprinting import app, DATA_DIR, HOST_IP, PORT
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
 
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 
-from fingerprinting import config
-from fingerprinting.model import Project, db, Sample
+from fingerprinting.model import db, Sample, Project
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
 
 from ngs_utils import logger
-
-
-app = Flask(__name__)
-# import flask_assets
-# assets = flask_assets.Environment()
-# assets.init_app(app)
 
 
 @app.route('/favicon.ico/')
@@ -58,7 +53,7 @@ def add_user_call(run_id, sample_id):
 
 @app.route('/<project_name>/bamfiles/<bam_fname>/')
 def bam_files_page(project_name, bam_fname):
-    return send_file_for_igv(join(config.DATA_DIR, project_name, 'bams', bam_fname))
+    return send_file_for_igv(join(DATA_DIR, project_name, 'bams', bam_fname))
 
 
 @app.route('/snps/snps_bed/')
@@ -109,6 +104,6 @@ if __name__ == "__main__":
         # wb = webbrowser.get(None)  # instead of None, can be "firefox" etc
         # threading.Timer(1.25, lambda: wb.open(url)).start()
 
-    http_server = WSGIServer((config.HOST_IP, config.PORT), app, handler_class=WebSocketHandler)
-    logger.info('Starting a webserver at ' + config.HOST_IP + ':' + str(config.PORT))
+    http_server = WSGIServer((HOST_IP, PORT), app, handler_class=WebSocketHandler)
+    logger.info('Starting a webserver at ' + HOST_IP + ':' + str(PORT))
     http_server.serve_forever()

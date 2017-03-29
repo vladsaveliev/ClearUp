@@ -7,10 +7,12 @@ import os
 from os.path import isfile
 
 from Bio import SeqIO
+from pybedtools import BedTool
+
 from ngs_utils.call_process import run
 from os.path import join, dirname
 
-from ngs_utils.file_utils import verify_file, safe_mkdir, file_transaction, which
+from ngs_utils.file_utils import verify_file, safe_mkdir, file_transaction, which, can_reuse
 import ngs_utils.logger as log
 
 
@@ -26,33 +28,17 @@ def read_fasta(fasta_fpath):
     return seq_by_id
 
 
-def load_bam_file(bam_fpath, bams_dir, sample_name):
-    """ Assuming the BAM files are sliced to fingerprint locations
+def load_bam_file(bam_file, bams_dir, snp_bed, sample_name):
+    """ Slicing to fingerprints locations
     """
-    # TODO: slice BAM here
-    bam_index_fpath = bam_fpath + '.bai'
-    if not verify_file(bam_index_fpath):
-        log.critical('BAM index file not found in ' + bam_index_fpath)
-    bam_copy_fpath = join(bams_dir, sample_name + '.bam')
-    bam_index_copy_fpath = bam_copy_fpath + '.bai'
-    shutil.copy(bam_fpath, bam_copy_fpath)
-    shutil.copy(bam_index_fpath, bam_index_copy_fpath)
-    return bam_copy_fpath
-
-
-BED_BY_TYPE = {
-    'idt': 'idt_snps.bed',
-    'exome': None,
-    'wgs': None,
-}
-def get_snps_by_type(panel_type):
-    snps_fname = BED_BY_TYPE.get(panel_type)
-    if not panel_type:
-        log.critical('SNPs for panel type ' + panel_type + ' is not defined')
-    return get_snps_file(snps_fname)
-
-def get_snps_file(fname):
-    return verify_file(join(dirname(__file__), 'snps', fname), is_critical=True)
+    bam_index_file = bam_file + '.bai'
+    if not verify_file(bam_index_file):
+        log.critical('BAM index file not found in ' + bam_index_file)
+    sliced_bam_file = join(bams_dir, sample_name + '.bam')
+    if not can_reuse(sliced_bam_file, [bam_file, snp_bed]):
+        cmdl = 'sambamba view {bam_file} -L {snp_bed} -f bam -o {sliced_bam_file}'.format(**locals())
+        run(cmdl, output_fpath=sliced_bam_file, stdout_to_outputfile=False)
+    return sliced_bam_file
 
 
 def get_sample_and_project_name(name, fingerprint_project=None):
@@ -79,5 +65,5 @@ def calculate_distance_matrix(tree):
 
 
 def is_sex_chrom(chrom):
-    # type: (object) -> object
     return chrom in ['X', 'Y', 'chrX', 'chrY']
+

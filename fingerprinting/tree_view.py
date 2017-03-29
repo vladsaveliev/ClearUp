@@ -20,18 +20,13 @@ from ngs_utils.bed_utils import Region
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse, verify_file
 from ngs_utils.file_utils import can_reuse, safe_mkdir
 
-from fingerprinting import config
 from fingerprinting.model import Project, db, Sample, Run, get_or_create_run
-from fingerprinting.utils import read_fasta, get_sample_and_project_name, \
-    FASTA_ID_PROJECT_SEPARATOR, calculate_distance_matrix
-from fingerprinting.lookups import get_snp_record, get_sample_by_name
+from fingerprinting.utils import read_fasta, FASTA_ID_PROJECT_SEPARATOR
 
 suffix = 'lnx' if 'linux' in platform else 'osx'
 prank_bin = join(dirname(__file__), 'prank', 'prank_' + suffix, 'bin', 'prank')
 
 
-# PROJ_COLORS = ['#000000', '#90ed7d', '#f7a35c', '#8085e9', '#f15c80',
-#                '#e4d354', '#2b908f', '#f45b5b', '#91e8e1', '#7cb5ec']
 PROJ_COLORS = [
     '#000000',
     '#1f78b4',

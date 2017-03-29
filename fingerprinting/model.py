@@ -1,31 +1,25 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
 from copy import copy
-
-import os
-
-from Bio import SeqIO
-from ngs_reporting.bcbio.bcbio import BcbioSample
 from os.path import abspath, join, dirname, splitext, basename
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+
+from Bio import SeqIO
 from pybedtools import BedTool
 import vcf
 
-from fingerprinting import config
-from fingerprinting.genotype import genotype_bcbio_proj, genotype, vcfrec_to_seq, DEPTH_CUTOFF
-from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, get_snps_by_type, load_bam_file
 from ngs_utils.Sample import BaseSample
 from ngs_utils.file_utils import safe_mkdir, can_reuse, file_transaction
 from ngs_utils.logger import info, debug, err
-from ngs_utils.parallel import ParallelCfg
+from ngs_utils.parallel import ParallelCfg, parallel_view
 import az
 
-app = Flask(__name__)
-db_path = join(config.DATA_DIR, 'projects.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + db_path
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
+from fingerprinting.panel import build_snps_panel
+from fingerprinting.genotype import genotype_bcbio_proj, genotype, vcfrec_to_seq, DEPTH_CUTOFF
+from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
+from fingerprinting import app, db, DATA_DIR
 
 run_to_project_assoc_table = db.Table(
     'run_to_project_association', db.Model.metadata,
@@ -110,17 +104,17 @@ class Run(db.Model):
     projects = db.relationship("Project", secondary=run_to_project_assoc_table,
                                backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
     
-    def __init__(self, run_id):
-        self.id = run_id
+    def __init__(self, project_names):
+        self.id = ','.join(project_names)
         self.snps_file = None
-        self.work_dir = None
+        self.work_dir = safe_mkdir(join(DATA_DIR, '__AND__'.join(project_names)))
         self.fasta_file = None
         self.tree_file = None
         
     @staticmethod
     def create(projects):
         project_names = sorted([p.name for p in projects])
-        run = Run(run_id=','.join(project_names))
+        run = Run(project_names)
         db.session.add(run)
         for p in projects:
             run.projects.append(p)
@@ -129,29 +123,34 @@ class Run(db.Model):
         assert len(set(genome_builds)) == 1, 'Error: different genome builds in projects'
         genome_build = genome_builds[0]
         
-        panel_types = [p.panel_type for p in projects]
-        if len(set(panel_types)) > 1:
-            raise NotImplementedError('Multiple panel types are not yet supported')
-        panel_type = panel_types[0]
-        run.snps_file = get_snps_by_type(panel_type)
-        locations = run._extract_locations_from_file(run.snps_file)
+        # panel_types = [p.panel_type for p in projects]
+        # if len(set(panel_types)) > 1:
+        #     raise NotImplementedError('Multiple panel types are not yet supported')
+        # panel_type = panel_types[0]
+        # run.snps_file = get_snps_by_type(panel_type)
+        snps_dir = safe_mkdir(join(run.work_dir, 'snps'))
+        run.snps_file = build_snps_panel(bed_files=[p.panel for p in projects if p.panel],
+                                         output_dir=snps_dir, genome_build=genome_build)
+        locations = extract_locations_from_file(run.snps_file)
+        for loc in locations:
+            db.session.add(loc)
         location_by_rsid = {l.rsid: l for l in locations}
     
         info('Genotyping')
-        run.work_dir = safe_mkdir(join(config.DATA_DIR, '__AND__'.join(project_names)))
         sys_cfg = az.init_sys_cfg()
         parallel_cfg = ParallelCfg(threads=sys_cfg.get('threads'))
         samples = [s for p in projects for s in p.samples]
-        snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
-        fasta_file, vcf_by_sample, sex_by_sample = genotype(
-            [BaseSample(s.long_name(), bam=s.bam) for s in samples],
-            snps_left_to_call_file, parallel_cfg, output_dir=run.work_dir,
-            work_dir=safe_mkdir(join(run.work_dir, 'genotyping')), genome_build=genome_build)
-    
-        info('Loading BAMs sliced to fingerprints')
-        for s in samples:
-            load_bam_file(s.bam, safe_mkdir(join(run.work_dir, 'bams')), s.long_name())
-    
+        with parallel_view(len(samples), parallel_cfg, run.work_dir) as view:
+            snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
+            fasta_file, vcf_by_sample, sex_by_sample = genotype(
+                [BaseSample(s.long_name(), bam=s.bam) for s in samples],
+                snps_left_to_call_file, view, output_dir=run.work_dir,
+                work_dir=safe_mkdir(join(run.work_dir, 'genotyping')), genome_build=genome_build)
+            info('Loading BAMs sliced to fingerprints')
+            view.run(load_bam_file,
+                [[s.bam, safe_mkdir(join(run.work_dir, 'bams')), run.snps_file, s.long_name()]
+                 for s in samples])
+        
         info('Loading called SNPs into the DB')
         for s in samples:
             if s.sex:
@@ -186,22 +185,6 @@ class Run(db.Model):
         run.tree_file = join(run.work_dir, splitext(basename(run.fasta_file))[0]) + '.newick'
         db.session.commit()
         return run
-    
-    @staticmethod
-    def _extract_locations_from_file(snps_file):
-        locs = []
-        for i, interval in enumerate(BedTool(snps_file)):
-            pos = int(interval.start) + 1
-            rsid, gene = interval.name.split('|')
-            loc = Location(
-                rsid=rsid,
-                index=i + 1,
-                chrom=interval.chrom,
-                pos=pos,
-                gene=gene)
-            db.session.add(loc)
-            locs.append(loc)
-        return locs
 
 
 def get_or_create_run(run_id):
@@ -255,14 +238,14 @@ class Project(db.Model):
 
     bcbio_final_path = db.Column(db.String)
     bed_fpath = db.Column(db.String)
-    panel_type = db.Column(db.String)
+    panel = db.Column(db.String)
     genome = db.Column(db.String(20))
     
-    def __init__(self, name, bcbio_final_path, genome, panel_type):
+    def __init__(self, name, bcbio_final_path, genome, panel):
         self.name = name
         self.bcbio_final_path = bcbio_final_path
         self.genome = genome
-        self.panel_type = panel_type
+        self.panel = panel
         self.date = None
         self.region = None
 
@@ -290,6 +273,21 @@ class Sample(db.Model):
 
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
+
+
+def extract_locations_from_file(snps_file):
+    locs = []
+    for i, interval in enumerate(BedTool(snps_file)):
+        pos = int(interval.start) + 1
+        rsid, gene = interval.name.split('|')
+        loc = Location(
+            rsid=rsid,
+            index=i + 1,
+            chrom=interval.chrom,
+            pos=pos,
+            gene=gene)
+        locs.append(loc)
+    return locs
 
 
 if __name__ == '__main__':

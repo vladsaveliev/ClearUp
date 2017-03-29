@@ -1,0 +1,65 @@
+{% extends "_base.html" %}
+
+{% block head %}
+        <title>Fingerprints</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='table_sorter/style.css') }}">
+{% endblock %}
+
+{% block body %}
+        <p style="font-size: 1.5em;">
+            <span style="font-weight: bold;">AZ projects with pre-computed fingerprints</span>
+        </p>
+
+        <button type="button" class="btn disabled" id="run_btn" style="margin: 20px 0">Fingerprint selected projects</button>
+
+        <table cellspacing="0" class="report_table tableSorter" id="projects_list_table">
+            <thead>
+                <tr>
+                    <th>Project</th>
+                    <th>Location</th>
+                    <th>Genome</th>
+                    <th># samples</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for project in projects %}
+                <tr project_name="{{ project.name }}">
+                    <td>{{ project.name }}</td>
+                    <td>{{ project.bcbio_final_path }}</td>
+                    <td>{{ project.genome }}</td>
+                    <td>{{ project.samples|count }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+{% endblock %}
+
+{% block js %}
+        <script>
+            $(document).ready(function() {
+                var tbody = $('#projects_list_table').find('tbody');
+                var btn = $('#run_btn');
+
+                btn.click(function () {
+                    var projectNames = [];
+                    tbody.find('tr.selected').each(function() {
+                        projectNames.push($(this).attr('project_name'));
+                    });
+                    var runId = projectNames.join();
+                    location.href = "/" + runId + "/tree";
+                });
+
+                tbody.on('click', 'tr', function () {
+                    $(this).toggleClass('selected');
+                    var selected = tbody.find('tr.selected');
+                    if (selected.size() == 0) {
+                        btn.addClass('disabled');
+                    } else {
+                        btn.removeClass('disabled');
+                    }
+                });
+            });
+        </script>
+{% endblock %}
