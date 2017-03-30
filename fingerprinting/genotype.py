@@ -152,13 +152,12 @@ def _vardict_pileup_sample(sample, output_dir, genome_cfg, threads, snp_file):
     run(cmdl, output_fpath=vardict_snp_vars)
     
     # Convert to VCF
-    test_strandbias = join(vardict_dir, 'teststrandbias.R')
-    var2vcf_valid = join(vardict_dir, 'var2vcf_valid.pl')
-    cmdl = ('cut -f-34 {vardict_snp_vars}'
-            ' | {test_strandbias}'
-            ' | {var2vcf_valid}'
-            ' | grep "^#\|TYPE=SNV\|TYPE=REF" '
-            ).format(**locals())
+    cmdl = ('cut -f-34 ' + vardict_snp_vars +
+            ' | awk -F"\\t" -v OFS="\\t" \'{for (i=1;i<=NF;i++) { if ($i=="") $i="." } print $0 }\''
+            ' | ' + join(vardict_dir, 'teststrandbias.R') +
+            ' | ' + join(vardict_dir, 'var2vcf_valid.pl') +
+            # ' | grep "^#\|TYPE=SNV\|TYPE=REF" ' +
+            '')
     run(cmdl, output_fpath=vardict_snp_vars_vcf)
     _fix_vcf(vardict_snp_vars_vcf, ref_file)
     

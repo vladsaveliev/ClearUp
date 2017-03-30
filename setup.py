@@ -64,6 +64,6 @@ if setup_utils.is_installing():
 Usage:
 $ ./genotyper.py bcbio_dir --bed --ref ref --depth 5
 $ ./manage.py init_db
-$ ./manage.py load_project <bcbio_final_path_of_fingerprints_project> <project_name> hg19
+$ ./manage.py load_project <bcbio_final_path_of_fingerprints_project>
 $ ./start.py
 """)

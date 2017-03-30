@@ -8,21 +8,22 @@ from flask_script import Manager
 from sqlalchemy.exc import OperationalError
 
 import ngs_utils.logger as log
+from ngs_utils.file_utils import safe_mkdir
 from ngs_utils.utils import is_local
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
 from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run
-from fingerprinting import app
+from fingerprinting import app, DATA_DIR
 
 manager = Manager(app)
 
 
 @manager.command
-def load_project(bcbio_dir, project_name):
+def load_project(bcbio_dir, project_name=None):
     log.init(is_debug_=True)
 
     log.info('-' * 70)
-    log.info('Loading project ' + project_name + ' into the fingerprints database')
+    log.info('Loading project into the fingerprints database from ' + bcbio_dir)
     log.info('-' * 70)
     log.info()
 
@@ -44,7 +45,7 @@ def load_project(bcbio_dir, project_name):
         db.session.add(db_sample)
         
     log.info('Initializing run for single project')
-    get_or_create_run(project_name)
+    get_or_create_run(bcbio_proj.project_name)
     
     db.session.commit()
     log.info()
@@ -59,6 +60,8 @@ def analyse_projects(run_id):
 
 @manager.command
 def init_db():
+    safe_mkdir(DATA_DIR)
+    db.init_app(app)
     db.drop_all()
     db.create_all()
 
@@ -66,9 +69,7 @@ def init_db():
 @manager.command
 def reload_all_data():
     if is_local():
-        db.init_app(app)
-        db.drop_all()
-        db.create_all()
+        init_db()
         load_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle')
         load_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
 
