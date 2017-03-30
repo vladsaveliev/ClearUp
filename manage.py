@@ -19,7 +19,7 @@ manager = Manager(app)
 
 
 @manager.command
-def load_project(bcbio_dir, project_name=None):
+def load_project(bcbio_dir, name=None):
     log.init(is_debug_=True)
 
     log.info('-' * 70)
@@ -29,7 +29,7 @@ def load_project(bcbio_dir, project_name=None):
 
     log.info('Loading bcbio project from file system at ' + bcbio_dir)
     bcbio_proj = BcbioProject()
-    bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=project_name,
+    bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
         proc_name='fingerprinting', need_coverage_interval=False)
     log.info('Loaded ' + bcbio_proj.final_dir)
     
