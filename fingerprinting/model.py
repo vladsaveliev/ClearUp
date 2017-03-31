@@ -3,6 +3,7 @@
 from copy import copy
 from os.path import abspath, join, dirname, splitext, basename
 
+from cyvcf2 import VCF
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
@@ -143,22 +144,20 @@ class Run(db.Model):
 
         info('Loading called SNPs into the DB')
         for s in samples:
-            with open(vcf_by_sample[s.long_name()]) as vcf_f:
-                vcf_reader = vcf.Reader(vcf_f)
-                recs = [r for r in vcf_reader]
-                for i, rec in enumerate(recs):
-                    loc = location_by_rsid[rec.ID]
-                    assert loc.pos == rec.POS
-                    snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
-                    if snp:
-                        assert snp.depth == rec.samples[0]['DP']
-                        assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
-                    else:
-                        snp = SNP(index=i + 1, location=loc)
-                        snp.depth = rec.samples[0]['DP']
-                        snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
-                        s.snps.append(snp)
-                        db.session.add(snp)
+            recs = [r for r in VCF(vcf_by_sample[s.long_name()])]
+            for i, rec in enumerate(recs):
+                loc = location_by_rsid[rec.ID]
+                assert loc.pos == rec.POS
+                snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
+                if snp:
+                    assert snp.depth == rec.gt_depths[0]
+                    assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
+                else:
+                    snp = SNP(index=i + 1, location=loc)
+                    snp.depth = rec.gt_depths[0]
+                    snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
+                    s.snps.append(snp)
+                    db.session.add(snp)
 
         info('Adding locations into the DB')
         for snp in samples[0].snps:

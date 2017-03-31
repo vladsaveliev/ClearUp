@@ -74,18 +74,17 @@ def vcf_to_ped(vcf_by_sample, ped_file, sex_by_sample, depth_cutoff):
     if can_reuse(ped_file, vcf_by_sample.values()):
         return ped_file
 
+    from cyvcf2 import VCF
     with file_transaction(None, ped_file) as tx:
         with open(tx, 'w') as out_f:
             for sname, vcf_file in vcf_by_sample.items():
-                with open(vcf_file) as vcf_f:
-                    vcf_reader = vcf.Reader(vcf_f)
-                    recs = [r for r in vcf_reader]
-                    sex = {'M': '1', 'F': '2'}.get(sex_by_sample[sname], '0')
-                    out_fields = [sname, sname, '0', '0', sex, '0']
-                    for rec in recs:
-                        gt = vcfrec_to_seq(rec, depth_cutoff).replace('N', '0')
-                        out_fields.extend([gt[0], gt[1]])
-                    out_f.write('\t'.join(out_fields) + '\n')
+                recs = [v for v in VCF(vcf_file)]
+                sex = {'M': '1', 'F': '2'}.get(sex_by_sample[sname], '0')
+                out_fields = [sname, sname, '0', '0', sex, '0']
+                for rec in recs:
+                    gt = vcfrec_to_seq(rec, depth_cutoff).replace('N', '0')
+                    out_fields.extend([gt[0], gt[1]])
+                out_f.write('\t'.join(out_fields) + '\n')
 
     info('PED saved to ' + ped_file)
     return ped_file
@@ -200,7 +199,10 @@ def _annotate_vcf(vcf_file, snp_bed):
     with open(vcf_file) as f, open(annotated_vcf, 'w') as out:
         vcf_reader = vcf.Reader(f)
         vcf_writer = vcf.Writer(out, vcf_reader)
-        vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name', '', '')
+        try:
+            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name', '', '')
+        except TypeError:
+            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name')
         for rec in vcf_reader:
             rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
             rec.ID = rsid_by_snp[(rec.CHROM, rec.POS)]
@@ -232,17 +234,16 @@ def __p(rec):
 
 
 def vcfrec_to_seq(rec, depth_cutoff):
-    var = rec.samples[0]
-
-    depth_failed = rec.INFO['DP'] < depth_cutoff
-    filter_failed = any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
+    called = rec.num_called > 0
+    depth_failed = rec.INFO.get('DP') < depth_cutoff
+    filter_failed = rec.FILTER and any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
     if depth_failed or filter_failed:
-        var.called = False
+        called = False
 
     if is_sex_chrom(rec.CHROM):  # We cannot confidentelly determine sex, and thus determine X heterozygocity,
         gt_bases = ''            # so we can't promise constant fingerprint length across all samples
-    elif var.called:
-        gt_bases = ''.join(sorted(var.gt_bases.split('/')))
+    elif called:
+        gt_bases = ''.join(sorted(rec.gt_bases[0].split('/')))
     else:
         gt_bases = 'NN'
     
@@ -270,11 +271,9 @@ def vcf_to_fasta(sample, vcf_file, fasta_file, depth_cutoff):
     if can_reuse(fasta_file, vcf_file):
         return fasta_file
 
+    from cyvcf2 import VCF
     info('Parsing VCF ' + vcf_file)
-    with open(vcf_file) as f:
-        vcf_reader = vcf.Reader(f)
-        recs = [r for r in vcf_reader]
-
+    recs = [v for v in VCF(vcf_file)]
     with open(fasta_file, 'w') as fhw:
         fhw.write('>' + sample.name + '\n')
         fhw.write(''.join(vcfrec_to_seq(rec, depth_cutoff) for rec in recs) + '\n')

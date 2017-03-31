@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 
 from os.path import abspath, join, dirname, splitext, basename
-
-from fingerprinting import app, DATA_DIR, HOST_IP, PORT
+import logging
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
-
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 
+from ngs_utils import logger
+from fingerprinting import app, DATA_DIR, HOST_IP, PORT
 from fingerprinting.model import db, Sample, Project, Run
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
-
-from ngs_utils import logger
 
 
 @app.route('/favicon.ico/')
@@ -100,6 +98,7 @@ def page_not_found(error):
 
 if __name__ == "__main__":
     logger.init(True, join(dirname(__file__), 'data', 'log.txt'))
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     # app.run(host=config.HOST_IP, debug=config.IS_DEBUG)
 
     # if start_local_browser:
