@@ -117,7 +117,8 @@ class Run(db.Model):
         db.session.add(run)
         for p in projects:
             run.projects.append(p)
-            
+        db.session.commit()
+        
         genome_builds = [p.genome for p in projects]
         assert len(set(genome_builds)) == 1, 'Error: different genome builds in projects'
         genome_build = genome_builds[0]
@@ -128,6 +129,7 @@ class Run(db.Model):
         locations = extract_locations_from_file(run.snps_file)
         for loc in locations:
             db.session.add(loc)
+        db.session.commit()
         location_by_rsid = {l.rsid: l for l in locations}
     
         info('Genotyping')

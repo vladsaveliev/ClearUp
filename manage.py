@@ -35,25 +35,27 @@ def load_project(bcbio_dir, name=None):
     log.info('Loaded ' + bcbio_proj.final_dir)
     log.info()
 
+    log.info('Genotyping sex')
     work_dir = safe_mkdir(join(bcbio_proj.work_dir, 'fingerprinting'))
     with parallel_view(len(bcbio_proj.samples), parallel_cfg, work_dir) as parall_view:
-        log.info('Genotyping sex')
         bcbio_summary_file = bcbio_proj.find_in_log('project-summary.yaml')
         sexes = parall_view.run(_determine_sex, [[s, work_dir, bcbio_summary_file]
                                                  for s in bcbio_proj.samples])
-        log.info()
-        log.info('Loading fingerprints into the DB')
-        fp_proj = Project(
-            name=bcbio_proj.project_name,
-            bcbio_final_path=bcbio_proj.final_dir,
-            genome=bcbio_proj.genome_build,
-            panel=bcbio_proj.coverage_bed)
-        db.session.add(fp_proj)
-        for s, sex in zip(bcbio_proj.samples, sexes):
-            db_sample = Sample(s.name, fp_proj, s.bam, sex=sex)
-            db.session.add(db_sample)
-            
-        log.info('Initializing run for single project')
+    log.info()
+    log.info('Loading fingerprints into the DB')
+    fp_proj = Project(
+        name=bcbio_proj.project_name,
+        bcbio_final_path=bcbio_proj.final_dir,
+        genome=bcbio_proj.genome_build,
+        panel=bcbio_proj.coverage_bed)
+    db.session.add(fp_proj)
+    for s, sex in zip(bcbio_proj.samples, sexes):
+        db_sample = Sample(s.name, fp_proj, s.bam, sex=sex)
+        db.session.add(db_sample)
+    db.session.commit()
+    
+    log.info('Initializing run for single project')
+    with parallel_view(len(bcbio_proj.samples), parallel_cfg, work_dir) as parall_view:
         get_or_create_run(bcbio_proj.project_name, parall_view=parall_view)
     
     db.session.commit()
