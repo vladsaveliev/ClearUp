@@ -65,9 +65,11 @@ def _determine_sex(s, work_dir, bcbio_summary_file=None):
     from ngs_reporting.coverage import get_avg_depth, determine_sex
     from os.path import join
     from ngs_utils.file_utils import safe_mkdir
-    avg_depth = 10
+    avg_depth = None
     if bcbio_summary_file:
         avg_depth = get_avg_depth(bcbio_summary_file, s)
+    if avg_depth is None:
+        avg_depth = 10
     sex = determine_sex(safe_mkdir(join(work_dir, s.name)), s.bam, avg_depth, s.genome_build,
                         target_bed=s.coverage_bed, min_male_size=1)
     return sex
