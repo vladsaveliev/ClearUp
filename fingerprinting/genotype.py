@@ -179,14 +179,10 @@ def _fix_vcf(vardict_snp_vars_vcf, ref_file):
                     l = '\t'.join(fs)
                     l = l.replace('=NA;', '=.;')
                     l = l.replace('=;', '=.;')
-                if not (len(ref) == len(alt) == 1):
-                    warn('Variant is not a SNP: ' + l)
-                else:
+                if (len(ref) == len(alt) == 1):  # SNP (not indel or complex variant)
                     out_f.write(l)
             
-    assert verify_file(vardict_snp_vars_fixed_vcf) and \
-           len(open(vardict_snp_vars_vcf).readlines()) == len(open(vardict_snp_vars_fixed_vcf).readlines()), \
-        vardict_snp_vars_fixed_vcf
+    assert verify_file(vardict_snp_vars_fixed_vcf)
     os.rename(vardict_snp_vars_fixed_vcf, vardict_snp_vars_vcf)
     return vardict_snp_vars_vcf
 
