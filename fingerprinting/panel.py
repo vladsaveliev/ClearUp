@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-
+import random
 import shutil
 import click
 from os.path import join, dirname, isfile, isdir, basename
 
 from cyvcf2 import VCF
+from fingerprinting.utils import is_sex_chrom
 from pybedtools import BedTool
 
 import az
@@ -84,7 +85,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     return dbsnp_snps_in_bed
 
 
-def _reduce_number_of_locations(dbsnp_snps_in_bed, max_number):
+def _reduce_number_of_locations(dbsnp_snps_in_bed, max_autosomal_number):
     # TODO: split at <max_number> same-size clusters with at least 1 snp in each, and select 1 snp from each
     locs = []
     for i, interval in enumerate(BedTool(dbsnp_snps_in_bed)):
@@ -92,11 +93,13 @@ def _reduce_number_of_locations(dbsnp_snps_in_bed, max_number):
         rsid, gene = interval.name.split('|')
         loc = (interval.chrom, pos, rsid, gene)
         locs.append(loc)
-    locs = locs[:max_number]
+    autosomal_locs = [l for l in locs if not is_sex_chrom(l[0])]
+    if len(autosomal_locs) > 200:
+        autosomal_locs = random.sample(autosomal_locs, 200)
     out_file = add_suffix(dbsnp_snps_in_bed, '200')
     with file_transaction(None, out_file) as tx:
         with open(tx, 'w') as out:
-            for (chrom, pos, rsid,gene) in locs:
+            for (chrom, pos, rsid, gene) in autosomal_locs:
                 out.write('\t'.join([chrom, str(pos-1), str(pos), rsid + '|' + gene]) + '\n')
     return out_file
 
