@@ -42,15 +42,15 @@
 
         var numSamples = {{ samples_count }};
 
-        var sampleHeight = 17,
+        var sampleHeight = 15,
             topAnnoHeight = 70,
             bottomAnnoHeight = 70;
-            
+
         var treeWidth = numSamples * 15,
             height = numSamples * sampleHeight,
             svgWidth = treeWidth,
             svgHeight = height + topAnnoHeight;
-            
+
         var cluster = d3.cluster()
             .size([height, treeWidth])
             .separation(function(a, b) { return 1; });
@@ -108,7 +108,7 @@
               .data(root.leaves())
             .enter().append("g")
               .attr("class", "leaf")
-              .attr("transform", function(d) { return "translate(" + d.x + "," + (treeLabelSpace + treeWidth) + ")rotate(90)"; })  
+              .attr("transform", function(d) { return "translate(" + d.x + "," + (treeLabelSpace + treeWidth) + ")rotate(90)"; })
               // Keep in mind that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
 
           var leafsTexts = chart.selectAll(".leaf")
@@ -136,22 +136,33 @@
               .node()
               .getComputedTextLength();
 
-          var seqWidth = chart.selectAll(".leaf")
-            .append("text")
-              .attr("dy", 3)
-              .attr("x", function() { return maxTextWidth + genderSpace + genderWidth + sampleSeqSpace; })
+
+          var seqX = maxTextWidth + genderSpace + genderWidth + sampleSeqSpace,
+              locWidth = 7;
+          chart.selectAll(".leaf")
+            .append("g")
+              .attr("x", function() { return seqX; })
               .attr("class", "seq")
               .each(function(d, i) {
-                d3.select(this)
-                  .selectAll(".nuc")
+                var nucEl = d3.select(this).selectAll(".nucRect")
                     .data(getSample(d.data.name).seq)
-                  .enter().append("tspan")
-                    .attr("dx", function(_, i) { return (i%2 == 0) ? ncInterPairSpace : ncIntraPairSpace; })
+                  .enter().append("g")
+                    .attr("transform", function(_, i) {
+                        var horizontalShift = seqX + i*locWidth; // + ((i%2 == 0) ? ncInterPairSpace : 0);
+                        return "translate(" + horizontalShift + "," + -4 + ")";
+                    });
+                nucEl.append("rect")
+                    .attr("y", -4)
+                    .attr("width", locWidth + 1)
+                    .attr("height", sampleHeight + 1)
                     .attr("class", function(d) { return d.toLowerCase(); })
-                    .text(function(d) { return d[0]; })
+                nucEl.append("text")
+                    .attr("x", function(_, i) { return 1 + ((i%2 == 0) ? 1 : -1); })
+                    .attr("y", 6)
+                    .text(function(d) { return d; });
               })
               .node()
-              .getComputedTextLength() + (ncInterPairSpace+ncIntraPairSpace)*locations.length;
+          var seqWidth = locWidth*locations.length*2;
 
           annoX = treeWidth +
               treeLabelSpace +
@@ -167,7 +178,7 @@
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
-              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")rotate(-90)"; })  
+              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")rotate(-90)"; })
               .attr("class", "loc_anno")
             .append("tspan")
               .attr("fill", "#black")
@@ -180,7 +191,7 @@
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
-              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")"; })  
+              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")"; })
               .attr("class", "loc_index")
             .append("tspan")
               .attr("fill", "#999")
@@ -191,7 +202,7 @@
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
-              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + 0 + ")rotate(90)"; })  
+              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + 0 + ")rotate(90)"; })
               .attr("class", "loc_anno")
             .append("tspan")
               .attr("fill", "#999")

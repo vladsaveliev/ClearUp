@@ -32,18 +32,18 @@
   fill: #2c78ba; }
 .leaf .gender_f {
   fill: #ba5484; }
-.leaf text.seq {
-  font: 10px "Lucida Console", Monaco, monospace; }
-  .leaf text.seq .c {
-    fill: #007a00; }
-  .leaf text.seq .a {
-    fill: #002aba; }
-  .leaf text.seq .t {
-    fill: #970035; }
-  .leaf text.seq .g {
-    fill: #eecf00; }
-  .leaf text.seq .n {
-    fill: #b2b2b2; }
+.leaf .seq text {
+  font: 8px "Lucida Console", Monaco, monospace; }
+.leaf .seq .c {
+  fill: #3f7a43; }
+.leaf .seq .a {
+  fill: #4c58ba; }
+.leaf .seq .t {
+  fill: #97494b; }
+.leaf .seq .g {
+  fill: #eedf58; }
+.leaf .seq .n {
+  fill: #b2b2b2; }
 
 .loc_anno {
   font: 8px sans-serif; }
