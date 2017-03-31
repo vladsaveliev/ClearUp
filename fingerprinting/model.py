@@ -14,12 +14,11 @@ from ngs_utils.Sample import BaseSample
 from ngs_utils.file_utils import safe_mkdir, can_reuse, file_transaction
 from ngs_utils.logger import info, debug, err
 from ngs_utils.parallel import ParallelCfg, parallel_view
-import az
 
 from fingerprinting.panel import build_snps_panel
 from fingerprinting.genotype import genotype_bcbio_proj, genotype, vcfrec_to_seq, DEPTH_CUTOFF
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
-from fingerprinting import app, db, DATA_DIR
+from fingerprinting import app, db, DATA_DIR, parallel_cfg
 
 run_to_project_assoc_table = db.Table(
     'run_to_project_association', db.Model.metadata,
@@ -112,7 +111,7 @@ class Run(db.Model):
         self.tree_file = None
         
     @staticmethod
-    def create(projects):
+    def create(projects, parall_view=None):
         project_names = sorted([p.name for p in projects])
         run = Run(project_names)
         db.session.add(run)
@@ -123,11 +122,6 @@ class Run(db.Model):
         assert len(set(genome_builds)) == 1, 'Error: different genome builds in projects'
         genome_build = genome_builds[0]
         
-        # panel_types = [p.panel_type for p in projects]
-        # if len(set(panel_types)) > 1:
-        #     raise NotImplementedError('Multiple panel types are not yet supported')
-        # panel_type = panel_types[0]
-        # run.snps_file = get_snps_by_type(panel_type)
         snps_dir = safe_mkdir(join(run.work_dir, 'snps'))
         run.snps_file = build_snps_panel(bed_files=[p.panel for p in projects if p.panel],
                                          output_dir=snps_dir, genome_build=genome_build)
@@ -137,28 +131,16 @@ class Run(db.Model):
         location_by_rsid = {l.rsid: l for l in locations}
     
         info('Genotyping')
-        sys_cfg = az.init_sys_cfg()
-        parallel_cfg = ParallelCfg(threads=sys_cfg.get('threads'))
         samples = [s for p in projects for s in p.samples]
-        with parallel_view(len(samples), parallel_cfg, run.work_dir) as view:
-            snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
-            fasta_file, vcf_by_sample, sex_by_sample = genotype(
-                [BaseSample(s.long_name(), bam=s.bam) for s in samples],
-                snps_left_to_call_file, view, output_dir=run.work_dir,
-                work_dir=safe_mkdir(join(run.work_dir, 'genotyping')), genome_build=genome_build)
-            info('Loading BAMs sliced to fingerprints')
-            view.run(load_bam_file,
-                [[s.bam, safe_mkdir(join(run.work_dir, 'bams')), run.snps_file, s.long_name()]
-                 for s in samples])
-        
+        if parall_view:
+            fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
+        else:
+            samples = [s for p in projects for s in p.samples]
+            with parallel_view(len(samples), parallel_cfg, run.work_dir) as parall_view:
+                fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
+
         info('Loading called SNPs into the DB')
         for s in samples:
-            if s.sex:
-                assert s.sex == sex_by_sample[s.long_name()], \
-                    'Error: different sex called for sample ' + s.long_name() +\
-                    ': ' + sex_by_sample[s.long_name()] + ', vs. previous ' + s.sex
-            else:
-                s.sex = sex_by_sample[s.long_name()]
             with open(vcf_by_sample[s.long_name()]) as vcf_f:
                 vcf_reader = vcf.Reader(vcf_f)
                 recs = [r for r in vcf_reader]
@@ -187,7 +169,20 @@ class Run(db.Model):
         return run
 
 
-def get_or_create_run(run_id):
+def _genotype(run, samples, genome_build, parall_view):
+    snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
+    fasta_file, vcf_by_sample = genotype(
+        [BaseSample(s.long_name(), bam=s.bam) for s in samples],
+        snps_left_to_call_file, parall_view, output_dir=run.work_dir,
+        work_dir=safe_mkdir(join(run.work_dir, 'genotyping')), genome_build=genome_build)
+    info('Loading BAMs sliced to fingerprints')
+    parall_view.run(load_bam_file,
+        [[s.bam, safe_mkdir(join(run.work_dir, 'bams')), run.snps_file, s.long_name()]
+         for s in samples])
+    return fasta_file, vcf_by_sample
+    
+
+def get_or_create_run(run_id, parall_view=None):
     run = Run.query.filter_by(id=run_id).first()
     if not run:
         debug('Creating new run ' + run_id)
@@ -203,7 +198,7 @@ def get_or_create_run(run_id):
         if not_found:
             err('Some projects not found in the database: ' + ', '.join(project_names))
             return None
-        run = Run.create(projects)
+        run = Run.create(projects, parall_view)
         db.session.add(run)
         db.session.commit()
         debug('Done creating new run ' + run_id)

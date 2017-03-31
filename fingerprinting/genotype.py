@@ -16,9 +16,8 @@ from pybedtools import BedTool
 
 from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adjust_path, can_reuse, add_suffix, \
     verify_file, intermediate_fname, splitext_plus
-from ngs_utils.logger import info, err, critical, debug
+from ngs_utils.logger import info, err, critical, debug, warn
 from ngs_utils.sambamba import index_bam
-from ngs_reporting.coverage import get_gender, determine_sex
 
 import az
 
@@ -41,15 +40,13 @@ def genotype(samples, snp_bed, parall_view, output_dir, work_dir, genome_build,
     info('** Finished running VarDict **')
     
     info('** Annotate variants with gene names and rsIDs **')
-    for s in samples:
-        vcf_by_sample[s.name] = bgzip_and_tabix(_annotate_vcf(vcf_by_sample[s.name], snp_bed))
+    vcf_files = parall_view.run(_annotate_vcf, [[vcf_by_sample[s.name], snp_bed] for s in samples])
+    vcf_by_sample = {s.name: vf for s, vf in zip(samples, vcf_files)}
 
     info('** Writing fasta **')
     fasta_by_sample = OrderedDict((s.name, join(work_dir, s.name + '.fasta')) for s in samples)
-    for s in samples:
-        info('Writing fasta for sample ' + s.name)
-        vcf_to_fasta(s, vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff)
-
+    parall_view.run(vcf_to_fasta, [[s, vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff]
+                                   for s in samples])
     info('** Merging fasta **')
     all_fasta = join(output_dir, 'fingerprints.fasta')
     if not can_reuse(all_fasta, fasta_by_sample.values()):
@@ -59,26 +56,18 @@ def genotype(samples, snp_bed, parall_view, output_dir, work_dir, genome_build,
                     out_f.write(f.read())
     info('All fasta saved to ' + all_fasta)
 
-    info('** Determining sexes **')
-    sex_by_sample = dict()
-    for s in samples:
-        avg_depth = calc_avg_depth(vcf_by_sample[s.name])
-        sex = determine_sex(safe_mkdir(join(work_dir, s.name)), s.bam, avg_depth, genome_build,
-                            target_bed=sex_bed, min_male_size=1)
-        sex_by_sample[s.name] = sex
-        
-    info('Combining VCFs')
-    combined_vcf = combine_vcfs(vcf_by_sample.values(), join(output_dir, 'fingerprints.vcf'))
-    assert combined_vcf
+    # info('Combining VCFs')
+    # combined_vcf = combine_vcfs(vcf_by_sample.values(), join(output_dir, 'fingerprints.vcf'))
+    # assert combined_vcf
 
     # ped_file = splitext_plus(combined_vcf)[0]
     # cmdl = 'vcftools --plink --gzvcf {combined_vcf}'.format(**locals())
     # cmdl += ' --out ' + splitext(ped_file)[0]
     # run(cmd=cmdl)
-    info('Converting VCFs to PED')
-    ped_file = vcf_to_ped(vcf_by_sample, join(output_dir, 'fingerprints.ped'), sex_by_sample, depth_cutoff)
+    # info('Converting VCFs to PED')
+    # ped_file = vcf_to_ped(vcf_by_sample, join(output_dir, 'fingerprints.ped'), sex_by_sample, depth_cutoff)
     
-    return all_fasta, vcf_by_sample, sex_by_sample
+    return all_fasta, vcf_by_sample
 
 
 def vcf_to_ped(vcf_by_sample, ped_file, sex_by_sample, depth_cutoff):
@@ -188,6 +177,8 @@ def _fix_vcf(vardict_snp_vars_vcf, ref_file):
                     l = '\t'.join(fs)
                     l = l.replace('=NA;', '=.;')
                     l = l.replace('=;', '=.;')
+                if not (len(ref) == len(alt) == 1):
+                    warn('Variant is not a SNP: ' + l)
             out_f.write(l)
             
     assert verify_file(vardict_snp_vars_fixed_vcf) and \
@@ -226,7 +217,7 @@ def _annotate_vcf(vcf_file, snp_bed):
     assert verify_file(annotated_header_vcf), annotated_header_vcf
     os.rename(annotated_header_vcf, vcf_file)
 
-    return vcf_file
+    return bgzip_and_tabix(vcf_file)
 
 
 def __p(rec):
