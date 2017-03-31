@@ -235,7 +235,7 @@ def __p(rec):
 
 def vcfrec_to_seq(rec, depth_cutoff):
     called = rec.num_called > 0
-    depth_failed = rec.INFO.get('DP') < depth_cutoff
+    depth_failed = rec.INFO['DP'] < depth_cutoff
     filter_failed = rec.FILTER and any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
     if depth_failed or filter_failed:
         called = False
@@ -250,13 +250,13 @@ def vcfrec_to_seq(rec, depth_cutoff):
     return gt_bases
 
 
-def calc_avg_depth(vcf_file):
-    with open(vcf_file) as f:
-        vcf_reader = vcf.Reader(f)
-        recs = [r for r in vcf_reader]
-    depths = [r.INFO['DP'] for r in recs]
-    return float(sum(depths)) / len(depths)
-    
+# def calc_avg_depth(vcf_file):
+#     with open(vcf_file) as f:
+#         vcf_reader = vcf.Reader(f)
+#         recs = [r for r in vcf_reader]
+#     depths = [r.INFO['DP'] for r in recs]
+#     return float(sum(depths)) / len(depths)
+
 
 # def check_if_male(recs):
 #     y_total_depth = 0

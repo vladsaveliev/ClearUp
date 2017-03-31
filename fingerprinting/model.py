@@ -150,11 +150,11 @@ class Run(db.Model):
                 assert loc.pos == rec.POS
                 snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
                 if snp:
-                    assert snp.depth == rec.gt_depths[0]
+                    assert snp.depth == rec.INFO['DP']
                     assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
                 else:
                     snp = SNP(index=i + 1, location=loc)
-                    snp.depth = rec.gt_depths[0]
+                    snp.depth = rec.INFO['DP']
                     snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
                     s.snps.append(snp)
                     db.session.add(snp)
