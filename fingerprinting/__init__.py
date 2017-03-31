@@ -18,8 +18,9 @@ db = SQLAlchemy(app)
 
 
 sys_cfg = az.init_sys_cfg()
-parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
-                           sys_cfg.get('resources'), sys_cfg.get('threads'))
+# parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
+#                            sys_cfg.get('resources'), sys_cfg.get('threads'))
+parallel_cfg = ParallelCfg()
 
 
 if is_us():

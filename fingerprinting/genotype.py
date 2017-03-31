@@ -142,7 +142,7 @@ def _vardict_pileup_sample(sample, output_dir, genome_cfg, threads, snp_file):
     
     # Convert to VCF
     cmdl = ('cut -f-34 ' + vardict_snp_vars +
-            ' | awk -F"\\t" -v OFS="\\t" \'{for (i=1;i<=NF;i++) { if ($i=="") $i="." } print $0 }\''
+            ' | awk -F"\\t" -v OFS="\\t" \'{for (i=1;i<=NF;i++) { if ($i=="") $i="0" } print $0 }\''
             ' | ' + join(vardict_dir, 'teststrandbias.R') +
             ' | ' + join(vardict_dir, 'var2vcf_valid.pl') +
             # ' | grep "^#\|TYPE=SNV\|TYPE=REF" ' +
@@ -179,7 +179,7 @@ def _fix_vcf(vardict_snp_vars_vcf, ref_file):
                     l = '\t'.join(fs)
                     l = l.replace('=NA;', '=.;')
                     l = l.replace('=;', '=.;')
-                if (len(ref) == len(alt) == 1):  # SNP (not indel or complex variant)
+                if len(ref) == len(alt) == 1:  # SNP (not indel or complex variant)
                     out_f.write(l)
             
     assert verify_file(vardict_snp_vars_fixed_vcf)

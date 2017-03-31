@@ -14,7 +14,7 @@ from os.path import join, dirname
 
 from ngs_utils.file_utils import verify_file, safe_mkdir, file_transaction, which, can_reuse
 import ngs_utils.logger as log
-
+from ngs_utils.sambamba import index_bam
 
 FASTA_ID_PROJECT_SEPARATOR = '____PROJECT_'
 
@@ -38,6 +38,7 @@ def load_bam_file(bam_file, bams_dir, snp_bed, sample_name):
     if not can_reuse(sliced_bam_file, [bam_file, snp_bed]):
         cmdl = 'sambamba view {bam_file} -L {snp_bed} -f bam -o {sliced_bam_file}'.format(**locals())
         run(cmdl, output_fpath=sliced_bam_file, stdout_to_outputfile=False)
+        index_bam(sliced_bam_file)
     return sliced_bam_file
 
 
