@@ -1,11 +1,20 @@
+import os
 from os.path import abspath, join, dirname
-
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-
 from ngs_utils.utils import is_us
 from ngs_utils.parallel import ParallelCfg
 import az
+
+
+sys_cfg = az.init_sys_cfg()
+parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
+                           sys_cfg.get('resources'), sys_cfg.get('threads'))
+# parallel_cfg = ParallelCfg()
+
+
+if is_us():
+    os.environ['PATH'] = '/group/ngs/src/bcbio-nextgen/1.0.2/rhel6-x64/bin:' + os.environ['PATH']
 
 
 DATA_DIR = abspath(join(dirname(__file__), '..', 'data'))
@@ -15,12 +24,6 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + join(DATA_DIR, 'projects.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
-
-sys_cfg = az.init_sys_cfg()
-# parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
-#                            sys_cfg.get('resources'), sys_cfg.get('threads'))
-parallel_cfg = ParallelCfg()
 
 
 if is_us():
