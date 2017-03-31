@@ -125,7 +125,7 @@ class Run(db.Model):
         genome_build = genome_builds[0]
         
         snps_dir = safe_mkdir(join(run.work_dir, 'snps'))
-        run.snps_file = build_snps_panel(bed_files=[p.panel for p in projects if p.panel],
+        run.snps_file = build_snps_panel(bed_files=[p.bed_fpath for p in projects if p.bed_fpath],
                                          output_dir=snps_dir, genome_build=genome_build)
         locations = extract_locations_from_file(run.snps_file)
         for loc in locations:
@@ -229,19 +229,15 @@ def get_or_create_run(run_id, parall_view=None):
 class Project(db.Model):
     __tablename__ = 'project'
     name = db.Column(db.String(), primary_key=True)
-
     bcbio_final_path = db.Column(db.String)
-    bed_fpath = db.Column(db.String)
-    panel = db.Column(db.String)
     genome = db.Column(db.String(20))
+    bed_fpath = db.Column(db.String)
     
-    def __init__(self, name, bcbio_final_path, genome, panel):
+    def __init__(self, name, bcbio_final_path, genome, bed_fpath):
         self.name = name
         self.bcbio_final_path = bcbio_final_path
         self.genome = genome
-        self.panel = panel
-        self.date = None
-        self.region = None
+        self.bed_fpath = bed_fpath
 
     def __repr__(self):
         return '<Project {} {}>'.format(self.name, self.genome)

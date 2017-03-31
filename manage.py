@@ -47,7 +47,7 @@ def load_project(bcbio_dir, name=None):
         name=bcbio_proj.project_name,
         bcbio_final_path=bcbio_proj.final_dir,
         genome=bcbio_proj.genome_build,
-        panel=bcbio_proj.coverage_bed)
+        bed_fpath=bcbio_proj.coverage_bed)
     db.session.add(fp_proj)
     for s, sex in zip(bcbio_proj.samples, sexes):
         db_sample = Sample(s.name, fp_proj, s.bam, sex=sex)
