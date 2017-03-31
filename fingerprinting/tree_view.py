@@ -61,13 +61,13 @@ def run_analysis_socket_handler(run_id):
             if '#(' not in stdout_line.strip():
                 _send_line(ws, stdout_line)
             # lines = []
+        log.debug('Exit from the subprocess')
 
-    _send_line(ws, '')
-    _send_line(ws, 'Genotyping using VarDict...')
     _run_cmd(sys.executable + ' manage.py analyse_projects ' + run_id)
     run = Run.query.get(run_id)
     if not run:
-        raise RuntimeError('Genotyping failed to run')
+        log.err('Run ' + run_id + ' cannot be found. Is genotyping failed?')
+        raise RuntimeError('Run ' + run_id + ' cannot be found. Is genotyping failed?')
     
     prank_out = join(run.work_dir, splitext(basename(run.fasta_file))[0])
     _send_line(ws, '')

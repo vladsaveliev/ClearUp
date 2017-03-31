@@ -204,10 +204,8 @@ def get_or_create_run(run_id, parall_view=None):
         db.session.add(run)
         db.session.commit()
         debug('Done creating new run ' + run_id)
-        debug()
     else:
         debug('Found run ' + run.id)
-        debug()
     return run
 
 
