@@ -162,7 +162,9 @@ def _fix_vcf(vardict_snp_vars_vcf, ref_file):
     info('Fixing VCF, writing to ' + vardict_snp_vars_fixed_vcf)
     with open(vardict_snp_vars_vcf) as inp, open(vardict_snp_vars_fixed_vcf, 'w') as out_f:
         for l in inp:
-            if not l.startswith('#'):
+            if l.startswith('#'):
+                out_f.write(l)
+            else:
                 fs = l.split('\t')
                 chrom, start, ref, alt = fs[0], fs[1], fs[3], fs[4]
                 if ref in ['.', '']:
@@ -179,7 +181,8 @@ def _fix_vcf(vardict_snp_vars_vcf, ref_file):
                     l = l.replace('=;', '=.;')
                 if not (len(ref) == len(alt) == 1):
                     warn('Variant is not a SNP: ' + l)
-            out_f.write(l)
+                else:
+                    out_f.write(l)
             
     assert verify_file(vardict_snp_vars_fixed_vcf) and \
            len(open(vardict_snp_vars_vcf).readlines()) == len(open(vardict_snp_vars_fixed_vcf).readlines()), \
