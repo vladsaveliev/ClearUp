@@ -8,7 +8,7 @@ from flask import Flask, render_template, send_from_directory, abort, redirect, 
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 
-from fingerprinting.model import db, Sample, Project
+from fingerprinting.model import db, Sample, Project, Run
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
 
@@ -56,9 +56,13 @@ def bam_files_page(project_name, bam_fname):
     return send_file_for_igv(join(DATA_DIR, project_name, 'bams', bam_fname))
 
 
-@app.route('/snps/snps_bed/')
-def locations_bed():
-    return send_file(join('fingerprinting', 'snps', 'idt_snps.bed'))
+@app.route('/<run_id>/snps_bed/')
+def locations_bed(run_id):
+    run = Run.query.filter_by(id=run_id).first()
+    if not run:
+        logger.err('Run ' + run_id + ' not found')
+        abort(404, {'message': 'Phylogenetic comparison for ' + run_id + ' is not found'})
+    return send_file(run.snps_file)
 
 
 @app.route('/<run_id>/')
