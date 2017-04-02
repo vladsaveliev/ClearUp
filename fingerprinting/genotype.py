@@ -212,6 +212,7 @@ def _annotate_vcf(vcf_file, snp_bed):
     vcf_file = bgzip_and_tabix(vcf_file)
     ann_vcf_file = add_suffix(vcf_file, 'ann')
     debug('Tabixed, annotating into ' + ann_vcf_file)
+    from cyvcf2 import VCF, Writer
     vcf = VCF(vcf_file)
     vcf.add_info_to_header({'ID': 'GENE', 'Description': 'Overlapping gene', 'Type': 'String', 'Number': '1'})
     vcf.add_info_to_header({'ID': 'rsid', 'Description': 'dbSNP rsID', 'Type': 'String', 'Number': '1'})
