@@ -66,28 +66,33 @@ def run_analysis_socket_handler(run_id):
     _run_cmd(sys.executable + ' manage.py analyse_projects ' + run_id)
     run = Run.query.get(run_id)
     if not run:
-        log.err('Run ' + run_id + ' cannot be found. Is genotyping failed?')
-        raise RuntimeError('Run ' + run_id + ' cannot be found. Is genotyping failed?')
+        _send_line(ws, 'Run ' + run_id + ' cannot be found. Is genotyping failed?', error=True)
+
     fasta_file = verify_file(run.fasta_file_path())
     if not fasta_file:
-        raise RuntimeError('Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing?')
-    
+        _send_line(ws, 'Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing?', error=True)
+
     prank_out = join(run.work_dir, splitext(basename(fasta_file))[0])
     _send_line(ws, '')
     _send_line(ws, 'Building phylogeny tree using prank...')
     _run_cmd(prank_bin + ' -d=' + fasta_file + ' -o=' + prank_out + ' -showtree')
     if not verify_file(prank_out + '.best.dnd'):
-        raise RuntimeError('Prank failed to run')
+        _send_line(ws, 'Prank failed to run', error=True)
+    
     os.rename(prank_out + '.best.dnd', run.tree_file)
     os.remove(prank_out + '.best.fas')
     ws.send(json.dumps({'finished': True}))
     return ''
 
 
-def _send_line(ws, line):
-    log.debug(line.rstrip())
+def _send_line(ws, line, error=False):
+    if error:
+        log.err(line.rstrip())
+    else:
+        log.debug(line.rstrip())
     ws.send(json.dumps({
         'line': line.rstrip(),
+        'error': error
     }))
 
 

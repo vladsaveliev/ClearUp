@@ -50,7 +50,11 @@
                         var consoleDiv = $("#console_log");
                         var data = JSON.parse(evt.data);
                         if (typeof data.line != 'undefined') {
-                            consoleDiv.append(data.line + "<br>");
+                            if (!data.error) {
+                                consoleDiv.append(data.line + "<br>");
+                            } else {
+                                consoleDiv.append('<br><hr><span style="color: red;">' + data.line + "</span><br>");
+                            }
                         } else if (data.finished) {
                             location.href = "/{{ run_id }}/tree";
                         }
