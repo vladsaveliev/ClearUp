@@ -99,8 +99,6 @@ class Run(db.Model):
     id = db.Column(db.String, primary_key=True)
     snps_file = db.Column(db.String)
     work_dir = db.Column(db.String)
-    fasta_file = db.Column(db.String)
-    tree_file = db.Column(db.String)
     projects = db.relationship("Project", secondary=run_to_project_assoc_table,
                                backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
     
@@ -108,8 +106,6 @@ class Run(db.Model):
         self.id = ','.join(project_names)
         self.snps_file = None
         self.work_dir = safe_mkdir(join(DATA_DIR, '__AND__'.join(project_names)))
-        self.fasta_file = None
-        self.tree_file = None
      
     def fasta_file_path(self):
         return join(self.work_dir, 'fingerprints.fasta')

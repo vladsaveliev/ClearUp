@@ -93,7 +93,8 @@ def _send_line(ws, line):
 
 def render_phylo_tree_page(run_id):
     run = Run.query.filter_by(id=run_id).first()
-    if not run or not can_reuse(run.tree_file, verify_file(run.fasta_file_path(), silent=True)):
+    if not run or not can_reuse(verify_file(run.tree_file_path(), silent=True),
+                                verify_file(run.fasta_file_path(), silent=True)):
         return render_template(
             'processing.html',
             projects=run_id.split(','),
