@@ -64,8 +64,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
             all_bed_files.add(proj.coverage_bed)
     all_bed_files |= set(bed_files or [])
     
-    # Empty list? Using exome
-    if not all_bed_files:
+    if not all_bed_files:  # Empty list? Using exome
         all_bed_files.add(get_snps_by_type('exome'))
     
     overlapped_bed = join(output_dir, 'merged_panel.bed')
@@ -74,14 +73,18 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     # Selecting SNPs from dbSNP
     dbsnp_file = get_dbsnp(genome_build)
     dbsnp_snps_in_bed = join(output_dir, 'snps.bed')
-    cmdl = 'bedtools intersect -header -a ' + dbsnp_file + ' -b ' + overlapped_bed
-    run(cmdl, dbsnp_snps_in_bed)
+    if not can_reuse(dbsnp_snps_in_bed, [dbsnp_file, overlapped_bed]):
+        cmdl = 'bedtools intersect -header -a ' + dbsnp_file + ' -b ' + overlapped_bed
+        run(cmdl, dbsnp_snps_in_bed)
     
-    dbsnp_snps_in_bed = _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build)
-    return dbsnp_snps_in_bed
+    return _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build)
 
 
 def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, max_autosomal_number=200):
+    out_file = add_suffix(dbsnp_snps_in_bed, str(max_autosomal_number))
+    if can_reuse(out_file, dbsnp_snps_in_bed):
+        return out_file
+
     # TODO: split at <max_number> same-size clusters with at least 1 snp in each, and select 1 snp from each
     locs = []
     for i, interval in enumerate(BedTool(dbsnp_snps_in_bed)):
@@ -97,7 +100,6 @@ def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, max_autosomal_n
         autosomal_locs = random.sample(autosomal_locs, max_autosomal_number)
     autosomal_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
     
-    out_file = add_suffix(dbsnp_snps_in_bed, str(max_autosomal_number))
     with file_transaction(None, out_file) as tx:
         with open(tx, 'w') as out:
             for (chrom, pos, rsid, gene) in autosomal_locs:
