@@ -11,6 +11,7 @@ from fingerprinting import app, DATA_DIR, HOST_IP, PORT
 from fingerprinting.model import db, Sample, Project, Run
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
+from ngs_utils.file_utils import verify_file
 
 
 @app.route('/favicon.ico/')
@@ -75,8 +76,11 @@ def sample_page(run_id, sample_id):
 
 @app.route('/')
 def homepage():
-    projects = [p for p in Project.query.all()
-                if db.session.query(Run).filter(Run.id==p.name, Run.fasta_file.isnot(None)).first()]
+    projects = []
+    for p in Project.query.all():
+        run = db.session.query(Run).filter(Run.id==p.name).first()
+        if verify_file(run.fasta_file_path(), silent=True):
+            projects.append(p)
     t = render_template(
         'index.html',
         projects=[{
