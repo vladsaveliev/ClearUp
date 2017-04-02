@@ -17,7 +17,7 @@ from ngs_utils.logger import info, debug, err
 from ngs_utils.parallel import ParallelCfg, parallel_view
 
 from fingerprinting.panel import build_snps_panel
-from fingerprinting.genotype import genotype_bcbio_proj, genotype, vcfrec_to_seq, DEPTH_CUTOFF
+from fingerprinting.genotype import genotype, vcfrec_to_seq, DEPTH_CUTOFF, post_genotype
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
 from fingerprinting import app, db, DATA_DIR, parallel_cfg
 
@@ -146,7 +146,7 @@ class Run(db.Model):
         for s in samples:
             recs = [r for r in VCF(vcf_by_sample[s.long_name()])]
             for i, rec in enumerate(recs):
-                loc = location_by_rsid[rec.ID]
+                loc = location_by_rsid[rec.INFO['rsid']]
                 assert loc.pos == rec.POS
                 snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
                 if snp:
@@ -172,10 +172,14 @@ class Run(db.Model):
 
 def _genotype(run, samples, genome_build, parall_view):
     snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
-    fasta_file, vcf_by_sample = genotype(
-        [BaseSample(s.long_name(), bam=s.bam) for s in samples],
-        snps_left_to_call_file, parall_view, output_dir=run.work_dir,
-        work_dir=safe_mkdir(join(run.work_dir, 'genotyping')), genome_build=genome_build)
+
+    gt_work_dir = safe_mkdir(join(run.work_dir, 'genotyping'))
+    bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
+    vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
+                             output_dir=gt_work_dir, genome_build=genome_build)
+    fasta_file, vcf_by_sample = post_genotype(bs, vcf_by_sample, snps_left_to_call_file,
+        parall_view, output_dir=run.work_dir, work_dir=gt_work_dir)
+
     info('Loading BAMs sliced to fingerprints')
     parall_view.run(load_bam_file,
         [[s.bam, safe_mkdir(join(run.work_dir, 'bams')), run.snps_file, s.long_name()]

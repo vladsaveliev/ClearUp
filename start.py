@@ -18,7 +18,7 @@ def send_favicon():
     return send_from_directory('static', 'favicon.ico')
 
 
-@app.route("/<run_id>/run_analysis/")
+@app.route('/<run_id>/run_analysis/')
 def run_analysis(run_id):
     return run_analysis_socket_handler(run_id)
 
@@ -75,7 +75,8 @@ def sample_page(run_id, sample_id):
 
 @app.route('/')
 def homepage():
-    projects = Project.query.all()
+    projects = [p for p in Project.query.all()
+                if db.session.query(Run).filter(Run.id==p.name, Run.fasta_file.isnot(None)).first()]
     t = render_template(
         'index.html',
         projects=[{
@@ -98,7 +99,6 @@ def page_not_found(error):
 
 if __name__ == "__main__":
     logger.init(True, join(dirname(__file__), 'data', 'log.txt'))
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     # app.run(host=config.HOST_IP, debug=config.IS_DEBUG)
 
     # if start_local_browser:

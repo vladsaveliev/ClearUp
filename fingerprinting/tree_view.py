@@ -68,6 +68,8 @@ def run_analysis_socket_handler(run_id):
     if not run:
         log.err('Run ' + run_id + ' cannot be found. Is genotyping failed?')
         raise RuntimeError('Run ' + run_id + ' cannot be found. Is genotyping failed?')
+    if not run.fasta_file:
+        raise RuntimeError('Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing?')
     
     prank_out = join(run.work_dir, splitext(basename(run.fasta_file))[0])
     _send_line(ws, '')

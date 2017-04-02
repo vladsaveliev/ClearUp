@@ -4,11 +4,8 @@ import shutil
 import click
 from os.path import join, dirname, isfile, isdir, basename
 
-from cyvcf2 import VCF
 from fingerprinting.utils import is_sex_chrom
 from pybedtools import BedTool
-
-import az
 
 from ngs_utils import logger as log
 from ngs_utils.call_process import run
@@ -20,8 +17,7 @@ from fingerprinting.genotype import DEPTH_CUTOFF
 
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
-from variant_filtering import reference_data as filt_ref_data, get_anno_config
-from variant_filtering.utils import parse_gene_blacklists, check_gene_in_a_blacklist, all_blacklisted_genes
+from ngs_utils.reference_data import get_chrom_order
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
@@ -81,11 +77,11 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     cmdl = 'bedtools intersect -header -a ' + dbsnp_file + ' -b ' + overlapped_bed
     run(cmdl, dbsnp_snps_in_bed)
     
-    dbsnp_snps_in_bed = _reduce_number_of_locations(dbsnp_snps_in_bed, 200)
+    dbsnp_snps_in_bed = _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build)
     return dbsnp_snps_in_bed
 
 
-def _reduce_number_of_locations(dbsnp_snps_in_bed, max_autosomal_number):
+def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, max_autosomal_number=200):
     # TODO: split at <max_number> same-size clusters with at least 1 snp in each, and select 1 snp from each
     locs = []
     for i, interval in enumerate(BedTool(dbsnp_snps_in_bed)):
@@ -93,10 +89,15 @@ def _reduce_number_of_locations(dbsnp_snps_in_bed, max_autosomal_number):
         rsid, gene = interval.name.split('|')
         loc = (interval.chrom, pos, rsid, gene)
         locs.append(loc)
+    
+    chrom_order = get_chrom_order(genome_build)
+
     autosomal_locs = [l for l in locs if not is_sex_chrom(l[0])]
-    if len(autosomal_locs) > 200:
-        autosomal_locs = random.sample(autosomal_locs, 200)
-    out_file = add_suffix(dbsnp_snps_in_bed, '200')
+    if len(autosomal_locs) > max_autosomal_number:
+        autosomal_locs = random.sample(autosomal_locs, max_autosomal_number)
+    autosomal_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
+    
+    out_file = add_suffix(dbsnp_snps_in_bed, str(max_autosomal_number))
     with file_transaction(None, out_file) as tx:
         with open(tx, 'w') as out:
             for (chrom, pos, rsid, gene) in autosomal_locs:
@@ -113,53 +114,6 @@ def _overlap_bed_files(bed_files, output_bed_file):
     cmdl = 'bedops --intersect' + ''.join([' <(sort-bed ' + bf + ')' for bf in bed_files])
     run(cmdl, output_bed_file)
     return output_bed_file
-
-
-def _subset_dbsnp(genome_build):
-    az.init_sys_cfg()
-    genome_cfg = az.get_refdata(genome_build)
-    dbsnp_file = verify_file(genome_cfg['dbsnp'], is_critical=True)
-
-    incidentalome_dir = verify_dir(filt_ref_data.incidentalome_dir(), 'incidentalome')
-    anno_cfg = get_anno_config()
-    blacklisted_genes = all_blacklisted_genes(anno_cfg['blacklist']['genes'], incidentalome_dir)
-
-    subset_dbsnp = join(dirname(__name__), 'snps', 'dbsnp', splitext_plus(dbsnp_file)[0] + 'mafs10pct.bed')
-    if verify_file(subset_dbsnp):
-        return subset_dbsnp
-    total_snps_written = 0
-    current_chrom = None
-    with file_transaction(None, subset_dbsnp) as tx:
-        with open(tx, 'w') as out:
-            for v in VCF(dbsnp_file):
-                caf = v.INFO.get('CAF')
-                if caf and len(v.REF) == 1:
-                    gene_val = v.INFO.get('GENEINFO')
-                    if gene_val:
-                        cafs = [float(a) if a != '.' else 0 for a in caf.split(',')[1:]]
-                        alts = v.ALT
-                        assert len(cafs) == len(alts)
-                        caf_by_snp_alt = dict({a: c for a, c in zip(alts, cafs) if c > 0.1 and len(a) == 1})
-                        if len(caf_by_snp_alt) > 0:
-                            gene = gene_val.split(':')[0]
-                            if gene not in blacklisted_genes:
-                                rsid = v.ID
-                                fields = [v.CHROM, str(v.POS - 1), str(v.POS), rsid + '|' + gene, v.REF, ','.join(v.ALT)]
-                                out.write('\t'.join(fields) + '\n')
-                                if current_chrom != v.CHROM:
-                                    current_chrom = v.CHROM
-                                    debug(v.CHROM + ', written ' + str(total_snps_written))
-                                total_snps_written += 1
-
-    # exclude those from LCR and tricky regions:
-    ''' bedtools intersect -header -a dbsnp_maf10pct.bed -b ~/bcbio/genomes/Hsapiens/hg19/coverage/problem_regions/GA4GH/*.bed.gz ~/bcbio/genomes/Hsapiens/hg19/coverage/problem_regions/ENCODE/wgEncodeDacMapabilityConsensusExcludable.bed.gz ~/bcbio/genomes/Hsapiens/hg19/coverage/problem_regions/repeats/LCR.bed.gz ~/bcbio/genomes/Hsapiens/hg19/coverage/problem_regions/repeats/sv_repeat_telomere_centromere.bed -v > dbsnp_maf10pct.good.bed
-    '''
-    # exclude duplicates - remove each second from this output:
-    ''' uniq -d dbsnp_maf10pct.good.bed
-    '''
-    # TODO: check clustered in HapMap?
-    
-    return subset_dbsnp
 
 
 # def _filter_snps(snp_vcf):
@@ -195,8 +149,11 @@ def get_snps_by_type(panel_type):
 def get_snps_file(fname):
     return verify_file(join(dirname(__file__), 'snps', fname), is_critical=True)
 
-def get_dbsnp(genome):
-    return get_snps_file('dbsnp.bed.gz')
+def get_dbsnp(genome, take_autosomal=True, take_sex=False):
+    if take_autosomal:
+        return get_snps_file('dbsnp.autosomal.bed.gz')
+    elif take_sex:
+        return get_snps_file('dbsnp.chrX.bed.gz')
 
 
 if __name__ == '__main__':

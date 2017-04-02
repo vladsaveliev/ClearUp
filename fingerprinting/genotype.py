@@ -1,12 +1,12 @@
+import shutil
 from collections import OrderedDict
 
 import os
-from os.path import join, dirname, splitext
+from os.path import join, dirname, splitext, basename
 import sys
-import vcf
+from cyvcf2 import VCF, Writer
 from subprocess import check_output
 from variant_filtering.filtering import combine_vcfs
-from vcf.parser import field_counts, _Info
 
 from ngs_utils.bed_utils import bgzip_and_tabix
 from ngs_utils.call_process import run
@@ -27,25 +27,32 @@ from fingerprinting.utils import is_sex_chrom
 DEPTH_CUTOFF = 5
 
 
-def genotype(samples, snp_bed, parall_view, output_dir, work_dir, genome_build,
-             depth_cutoff=DEPTH_CUTOFF):
-    autosomal_bed, sex_bed = _split_bed(snp_bed, work_dir)
-    
+def genotype(samples, snp_bed, parall_view, output_dir, genome_build):
     genome_cfg = az.get_refdata(genome_build)
     info('** Running VarDict ** ')
     vcfs = parall_view.run(_vardict_pileup_sample,
-        [[s, safe_mkdir(join(output_dir, 'vcf')), genome_cfg, parall_view.cores_per_job, autosomal_bed]
+        [[s, safe_mkdir(join(output_dir, 'vcf')), genome_cfg, parall_view.cores_per_job, snp_bed]
          for s in samples])
     vcf_by_sample = OrderedDict(zip([s.name for s in samples], vcfs))
     info('** Finished running VarDict **')
+    return vcf_by_sample
+    
+    
+def post_genotype(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work_dir, depth_cutoff=DEPTH_CUTOFF):
+    info('** Remove sex chromosomes **')
+    autosomal_vcf_by_sample = OrderedDict()
+    for sn, vf in vcf_by_sample.items():
+        autosomal_vcf_by_sample[sn] = add_suffix(vf, 'autosomal')
+        run('grep -v chrX ' + vf + ' | grep -v chrY', output_fpath=autosomal_vcf_by_sample[sn])
     
     info('** Annotate variants with gene names and rsIDs **')
-    vcf_files = parall_view.run(_annotate_vcf, [[vcf_by_sample[s.name], snp_bed] for s in samples])
-    vcf_by_sample = {s.name: vf for s, vf in zip(samples, vcf_files)}
+    vcf_files = parall_view.run(_annotate_vcf, [[autosomal_vcf_by_sample[s.name], snp_bed] for s in samples])
+    ann_vcf_by_sample = {s.name: vf for s, vf in zip(samples, vcf_files)}
 
     info('** Writing fasta **')
-    fasta_by_sample = OrderedDict((s.name, join(work_dir, s.name + '.fasta')) for s in samples)
-    parall_view.run(vcf_to_fasta, [[s, vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff]
+    fasta_work_dir = safe_mkdir(join(work_dir, 'fasta'))
+    fasta_by_sample = OrderedDict((s.name, join(fasta_work_dir, s.name + '.fasta')) for s in samples)
+    parall_view.run(vcf_to_fasta, [[s, ann_vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff]
                                    for s in samples])
     info('** Merging fasta **')
     all_fasta = join(output_dir, 'fingerprints.fasta')
@@ -55,6 +62,11 @@ def genotype(samples, snp_bed, parall_view, output_dir, work_dir, genome_build,
                 with open(fasta_by_sample[s.name]) as f:
                     out_f.write(f.read())
     info('All fasta saved to ' + all_fasta)
+
+    info('Saving VCFs into the output directory')
+    for sn, vf in ann_vcf_by_sample.items():
+        shutil.copy(vf, join(output_dir, basename(vcf_by_sample[sn]) + '.gz'))
+        shutil.copy(vf, join(output_dir, basename(vcf_by_sample[sn]) + '.gz.tbi'))
 
     # info('Combining VCFs')
     # combined_vcf = combine_vcfs(vcf_by_sample.values(), join(output_dir, 'fingerprints.vcf'))
@@ -67,27 +79,27 @@ def genotype(samples, snp_bed, parall_view, output_dir, work_dir, genome_build,
     # info('Converting VCFs to PED')
     # ped_file = vcf_to_ped(vcf_by_sample, join(output_dir, 'fingerprints.ped'), sex_by_sample, depth_cutoff)
     
-    return all_fasta, vcf_by_sample
+    return all_fasta, ann_vcf_by_sample
 
 
-def vcf_to_ped(vcf_by_sample, ped_file, sex_by_sample, depth_cutoff):
-    if can_reuse(ped_file, vcf_by_sample.values()):
-        return ped_file
-
-    from cyvcf2 import VCF
-    with file_transaction(None, ped_file) as tx:
-        with open(tx, 'w') as out_f:
-            for sname, vcf_file in vcf_by_sample.items():
-                recs = [v for v in VCF(vcf_file)]
-                sex = {'M': '1', 'F': '2'}.get(sex_by_sample[sname], '0')
-                out_fields = [sname, sname, '0', '0', sex, '0']
-                for rec in recs:
-                    gt = vcfrec_to_seq(rec, depth_cutoff).replace('N', '0')
-                    out_fields.extend([gt[0], gt[1]])
-                out_f.write('\t'.join(out_fields) + '\n')
-
-    info('PED saved to ' + ped_file)
-    return ped_file
+# def vcf_to_ped(vcf_by_sample, ped_file, sex_by_sample, depth_cutoff):
+#     if can_reuse(ped_file, vcf_by_sample.values()):
+#         return ped_file
+#
+#     from cyvcf2 import VCF
+#     with file_transaction(None, ped_file) as tx:
+#         with open(tx, 'w') as out_f:
+#             for sname, vcf_file in vcf_by_sample.items():
+#                 recs = [v for v in VCF(vcf_file)]
+#                 sex = {'M': '1', 'F': '2'}.get(sex_by_sample[sname], '0')
+#                 out_fields = [sname, sname, '0', '0', sex, '0']
+#                 for rec in recs:
+#                     gt = vcfrec_to_seq(rec, depth_cutoff).replace('N', '0')
+#                     out_fields.extend([gt[0], gt[1]])
+#                 out_f.write('\t'.join(out_fields) + '\n')
+#
+#     info('PED saved to ' + ped_file)
+#     return ped_file
 
 
 def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
@@ -95,9 +107,11 @@ def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
     output_dir = output_dir or safe_mkdir(join(proj.date_dir, 'fingerprints'))
     work_dir = work_dir or safe_mkdir(proj.work_dir)
     with parallel_view(len(proj.samples), parallel_cfg, work_dir) as parall_view:
-        return genotype(proj.samples, snp_bed, parall_view, output_dir, work_dir,
-                        proj.genome_build, depth_cutoff=depth_cutoff)
-
+        vcf_by_sample = genotype(proj.samples, snp_bed, parall_view, work_dir, proj.genome_build)
+        fasta_file, vcf_by_sample = post_genotype(proj.samples, vcf_by_sample,
+            snp_bed, parall_view, output_dir, work_dir, depth_cutoff=depth_cutoff)
+    return vcf_by_sample
+    
 
 def _split_bed(bed_file, work_dir):
     """ Splits into autosomal and sex chromosomes
@@ -195,42 +209,32 @@ def _annotate_vcf(vcf_file, snp_bed):
         gene_by_snp[(interval.chrom, pos)] = gene
         rsid_by_snp[(interval.chrom, pos)] = rsid
     
-    annotated_vcf = add_suffix(vcf_file, 'ann')
-    with open(vcf_file) as f, open(annotated_vcf, 'w') as out:
-        vcf_reader = vcf.Reader(f)
-        vcf_writer = vcf.Writer(out, vcf_reader)
-        try:
-            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name', '', '')
-        except TypeError:
-            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name')
-        for rec in vcf_reader:
-            rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
-            rec.ID = rsid_by_snp[(rec.CHROM, rec.POS)]
-            vcf_writer.write_record(rec)
-    assert verify_file(annotated_vcf) and \
-           len(open(vcf_file).readlines()) == len(open(annotated_vcf).readlines()), annotated_vcf
-    annotated_vcf = bgzip_and_tabix(annotated_vcf)
-
-    annotated_header_vcf = add_suffix(annotated_vcf, 'hdr')
-    header = '##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">'
-    cmdl = 'bcftools annotate -h <(echo \'{header}\') {annotated_vcf}'.format(**locals())
-    run(cmdl, output_fpath=annotated_header_vcf)
-    assert verify_file(annotated_header_vcf), annotated_header_vcf
-    os.rename(annotated_header_vcf, vcf_file)
-
+    vcf_file = bgzip_and_tabix(vcf_file)
+    ann_vcf_file = add_suffix(vcf_file, 'ann')
+    vcf = VCF(vcf_file)
+    vcf.add_info_to_header({'ID': 'GENE', 'Description': 'Overlapping gene', 'Type': 'String', 'Number': '1'})
+    vcf.add_info_to_header({'ID': 'rsid', 'Description': 'dbSNP rsID', 'Type': 'String', 'Number': '1'})
+    w = Writer(ann_vcf_file, vcf)
+    for rec in vcf:
+        rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
+        rec.INFO['rsid'] = rsid_by_snp[(rec.CHROM, rec.POS)]
+        w.write_record(rec)
+    w.close()
+    assert verify_file(ann_vcf_file), ann_vcf_file
+    os.rename(ann_vcf_file, vcf_file)
     return bgzip_and_tabix(vcf_file)
 
 
-def __p(rec):
-    s = rec.samples[0]
-    gt_type = {
-        0: 'hom_ref',
-        1: 'het',
-        2: 'hom_alt',
-        None: 'uncalled'
-    }.get(s.gt_type)
-    gt_bases = s.gt_bases
-    return str(rec) + ' FILTER=' + str(rec.FILTER) + ' gt_bases=' + str(gt_bases) + ' gt_type=' + gt_type + ' GT=' + str(s['GT']) + ' Depth=' + str(s['VD']) + '/' + str(s['DP'])
+# def __p(rec):
+#     s = rec.samples[0]
+#     gt_type = {
+#         0: 'hom_ref',
+#         1: 'het',
+#         2: 'hom_alt',
+#         None: 'uncalled'
+#     }.get(s.gt_type)
+#     gt_bases = s.gt_bases
+#     return str(rec) + ' FILTER=' + str(rec.FILTER) + ' gt_bases=' + str(gt_bases) + ' gt_type=' + gt_type + ' GT=' + str(s['GT']) + ' Depth=' + str(s['VD']) + '/' + str(s['DP'])
 
 
 def vcfrec_to_seq(rec, depth_cutoff):

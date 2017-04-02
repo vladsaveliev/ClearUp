@@ -3,17 +3,22 @@ import os
 from collections import defaultdict
 from os.path import join, abspath
 
+from cyvcf2 import VCF
 from flask import Flask
 from flask_script import Manager
-from sqlalchemy.exc import OperationalError
 
 import ngs_utils.logger as log
-from ngs_utils.file_utils import safe_mkdir
+from ngs_utils import sambamba
+from ngs_utils.bed_utils import get_total_bed_size
+from ngs_utils.file_utils import safe_mkdir, file_transaction, intermediate_fname, can_reuse
 from ngs_utils.utils import is_local
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
-from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run
+from fingerprinting.genotype import genotype
+from fingerprinting.panel import build_snps_panel
+from fingerprinting.utils import is_sex_chrom
+from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run, _genotype
 from fingerprinting import app, DATA_DIR, parallel_cfg
 
 manager = Manager(app)
@@ -32,15 +37,10 @@ def load_project(bcbio_dir, name=None):
     bcbio_proj = BcbioProject()
     bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
         proc_name='fingerprinting', need_coverage_interval=False, need_vardict=False)
+    work_dir = safe_mkdir(join(DATA_DIR, 'bcbio_projects', bcbio_proj.project_name))
     log.info('Loaded ' + bcbio_proj.final_dir)
     log.info()
 
-    log.info('Genotyping sex')
-    work_dir = safe_mkdir(join(bcbio_proj.work_dir, 'fingerprinting'))
-    with parallel_view(len(bcbio_proj.samples), parallel_cfg, work_dir) as parall_view:
-        bcbio_summary_file = bcbio_proj.find_in_log('project-summary.yaml')
-        sexes = parall_view.run(_determine_sex, [[s, work_dir, bcbio_summary_file]
-                                                 for s in bcbio_proj.samples])
     log.info()
     log.info('Loading fingerprints into the DB')
     fp_proj = Project(
@@ -49,31 +49,72 @@ def load_project(bcbio_dir, name=None):
         genome=bcbio_proj.genome_build,
         bed_fpath=bcbio_proj.coverage_bed)
     db.session.add(fp_proj)
-    for s, sex in zip(bcbio_proj.samples, sexes):
-        db_sample = Sample(s.name, fp_proj, s.bam, sex=sex)
-        db.session.add(db_sample)
+    db_samples = []
+    for s in bcbio_proj.samples:
+        db_samples.append(Sample(s.name, fp_proj, s.bam))
+        db.session.add(db_samples[-1])
     db.session.commit()
     
     log.info('Initializing run for single project')
     with parallel_view(len(bcbio_proj.samples), parallel_cfg, work_dir) as parall_view:
         get_or_create_run(bcbio_proj.project_name, parall_view=parall_view)
     
+    log.info('Genotyping sex')
+    sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
+    with parallel_view(len(bcbio_proj.samples), parallel_cfg, sex_work_dir) as parall_view:
+        # sex_snp_bed = build_snps_panel(bcbio_projs=[bcbio_proj], output_dir=sex_work_dir,
+        #                                genome_build=bcbio_proj.genome_build, take_autosomal=False, take_sex=True)
+        # vcf_by_sample = genotype(bcbio_proj.samples, sex_snp_bed, parall_view, sex_work_dir, bcbio_proj.genome_build)
+        # for s in db_samples:
+        #     s.sex = _sex_from_x_snps(vcf_by_sample[s.name])
+        bcbio_summary_file = bcbio_proj.find_in_log('project-summary.yaml')
+        sexes = parall_view.run(_sex_from_bam, [[db_s, s, sex_work_dir, bcbio_summary_file]
+                                                for db_s, s in zip(db_samples, bcbio_proj.samples)])
+        for s, sex in zip(db_samples, sexes):
+            s.sex = sex
     db.session.commit()
+    
     log.info()
     log.info('Done.')
 
 
-def _determine_sex(s, work_dir, bcbio_summary_file=None):
+def _sex_from_x_snps(vcf_file):
+    log.debug('Calling sex from ' + vcf_file)
+    het_calls_num = 0
+    hom_calls_num = 0
+    for rec in VCF(vcf_file):
+        if rec.CHROM == 'chrX':
+            if rec.num_het > 0:
+                het_calls_num += 1
+            if rec.num_hom > 0:
+                hom_calls_num += 1
+    
+    if het_calls_num + hom_calls_num > 10:
+        if het_calls_num > 1.5 * hom_calls_num:
+            return 'F'
+        elif het_calls_num < 0.5 * hom_calls_num:
+            return 'M'
+        else:
+            log.debug('het/hom ratio on chrX is ' + str(het_calls_num/hom_calls_num) +
+                      ' - between 1.5 and 0.5, not confident enough to call sex.')
+    else:
+        log.debug('Total chrX calls number is ' + str(het_calls_num + hom_calls_num) +
+                  ' - less than 10, not confident enough to call sex.')
+    return None
+    
+
+def _sex_from_bam(db_sample, sample, work_dir, bcbio_summary_file=None):
     from ngs_reporting.coverage import get_avg_depth, determine_sex
     from os.path import join
     from ngs_utils.file_utils import safe_mkdir
     avg_depth = None
     if bcbio_summary_file:
-        avg_depth = get_avg_depth(bcbio_summary_file, s)
+        avg_depth = get_avg_depth(bcbio_summary_file, sample.name)
     if avg_depth is None:
-        avg_depth = 10
-    sex = determine_sex(safe_mkdir(join(work_dir, s.name)), s.bam, avg_depth, s.genome_build,
-                        target_bed=s.coverage_bed, min_male_size=1)
+        depths = [snp.depth for snp in db_sample.snps.all()]
+        avg_depth = sum(depths) / len(depths)
+    sex = determine_sex(safe_mkdir(join(work_dir, sample.name)), sample.bam, avg_depth,
+                        sample.genome_build, target_bed=sample.coverage_bed, min_male_size=1)
     return sex
 
 
