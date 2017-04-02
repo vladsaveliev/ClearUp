@@ -55,7 +55,8 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
         if snp_a.index % 40 == 0:
             snp_tables.append(snp_records)
             snp_records = []
-    snp_tables.append(snp_records)
+    if snp_records:
+        snp_tables.append(snp_records)
 
     bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample.long_name() + '.bam')
     bam_fpath_b = '/%s/bamfiles/%s' % (matching_sample.project.name, matching_sample.long_name() + '.bam')
