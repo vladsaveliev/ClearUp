@@ -18,7 +18,7 @@ from ngs_reporting.bcbio.bcbio import BcbioProject
 from fingerprinting.genotype import genotype
 from fingerprinting.panel import build_snps_panel
 from fingerprinting.utils import is_sex_chrom
-from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run, _genotype
+from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run
 from fingerprinting import app, DATA_DIR, parallel_cfg
 
 manager = Manager(app)

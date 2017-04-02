@@ -68,13 +68,14 @@ def run_analysis_socket_handler(run_id):
     if not run:
         log.err('Run ' + run_id + ' cannot be found. Is genotyping failed?')
         raise RuntimeError('Run ' + run_id + ' cannot be found. Is genotyping failed?')
-    if not run.fasta_file:
+    fasta_file = verify_file(run.fasta_file_path())
+    if not fasta_file:
         raise RuntimeError('Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing?')
     
-    prank_out = join(run.work_dir, splitext(basename(run.fasta_file))[0])
+    prank_out = join(run.work_dir, splitext(basename(fasta_file))[0])
     _send_line(ws, '')
     _send_line(ws, 'Building phylogeny tree using prank...')
-    _run_cmd(prank_bin + ' -d=' + run.fasta_file + ' -o=' + prank_out + ' -showtree')
+    _run_cmd(prank_bin + ' -d=' + fasta_file + ' -o=' + prank_out + ' -showtree')
     if not verify_file(prank_out + '.best.dnd'):
         raise RuntimeError('Prank failed to run')
     os.rename(prank_out + '.best.dnd', run.tree_file)
@@ -92,7 +93,7 @@ def _send_line(ws, line):
 
 def render_phylo_tree_page(run_id):
     run = Run.query.filter_by(id=run_id).first()
-    if not run or not can_reuse(run.tree_file, run.fasta_file):
+    if not run or not can_reuse(run.tree_file, verify_file(run.fasta_file_path(), silent=True)):
         return render_template(
             'processing.html',
             projects=run_id.split(','),
@@ -101,7 +102,11 @@ def render_phylo_tree_page(run_id):
         )
 
     log.debug('Prank results found, rendering tree!')
-    seq_by_id = read_fasta(run.fasta_file)
+    fasta_file = verify_file(run.fasta_file_path())
+    if not fasta_file:
+        raise RuntimeError('Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing?')
+    seq_by_id = read_fasta(fasta_file)
+
     info_by_sample_by_project = dict()
     for i, p in enumerate(run.projects):
         info_by_sample_by_project[p.name] = dict()
@@ -124,6 +129,11 @@ def render_phylo_tree_page(run_id):
             gene=l.gene,
             index=l.index)
         for l in run.locations]
+    
+    tree_file = verify_file(run.tree_file_path())
+    if not tree_file:
+        raise RuntimeError('Run ' + run_id + ' does not contain the tree file (probably failed building phylogeny)')
+        
     return render_template(
         'tree.html',
         projects=[{
@@ -133,7 +143,7 @@ def render_phylo_tree_page(run_id):
             'ids': [str(sample.id) for sample in p.samples]
         } for i, p in enumerate(run.projects)],
         title=', '.join(p.name for p in run.projects),
-        tree_newick=open(run.tree_file).read(),
+        tree_newick=open(tree_file).read(),
         info_by_sample_by_project=json.dumps(info_by_sample_by_project),
         samples_count=all_samples_count,
         locations=json.dumps(locations)

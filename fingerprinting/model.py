@@ -110,6 +110,13 @@ class Run(db.Model):
         self.work_dir = safe_mkdir(join(DATA_DIR, '__AND__'.join(project_names)))
         self.fasta_file = None
         self.tree_file = None
+     
+    def fasta_file_path(self):
+        return join(self.work_dir, 'fingerprints.fasta')
+
+    def tree_file_path(self):
+        return join(self.work_dir, 'fingerprints.newick')
+    
         
     @staticmethod
     def create(projects, parall_view=None):
@@ -134,13 +141,14 @@ class Run(db.Model):
         location_by_rsid = {l.rsid: l for l in locations}
     
         info('Genotyping')
+        gt_work_dir = safe_mkdir(join(run.work_dir, 'genotyping'))
         samples = [s for p in projects for s in p.samples]
         if parall_view:
-            fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
+            fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view, work_dir=gt_work_dir)
         else:
             samples = [s for p in projects for s in p.samples]
-            with parallel_view(len(samples), parallel_cfg, run.work_dir) as parall_view:
-                fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
+            with parallel_view(len(samples), parallel_cfg, gt_work_dir) as parall_view:
+                fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view, work_dir=gt_work_dir)
 
         info('Loading called SNPs into the DB')
         for s in samples:
@@ -163,22 +171,18 @@ class Run(db.Model):
         for snp in samples[0].snps:
             run.locations.append(snp.location)
         db.session.commit()
-        
-        run.fasta_file = fasta_file
-        run.tree_file = join(run.work_dir, splitext(basename(run.fasta_file))[0]) + '.newick'
-        db.session.commit()
         return run
 
 
-def _genotype(run, samples, genome_build, parall_view):
+def _genotype(run, samples, genome_build, parall_view, work_dir=None):
     snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
 
-    gt_work_dir = safe_mkdir(join(run.work_dir, 'genotyping'))
+    gt_work_dir = work_dir or safe_mkdir(join(run.work_dir, 'genotyping'))
     bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
     vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                              output_dir=gt_work_dir, genome_build=genome_build)
     fasta_file, vcf_by_sample = post_genotype(bs, vcf_by_sample, snps_left_to_call_file,
-        parall_view, output_dir=run.work_dir, work_dir=gt_work_dir)
+        parall_view, output_dir=run.work_dir, work_dir=gt_work_dir, out_fasta=run.fasta_file_path())
 
     info('Loading BAMs sliced to fingerprints')
     parall_view.run(load_bam_file,

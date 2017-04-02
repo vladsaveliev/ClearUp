@@ -38,7 +38,7 @@ def genotype(samples, snp_bed, parall_view, output_dir, genome_build):
     return vcf_by_sample
     
     
-def post_genotype(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work_dir, depth_cutoff=DEPTH_CUTOFF):
+def post_genotype(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work_dir, out_fasta, depth_cutoff=DEPTH_CUTOFF):
     info('** Remove sex chromosomes **')
     autosomal_vcf_by_sample = OrderedDict()
     for sn, vf in vcf_by_sample.items():
@@ -55,13 +55,12 @@ def post_genotype(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work
     parall_view.run(vcf_to_fasta, [[s, ann_vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff]
                                    for s in samples])
     info('** Merging fasta **')
-    all_fasta = join(output_dir, 'fingerprints.fasta')
-    if not can_reuse(all_fasta, fasta_by_sample.values()):
-        with open(all_fasta, 'w') as out_f:
+    if not can_reuse(out_fasta, fasta_by_sample.values()):
+        with open(out_fasta, 'w') as out_f:
             for s in samples:
                 with open(fasta_by_sample[s.name]) as f:
                     out_f.write(f.read())
-    info('All fasta saved to ' + all_fasta)
+    info('All fasta saved to ' + out_fasta)
 
     info('Saving VCFs into the output directory')
     for sn, vf in ann_vcf_by_sample.items():
@@ -79,7 +78,7 @@ def post_genotype(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work
     # info('Converting VCFs to PED')
     # ped_file = vcf_to_ped(vcf_by_sample, join(output_dir, 'fingerprints.ped'), sex_by_sample, depth_cutoff)
     
-    return all_fasta, ann_vcf_by_sample
+    return out_fasta, ann_vcf_by_sample
 
 
 # def vcf_to_ped(vcf_by_sample, ped_file, sex_by_sample, depth_cutoff):
@@ -109,7 +108,8 @@ def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
     with parallel_view(len(proj.samples), parallel_cfg, work_dir) as parall_view:
         vcf_by_sample = genotype(proj.samples, snp_bed, parall_view, work_dir, proj.genome_build)
         fasta_file, vcf_by_sample = post_genotype(proj.samples, vcf_by_sample,
-            snp_bed, parall_view, output_dir, work_dir, depth_cutoff=depth_cutoff)
+            snp_bed, parall_view, output_dir, work_dir,
+            out_fasta=join(output_dir, 'fingerprints.fasta'), depth_cutoff=depth_cutoff)
     return vcf_by_sample
     
 
