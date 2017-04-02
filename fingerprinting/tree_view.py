@@ -66,7 +66,7 @@ def run_analysis_socket_handler(run_id):
     _run_cmd(sys.executable + ' manage.py analyse_projects ' + run_id)
     run = Run.query.get(run_id)
     if not run:
-        _send_line(ws, 'Run ' + run_id + ' cannot be found. Has genotyping being failed?', error=True)
+        _send_line(ws, 'Run ' + run_id + ' cannot be found. Has genotyping been failed?', error=True)
 
     fasta_file = verify_file(run.fasta_file_path())
     if not fasta_file:
@@ -79,7 +79,7 @@ def run_analysis_socket_handler(run_id):
     if not verify_file(prank_out + '.best.dnd'):
         _send_line(ws, 'Prank failed to run', error=True)
     
-    os.rename(prank_out + '.best.dnd', run.tree_file)
+    os.rename(prank_out + '.best.dnd', run.tree_file_path())
     os.remove(prank_out + '.best.fas')
     ws.send(json.dumps({'finished': True}))
     return ''

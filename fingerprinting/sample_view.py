@@ -19,7 +19,7 @@ from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, calculate_distance_
 
 
 def _find_closest_match(sample, run):
-    tree = next(Phylo.parse(run.tree_file, 'newick'))
+    tree = next(Phylo.parse(run.tree_file_path(), 'newick'))
     distance_matrix = calculate_distance_matrix(tree)
     
     paired_clade = distance_matrix[sample.long_name()][1]
