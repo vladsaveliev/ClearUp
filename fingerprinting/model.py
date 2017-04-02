@@ -135,7 +135,8 @@ class Run(db.Model):
             db.session.add(loc)
         db.session.commit()
         location_by_rsid = {l.rsid: l for l in locations}
-    
+        
+        info()
         info('Genotyping')
         gt_work_dir = safe_mkdir(join(run.work_dir, 'genotyping'))
         samples = [s for p in projects for s in p.samples]
@@ -177,6 +178,9 @@ def _genotype(run, samples, genome_build, parall_view, work_dir=None):
     bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
     vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                              output_dir=gt_work_dir, genome_build=genome_build)
+    
+    info()
+    info('** Post-genotyping **')
     fasta_file, vcf_by_sample = post_genotype(bs, vcf_by_sample, snps_left_to_call_file,
         parall_view, output_dir=run.work_dir, work_dir=gt_work_dir, out_fasta=run.fasta_file_path())
 

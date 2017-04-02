@@ -66,11 +66,11 @@ def run_analysis_socket_handler(run_id):
     _run_cmd(sys.executable + ' manage.py analyse_projects ' + run_id)
     run = Run.query.get(run_id)
     if not run:
-        _send_line(ws, 'Run ' + run_id + ' cannot be found. Is genotyping failed?', error=True)
+        _send_line(ws, 'Run ' + run_id + ' cannot be found. Has genotyping being failed?', error=True)
 
     fasta_file = verify_file(run.fasta_file_path())
     if not fasta_file:
-        _send_line(ws, 'Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing?', error=True)
+        _send_line(ws, 'Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing in another window?', error=True)
 
     prank_out = join(run.work_dir, splitext(basename(fasta_file))[0])
     _send_line(ws, '')
@@ -110,7 +110,7 @@ def render_phylo_tree_page(run_id):
     log.debug('Prank results found, rendering tree!')
     fasta_file = verify_file(run.fasta_file_path())
     if not fasta_file:
-        raise RuntimeError('Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing?')
+        raise RuntimeError('Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing in another window?')
     seq_by_id = read_fasta(fasta_file)
 
     info_by_sample_by_project = dict()

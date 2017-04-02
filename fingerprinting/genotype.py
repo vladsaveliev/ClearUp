@@ -39,22 +39,22 @@ def genotype(samples, snp_bed, parall_view, output_dir, genome_build):
     
     
 def post_genotype(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work_dir, out_fasta, depth_cutoff=DEPTH_CUTOFF):
-    info('** Remove sex chromosomes **')
+    info('Removing sex chromosomes')
     autosomal_vcf_by_sample = OrderedDict()
     for sn, vf in vcf_by_sample.items():
         autosomal_vcf_by_sample[sn] = add_suffix(vf, 'autosomal')
         run('grep -v chrX ' + vf + ' | grep -v chrY', output_fpath=autosomal_vcf_by_sample[sn])
     
-    info('** Annotate variants with gene names and rsIDs **')
+    info('Annotating variants with gene names and rsIDs')
     vcf_files = parall_view.run(_annotate_vcf, [[autosomal_vcf_by_sample[s.name], snp_bed] for s in samples])
     ann_vcf_by_sample = {s.name: vf for s, vf in zip(samples, vcf_files)}
 
-    info('** Writing fasta **')
+    info('Writing fasta')
     fasta_work_dir = safe_mkdir(join(work_dir, 'fasta'))
     fasta_by_sample = OrderedDict((s.name, join(fasta_work_dir, s.name + '.fasta')) for s in samples)
     parall_view.run(vcf_to_fasta, [[s, ann_vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff]
                                    for s in samples])
-    info('** Merging fasta **')
+    info('Merging fasta')
     if not can_reuse(out_fasta, fasta_by_sample.values()):
         with open(out_fasta, 'w') as out_f:
             for s in samples:
@@ -211,6 +211,7 @@ def _annotate_vcf(vcf_file, snp_bed):
     
     vcf_file = bgzip_and_tabix(vcf_file)
     ann_vcf_file = add_suffix(vcf_file, 'ann')
+    debug('Tabixed, annotating into ' + ann_vcf_file)
     vcf = VCF(vcf_file)
     vcf.add_info_to_header({'ID': 'GENE', 'Description': 'Overlapping gene', 'Type': 'String', 'Number': '1'})
     vcf.add_info_to_header({'ID': 'rsid', 'Description': 'dbSNP rsID', 'Type': 'String', 'Number': '1'})
@@ -219,10 +220,13 @@ def _annotate_vcf(vcf_file, snp_bed):
         rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
         rec.INFO['rsid'] = rsid_by_snp[(rec.CHROM, rec.POS)]
         w.write_record(rec)
+    debug('Annotated, saved into ' + ann_vcf_file)
     w.close()
+    debug('Closed ' + ann_vcf_file)
     assert verify_file(ann_vcf_file), ann_vcf_file
+    debug('Renaming ' + ann_vcf_file + ' -> ' + vcf_file)
     os.rename(ann_vcf_file, vcf_file)
-    return bgzip_and_tabix(vcf_file)
+    return vcf_file
 
 
 # def __p(rec):
