@@ -38,3 +38,8 @@ def get_version():
     else:
         version = version.__version__
     return version
+
+
+DEPTH_CUTOFF = 5
+
+

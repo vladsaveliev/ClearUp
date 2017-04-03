@@ -11,13 +11,10 @@ import ngs_utils.logger as log
 from ngs_utils import sambamba
 from ngs_utils.bed_utils import get_total_bed_size
 from ngs_utils.file_utils import safe_mkdir, file_transaction, intermediate_fname, can_reuse
-from ngs_utils.utils import is_local
+from ngs_utils.utils import is_local, is_us
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
-from fingerprinting.genotype import genotype
-from fingerprinting.panel import build_snps_panel
-from fingerprinting.utils import is_sex_chrom
 from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run
 from fingerprinting import app, DATA_DIR, parallel_cfg
 
@@ -134,11 +131,13 @@ def init_db():
 
 @manager.command
 def reload_all_data():
+    init_db()
     if is_local():
-        init_db()
         load_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle')
         load_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
         load_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')
+    elif is_us():
+        load_project(abspath(''), '')
 
 
 if __name__ == "__main__":
