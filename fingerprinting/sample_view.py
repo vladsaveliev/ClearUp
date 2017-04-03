@@ -15,14 +15,14 @@ from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 
 from fingerprinting.model import Project, db, Sample, Run
 from fingerprinting.lookups import get_snp_record, get_sample_by_name
-from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, calculate_distance_matrix
+from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR
 
 
 def _find_closest_match(sample, run):
     tree = next(Phylo.parse(run.tree_file_path(), 'newick'))
-    distance_matrix = calculate_distance_matrix(tree)
-    
-    paired_clade = distance_matrix[sample.long_name()][1]
+    clade = [c for c in tree.get_terminals() if c.name == sample.long_name()][0]
+    other_terminals = [c for c in tree.get_terminals() if c != clade]
+    paired_clade = min(other_terminals, key=lambda c2: tree.distance(clade, c2))
     if paired_clade:
         sn, pn = paired_clade.name.split(FASTA_ID_PROJECT_SEPARATOR)
         p = run.projects.filter_by(name=pn).first()

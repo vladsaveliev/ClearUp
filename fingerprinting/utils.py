@@ -54,17 +54,6 @@ def get_sample_and_project_name(name, fingerprint_project=None):
         return sample_name, project_names[0]
 
 
-def calculate_distance_matrix(tree):
-    clades = tree.get_terminals()
-    distance_matrix = defaultdict(lambda: (1, None))
-    for clade, clade2 in list(itertools.combinations(clades, 2)):
-        distance = tree.distance(clade, clade2)
-        if distance < distance_matrix[clade.name][0]:
-            distance_matrix[clade.name] = (distance, clade2)
-            distance_matrix[clade2.name] = (distance, clade)
-    return distance_matrix
-
-
 def is_sex_chrom(chrom):
     return chrom in ['X', 'Y', 'chrX', 'chrY']
 
