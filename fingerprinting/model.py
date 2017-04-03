@@ -149,7 +149,7 @@ class Run(db.Model):
         for s in samples:
             recs = [r for r in VCF(vcf_by_sample[s.long_name()])]
             for i, rec in enumerate(recs):
-                loc = location_by_rsid[rec.INFO['rsid']]
+                loc = location_by_rsid[rec.ID]
                 assert loc.pos == rec.POS
                 snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
                 if snp:

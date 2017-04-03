@@ -63,7 +63,8 @@ def run_analysis_socket_handler(run_id):
             # lines = []
         log.debug('Exit from the subprocess')
 
-    _run_cmd(sys.executable + ' manage.py analyse_projects ' + run_id)
+    manage_py = abspath(join(dirname(__file__), '..', 'manage.py'))
+    _run_cmd(sys.executable + ' ' + manage_py + ' analyse_projects ' + run_id)
     run = Run.query.get(run_id)
     if not run:
         _send_line(ws, 'Run ' + run_id + ' cannot be found. Has genotyping been failed?', error=True)

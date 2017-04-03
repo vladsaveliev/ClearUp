@@ -4,7 +4,8 @@ from collections import OrderedDict
 import os
 from os.path import join, dirname, splitext, basename
 import sys
-from cyvcf2 import VCF, Writer
+import vcf
+from vcf.parser import field_counts, _Info
 from subprocess import check_output
 from variant_filtering.filtering import combine_vcfs
 
@@ -211,21 +212,41 @@ def _annotate_vcf(vcf_file, snp_bed):
         gene_by_snp[(interval.chrom, pos)] = gene
         rsid_by_snp[(interval.chrom, pos)] = rsid
     
-    vcf_file = bgzip_and_tabix(vcf_file)
     ann_vcf_file = add_suffix(vcf_file, 'ann')
-    debug('Tabixed, annotating into ' + ann_vcf_file)
-    from cyvcf2 import VCF, Writer
-    vcf = VCF(vcf_file)
-    vcf.add_info_to_header({'ID': 'GENE', 'Description': 'Overlapping gene', 'Type': 'String', 'Number': '1'})
-    vcf.add_info_to_header({'ID': 'rsid', 'Description': 'dbSNP rsID', 'Type': 'String', 'Number': '1'})
-    w = Writer(ann_vcf_file, vcf)
-    for rec in vcf:
-        rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
-        rec.INFO['rsid'] = rsid_by_snp[(rec.CHROM, rec.POS)]
-        w.write_record(rec)
-    debug('Annotated, saved into ' + ann_vcf_file)
-    w.close()
-    debug('Closed ' + ann_vcf_file)
+    with open(vcf_file) as f, open(ann_vcf_file, 'w') as out:
+        vcf_reader = vcf.Reader(f)
+        vcf_writer = vcf.Writer(out, vcf_reader)
+        try:
+            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name', '', '')
+        except TypeError:
+            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name')
+        for rec in vcf_reader:
+            if (rec.CHROM, rec.POS) in gene_by_snp:
+                rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
+                rec.ID = rsid_by_snp[(rec.CHROM, rec.POS)]
+                vcf_writer.write_record(rec)
+    ann_vcf_file = bgzip_and_tabix(ann_vcf_file)
+    vcf_file += '.gz'
+    # debug('Tabixed, annotating into ' + ann_vcf_file)
+    # from cyvcf2 import VCF, Writer
+    # vcf = VCF(vcf_file)
+    # debug('Created reader')
+    # vcf.add_info_to_header({'ID': 'GENE', 'Description': 'Overlapping gene', 'Type': 'String', 'Number': '1'})
+    # vcf.add_info_to_header({'ID': 'rsid', 'Description': 'dbSNP rsID', 'Type': 'String', 'Number': '1'})
+    # debug('Added header to reader')
+    # w = Writer(ann_vcf_file, vcf)
+    # debug('Creted writer')
+    # for rec in vcf:
+    #     debug('Annotating rec ' + str(rec))
+    #     if (rec.CHROM, rec.POS) in gene_by_snp:
+    #         debug('Rec is in gene_by_snp')
+    #         rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
+    #         rec.INFO['rsid'] = rsid_by_snp[(rec.CHROM, rec.POS)]
+    #         w.write_record(rec)
+    #         debug('Written rec')
+    # debug('Annotated, saved into ' + ann_vcf_file)
+    # w.close()
+    # debug('Closed ' + ann_vcf_file)
     assert verify_file(ann_vcf_file), ann_vcf_file
     debug('Renaming ' + ann_vcf_file + ' -> ' + vcf_file)
     os.rename(ann_vcf_file, vcf_file)
