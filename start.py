@@ -36,6 +36,7 @@ def closest_comparison_page(run_id, sample_id):
 
 @app.route('/<run_id>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
 def add_user_call(run_id, sample_id):
+    run_id = ','.join(sorted(run_id.split(',')))
     logger.info('Adding user call for ' + str(sample_id))
     edit_sample_id = request.form['editSampleId']
     sample = Sample.query.filter_by(id=edit_sample_id).first()
@@ -57,6 +58,7 @@ def bam_files_page(project_name, bam_fname):
 
 @app.route('/<run_id>/snps_bed/')
 def locations_bed(run_id):
+    run_id = ','.join(sorted(run_id.split(',')))
     run = Run.query.filter_by(id=run_id).first()
     if not run:
         logger.err('Run ' + run_id + ' not found')

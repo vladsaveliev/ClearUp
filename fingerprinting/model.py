@@ -163,10 +163,13 @@ class Run(db.Model):
                     db.session.add(snp)
 
         info('Adding locations into the DB')
+        for l in run.locations:
+            l.run = None
         for snp in samples[0].snps:
             if snp.location.rsid in location_by_rsid:
                 run.locations.append(snp.location)
         db.session.commit()
+        info('Saved locations in the DB')
         return run
 
 
@@ -191,6 +194,7 @@ def _genotype(run, samples, genome_build, parall_view, work_dir=None):
     
 
 def get_or_create_run(run_id, parall_view=None):
+    run_id = ','.join(sorted(run_id.split(',')))
     run = Run.query.filter_by(id=run_id).first()
     if not run:
         debug('Creating new run ' + run_id)

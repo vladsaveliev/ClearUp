@@ -216,10 +216,6 @@ def _annotate_vcf(vcf_file, snp_bed):
     with open(vcf_file) as f, open(ann_vcf_file, 'w') as out:
         vcf_reader = vcf.Reader(f)
         vcf_writer = vcf.Writer(out, vcf_reader)
-        try:
-            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name', '', '')
-        except TypeError:
-            vcf_reader.infos['GENE'] = _Info('GENE', '1', 'String', 'Gene name')
         for rec in vcf_reader:
             if (rec.CHROM, rec.POS) in gene_by_snp:
                 rec.INFO['GENE'] = gene_by_snp[(rec.CHROM, rec.POS)]
@@ -248,8 +244,14 @@ def _annotate_vcf(vcf_file, snp_bed):
     # w.close()
     # debug('Closed ' + ann_vcf_file)
     assert verify_file(ann_vcf_file), ann_vcf_file
-    debug('Renaming ' + ann_vcf_file + ' -> ' + vcf_file)
-    os.rename(ann_vcf_file, vcf_file)
+
+    ann_hdr_vcf_file = add_suffix(ann_vcf_file, 'hdr')
+    header = '##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">'
+    cmdl = 'bcftools annotate -h <(echo \'{header}\') {ann_vcf_file}'.format(**locals())
+    run(cmdl, output_fpath=ann_hdr_vcf_file)
+    
+    debug('Renaming ' + ann_hdr_vcf_file + ' -> ' + vcf_file)
+    os.rename(ann_hdr_vcf_file, vcf_file)
     return vcf_file
 
 

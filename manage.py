@@ -138,6 +138,7 @@ def reload_all_data():
         init_db()
         load_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle')
         load_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
+        load_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')
 
 
 if __name__ == "__main__":

@@ -44,6 +44,7 @@ PROJ_COLORS = [
 
 
 def run_analysis_socket_handler(run_id):
+    run_id = ','.join(sorted(run_id.split(',')))
     log.debug('Recieved request to start analysis for ' + run_id)
     ws = request.environ.get('wsgi.websocket', None)
     if not ws:
@@ -98,6 +99,7 @@ def _send_line(ws, line, error=False):
 
 
 def render_phylo_tree_page(run_id):
+    run_id = ','.join(sorted(run_id.split(',')))
     run = Run.query.filter_by(id=run_id).first()
     if not run or not can_reuse(verify_file(run.tree_file_path(), silent=True),
                                 verify_file(run.fasta_file_path(), silent=True)):

@@ -27,7 +27,7 @@ if is_us():
     PORT = 5003
 else:
     HOST_IP = 'localhost'
-    PORT = 5003
+    PORT = 5004
 
 
 def get_version():

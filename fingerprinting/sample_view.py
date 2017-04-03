@@ -33,6 +33,7 @@ def _find_closest_match(sample, run):
 
 
 def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
+    run_id = ','.join(sorted(run_id.split(',')))
     run = Run.query.filter_by(id=run_id).first()
     if not run:
         log.err('Run ' + run_id + ' not found')
