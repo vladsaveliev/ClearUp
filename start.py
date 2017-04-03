@@ -8,7 +8,7 @@ from geventwebsocket.handler import WebSocketHandler
 
 from ngs_utils import logger
 from fingerprinting import app, DATA_DIR, HOST_IP, PORT
-from fingerprinting.model import db, Sample, Project, Run
+from fingerprinting.model import db, Sample, Project, Run, Location
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
 from ngs_utils.file_utils import verify_file
@@ -43,7 +43,7 @@ def add_user_call(run_id, sample_id):
         logger.err('Sample with ID=' + str(edit_sample_id) + ' not found')
         return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id))
 
-    snp = sample.snps.filter_by(index=request.form['snpIndex']).first()
+    snp = sample.snps.join(Location).filter(Location.rsid==request.form['rsid']).first()
     snp.usercall = request.form['usercall']
     db.session.commit()
     return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id,

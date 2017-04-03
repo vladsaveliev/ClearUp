@@ -50,7 +50,8 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
     # snps_dict['confidence'] = 'Low'
     snp_tables = []
     snp_records = []
-    for snp_a, snp_b in zip(sample.snps, matching_sample.snps):
+    for snp_a, snp_b in zip(sample.snps_from_run(run),
+                            matching_sample.snps_from_run(run)):
         snp_records.append(get_snp_record(snps_dict, snp_a, snp_b))
         if snp_a.index % 40 == 0:
             snp_tables.append(snp_records)

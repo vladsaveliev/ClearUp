@@ -73,6 +73,7 @@
                         <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="add_usercall/">
                             <input type="hidden" name="editSampleId" value="{{ sampleA.id }}">
                             <input type="hidden" name="snpIndex" value="{{ snp_record.index }}">
+                            <input type="hidden" name="rsid" value="{{ snp_record.rsid }}">
                             <input type="hidden" name="chrom" value="{{ snp_record.chrom }}">
                             <input type="hidden" name="pos" value="{{ snp_record.pos }}">
                             <input type="hidden" name="selectedCellId" value="{{ snp_record.index }}_a">
@@ -92,6 +93,7 @@
                         <form style="display: none; text-transform: uppercase;" class="form-inline" method="POST" action="add_usercall/">
                             <input type="hidden" name="editSampleId" value="{{ sampleB.id }}">
                             <input type="hidden" name="snpIndex" value="{{ snp_record.index }}">
+                            <input type="hidden" name="rsid" value="{{ snp_record.rsid }}">
                             <input type="hidden" name="chrom" value="{{ snp_record.chrom }}">
                             <input type="hidden" name="pos" value="{{ snp_record.pos }}">
                             <input type="text" name="usercall" value="{{ snp_record.snpB }}" maxlength="2" size="2" class="usercall_input">

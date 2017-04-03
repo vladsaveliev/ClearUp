@@ -80,7 +80,6 @@ class SNP(db.Model):
             self.genotype, self.sample.name)
 
 
-
 def _get_snps_not_calls(snps_file, samples):
     # TODO: select and save only snps per sample that are not called in taht sample (special treatment for gender?)
     # lines_to_rerun = []
@@ -113,7 +112,6 @@ class Run(db.Model):
     def tree_file_path(self):
         return join(self.work_dir, 'fingerprints.newick')
     
-        
     @staticmethod
     def create(projects, parall_view=None):
         project_names = sorted([p.name for p in projects])
@@ -165,7 +163,7 @@ class Run(db.Model):
                     db.session.add(snp)
 
         info('Adding locations into the DB')
-        for snp in samples[0].snps:
+        for snp in samples[0].snps_from_run(run):
             run.locations.append(snp.location)
         db.session.commit()
         return run
@@ -268,6 +266,15 @@ class Sample(db.Model):
 
     def long_name(self):
         return self.name + FASTA_ID_PROJECT_SEPARATOR + self.project.name
+
+    def snps_from_run(self, run):
+        locs_ids = set([l.rsid for l in run.locations.all()])
+        snps = []
+        for snp in self.snps:
+            if snp.location.rsid in locs_ids:
+                snps.append(snp)
+        return snps
+    
 
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
