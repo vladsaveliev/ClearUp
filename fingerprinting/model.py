@@ -163,8 +163,9 @@ class Run(db.Model):
                     db.session.add(snp)
 
         info('Adding locations into the DB')
-        for snp in samples[0].snps_from_run(run):
-            run.locations.append(snp.location)
+        for snp in samples[0].snps:
+            if snp.location.rsid in location_by_rsid:
+                run.locations.append(snp.location)
         db.session.commit()
         return run
 
