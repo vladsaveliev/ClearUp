@@ -2,10 +2,10 @@ import ngs_utils.logger as log
 from fingerprinting.model import Project
 
 
-def get_snp_record(snps_dict, snp_a, snp_b):
+def get_snp_record(snps_dict, snp_a, snp_b, snp_index):
     seq_a, seq_b = snp_a.usercall or snp_a.genotype, snp_b.usercall or snp_b.genotype
     seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
-    snp_record = {'index': snp_a.index,
+    snp_record = {'index': snp_index,
                   'chrom': snp_a.location.chrom,
                   'pos': snp_a.location.pos,
                   'rsid': snp_a.location.rsid,

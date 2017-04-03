@@ -195,7 +195,7 @@
               .attr("class", "loc_index")
             .append("tspan")
               .attr("fill", "#999")
-              .text(function(d) { return d.index; });
+              .text(function(d, i) { return i + 1; });
           bottomAnnoY = -5;
           chart.append("g")
               .attr("transform", function(d) { return "translate(" + bottomAnnoY + "," + (annoX+4) + ")rotate(90)"; })

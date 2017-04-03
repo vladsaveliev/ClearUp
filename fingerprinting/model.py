@@ -30,7 +30,6 @@ run_to_project_assoc_table = db.Table(
 class Location(db.Model):
     __tablename__ = 'location'
     id = db.Column(db.Integer, primary_key=True)
-    index = db.Column(db.Integer)
     rsid = db.Column(db.String)
     chrom = db.Column(db.String)
     pos = db.Column(db.Integer)
@@ -41,9 +40,8 @@ class Location(db.Model):
     run_id = db.Column(db.String, db.ForeignKey('run.id'))
     run = db.relationship('Run', backref=db.backref('locations', lazy='dynamic'))
 
-    def __init__(self, rsid, index, chrom=None, pos=None, gene=None):
+    def __init__(self, rsid, chrom=None, pos=None, gene=None):
         self.rsid = rsid
-        self.index = index
         self.chrom = chrom
         self.pos = pos
         self.gene = gene
@@ -56,7 +54,6 @@ class Location(db.Model):
 
 class SNP(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    index = db.Column(db.Integer)
     genotype = db.Column(db.String)
     depth = db.Column(db.Integer)
     usercall = db.Column(db.String)
@@ -67,8 +64,7 @@ class SNP(db.Model):
     sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
     sample = db.relationship('Sample', backref=db.backref('snps', lazy='dynamic'))
 
-    def __init__(self, index, location=None):
-        self.index = index
+    def __init__(self, location=None):
         self.location = location
         self.genotype = None
         self.depth = None
@@ -156,7 +152,7 @@ class Run(db.Model):
                     assert snp.depth == rec.INFO['DP']
                     assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
                 else:
-                    snp = SNP(index=i + 1, location=loc)
+                    snp = SNP(location=loc)
                     snp.depth = rec.INFO['DP']
                     snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
                     s.snps.append(snp)
@@ -292,7 +288,6 @@ def extract_locations_from_file(snps_file):
         rsid, gene = interval.name.split('|')
         loc = Location(
             rsid=rsid,
-            index=i + 1,
             chrom=interval.chrom,
             pos=pos,
             gene=gene)

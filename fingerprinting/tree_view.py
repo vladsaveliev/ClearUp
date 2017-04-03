@@ -135,9 +135,8 @@ def render_phylo_tree_page(run_id):
             chrom=l.chrom.replace('chr', ''),
             pos=l.pos,
             rsid=l.rsid,
-            gene=l.gene,
-            index=l.index)
-        for l in run.locations]
+            gene=l.gene)
+        for i, l in enumerate(run.locations)]
     
     tree_file = verify_file(run.tree_file_path())
     if not tree_file:

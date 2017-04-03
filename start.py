@@ -36,7 +36,7 @@ def closest_comparison_page(run_id, sample_id):
 
 @app.route('/<run_id>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
 def add_user_call(run_id, sample_id):
-    run_id = ','.join(sorted(run_id.split(',')))
+    run_id = ','.join(run_id.split(',').sort())
     logger.info('Adding user call for ' + str(sample_id))
     edit_sample_id = request.form['editSampleId']
     sample = Sample.query.filter_by(id=edit_sample_id).first()
@@ -48,7 +48,7 @@ def add_user_call(run_id, sample_id):
     snp.usercall = request.form['usercall']
     db.session.commit()
     return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id,
-                            snpIndex=snp.index))
+                            snpIndex=request.form['snpIndex']))
 
 
 @app.route('/<project_name>/bamfiles/<bam_fname>/')
