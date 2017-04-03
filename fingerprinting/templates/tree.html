@@ -58,7 +58,7 @@
         var svg = d3.select("#tree_svg")
             .attr("width", svgWidth)
             .attr("height", svgHeight + bottomAnnoHeight)
-            .attr("style", "margin-top: -" + (topAnnoHeight))
+            .attr("style", "margin-top: -" + (topAnnoHeight - 10))
             // .attr("style", "margin-bottom: -" + bottomAnnoHeight);
 
         var offsetX = 20;
@@ -172,7 +172,7 @@
               sampleSeqSpace;
           topAnnoY = svgHeight;
           locWidth = (seqWidth)/locations.length;
-          indexHeight = 8;
+          indexHeight = 9;
           chart.append("g")
               .attr("transform", function(d) { return "translate(" + (topAnnoY+indexHeight) + "," + (annoX+10) + ")rotate(90)"; })
             .selectAll(".loc")
@@ -187,7 +187,7 @@
               .attr("fill", "#999")
               .text(function(d) { return ' ' + d.rsid; });
           chart.append("g")
-              .attr("transform", function(d) { return "translate(" + (topAnnoY-3) + "," + (annoX+4) + ")rotate(90)"; })
+              .attr("transform", function(d) { return "translate(" + (topAnnoY-2) + "," + (annoX+4) + ")rotate(90)"; })
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")

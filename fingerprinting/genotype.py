@@ -192,8 +192,10 @@ def _fix_vcf(vardict_snp_vars_vcf, ref_file):
                     l = '\t'.join(fs)
                     l = l.replace('=NA;', '=.;')
                     l = l.replace('=;', '=.;')
-                if len(ref) == len(alt) == 1:  # SNP (not indel or complex variant)
-                    out_f.write(l)
+                if len(ref) > 1 or len(alt) > 1:  # SNP (not indel or complex variant)
+                    fs[3] = ref[0]  # '.'  # REF
+                    fs[4] = alt[0]  # '.'  # ALT
+                out_f.write(l)
             
     assert verify_file(vardict_snp_vars_fixed_vcf)
     os.rename(vardict_snp_vars_fixed_vcf, vardict_snp_vars_vcf)
