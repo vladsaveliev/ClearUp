@@ -38,7 +38,7 @@ def closest_comparison_page(project_names_line, sample_id):
 def add_user_call(project_names_line, sample_id):
     logger.info('Adding user call for ' + str(sample_id))
     edit_sample_id = request.form['editSampleId']
-    sample = Sample.query.get(id=edit_sample_id)
+    sample = Sample.query.get(edit_sample_id)
     if not sample:
         logger.err('Sample with ID=' + str(edit_sample_id) + ' not found')
         return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id))
@@ -50,9 +50,9 @@ def add_user_call(project_names_line, sample_id):
                             snpIndex=request.form['snpIndex']))
 
 
-@app.route('/<project_name>/bamfiles/<bam_fname>/')
-def bam_files_page(project_name, bam_fname):
-    return send_file_for_igv(join(DATA_DIR, project_name, 'bams', bam_fname))
+@app.route('/<run_id>/bamfiles/<bam_fname>/')
+def bam_files_page(run_id, bam_fname):
+    return send_file_for_igv(join(DATA_DIR, str(run_id), 'bams', bam_fname))
 
 
 @app.route('/<project_names_line>/snps_bed/')

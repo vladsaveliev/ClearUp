@@ -25,8 +25,8 @@ def _find_closest_match(sample, run):
     paired_clade = min(other_terminals, key=lambda c2: tree.distance(clade, c2))
     if paired_clade:
         sn, pn = paired_clade.name.split(FASTA_ID_PROJECT_SEPARATOR)
-        p = run.projects.get(pn)
-        matching_sample = p.samples.get(sn)
+        p = run.projects.filter(Project.name==pn).first()
+        matching_sample = p.samples.filter(Sample.name==sn).first()
         return matching_sample
     else:
         return None
@@ -59,8 +59,8 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
     if snp_records:
         snp_tables.append(snp_records)
 
-    bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample.long_name() + '.bam')
-    bam_fpath_b = '/%s/bamfiles/%s' % (matching_sample.project.name, matching_sample.long_name() + '.bam')
+    bam_fpath_a = '/%s/bamfiles/%s' % (run.id, sample.long_name() + '.bam')
+    bam_fpath_b = '/%s/bamfiles/%s' % (run.id, matching_sample.long_name() + '.bam')
     snps_bed = '/%s/snps_bed' % project_names_line
     sample_a = {
         'id': sample.id,

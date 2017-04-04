@@ -8,7 +8,7 @@ import time
 from sys import platform
 
 import sys
-from os.path import join, dirname
+from os.path import join, dirname, isfile
 from collections import defaultdict
 from os.path import abspath, join, dirname, splitext, basename
 
@@ -98,7 +98,7 @@ def _send_line(ws, line, error=False):
 
 def render_phylo_tree_page(project_names_line):
     run = Run.find_by_project_names_line(project_names_line)
-    if not run:
+    if not run or not isfile(run.fasta_file_path()) or not isfile(run.tree_file_path()):
         pnames = project_names_line.split('--')
         return render_template(
             'processing.html',
