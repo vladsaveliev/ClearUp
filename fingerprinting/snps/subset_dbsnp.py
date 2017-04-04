@@ -71,18 +71,138 @@ def subset_dbsnp():
   - gc0to15
   - gc15to20
   - gc20to25
-  - gc25to30 - keep?
-  - gc65to70 - keep?
+  - gc25to30                    - keep?
+  - gc65to70                    - keep?
   - gc70to75
   - gc75to80
   - gc80to85
   - gc85to100
-  - low_complexity_lt51bp
+  - low_complexity_lt51bp       - keep?
   - low_complexity_51to200bp
   - low_complexity_gt200bp
   - repeats
-  - self_chain - keep?
-  - heng_universal_mask - keep?
+  - self_chain                  - keep?
+  - heng_universal_mask         - keep?
+
+TODO: annotated, and prioritize when small number left
+
+bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc25to30.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc70to75.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc80to85.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc85to100.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_lt51bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_51to200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_gt200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/repeats.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/heng_universal_mask.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/wgEncodeDacMapabilityConsensusExcludable.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
+        > dbsnp_maf10pct.noselfchain.bed
+        
+bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/self_chain.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc25to30.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc70to75.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc80to85.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc85to100.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_51to200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_gt200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/repeats.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/heng_universal_mask.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/wgEncodeDacMapabilityConsensusExcludable.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
+        > dbsnp_maf10pct.no_lowcomplexity1to50.bed
+
+bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/self_chain.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc25to30.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc80to85.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc85to100.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_lt51bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_51to200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_gt200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/repeats.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/heng_universal_mask.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/wgEncodeDacMapabilityConsensusExcludable.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
+        > dbsnp_maf10pct.no_gc70tp75.bed
+
+bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/self_chain.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc70to75.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc80to85.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc85to100.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_lt51bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_51to200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_gt200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/repeats.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/heng_universal_mask.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/wgEncodeDacMapabilityConsensusExcludable.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
+        > dbsnp_maf10pct.no_gc25tp30.bed
+
+bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/self_chain.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc80to85.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc85to100.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_lt51bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_51to200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_gt200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/repeats.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/heng_universal_mask.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/wgEncodeDacMapabilityConsensusExcludable.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
+        > dbsnp_maf10pct.no_gc.bed
+
+bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc80to85.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc85to100.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_51to200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_gt200bp.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/repeats.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/heng_universal_mask.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/wgEncodeDacMapabilityConsensusExcludable.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
+        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
+        > dbsnp_maf10pct.no_selfchain_lowcomplexity1to50_gc.bed
+
+
     '''
     
     return subset_dbsnp
