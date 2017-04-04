@@ -41,7 +41,7 @@
                     console.log("WebSocket not supported");
                     $('#console_log').append("Processing...<br>");
                 } else {
-                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + "/{{ run_id }}/run_analysis/");
+                    ws = new WebSocket("ws://" + document.domain + ":" + location.port + "/{{ project_names_line }}/run_analysis/");
                     console.log("Connected");
                     ws.onstart = function() {
                         ws.send("started");
@@ -56,7 +56,7 @@
                                 consoleDiv.append('<br><hr><span style="color: red;">' + data.line + "</span><br>");
                             }
                         } else if (data.finished) {
-                            location.href = "/{{ run_id }}/tree";
+                            location.href = "/{{ project_names_line }}/tree";
                         }
                     };
                 }

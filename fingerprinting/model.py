@@ -91,27 +91,26 @@ PROJ_COLORS = ['#000000', '#90ed7d', '#f7a35c', '#8085e9', '#f15c80',
 
 class Run(db.Model):
     __tablename__ = 'run'
-    id = db.Column(db.String, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     snps_file = db.Column(db.String)
-    work_dir = db.Column(db.String)
     projects = db.relationship("Project", secondary=run_to_project_assoc_table,
                                backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
     
-    def __init__(self, project_names):
-        self.id = ','.join(project_names)
+    def __init__(self):
         self.snps_file = None
-        self.work_dir = safe_mkdir(join(DATA_DIR, '__AND__'.join(project_names)))
+     
+    def work_dir_path(self):
+        return safe_mkdir(join(DATA_DIR, str(self.id)))
      
     def fasta_file_path(self):
-        return join(self.work_dir, 'fingerprints.fasta')
+        return join(self.work_dir_path(), 'fingerprints.fasta')
 
     def tree_file_path(self):
-        return join(self.work_dir, 'fingerprints.newick')
+        return join(self.work_dir_path(), 'fingerprints.newick')
     
     @staticmethod
     def create(projects, parall_view=None):
-        project_names = sorted([p.name for p in projects])
-        run = Run(project_names)
+        run = Run()
         db.session.add(run)
         for p in projects:
             run.projects.append(p)
@@ -121,7 +120,7 @@ class Run(db.Model):
         assert len(set(genome_builds)) == 1, 'Error: different genome builds in projects'
         genome_build = genome_builds[0]
         
-        snps_dir = safe_mkdir(join(run.work_dir, 'snps'))
+        snps_dir = safe_mkdir(join(run.work_dir_path(), 'snps'))
         run.snps_file = build_snps_panel(bed_files=[p.bed_fpath for p in projects if p.bed_fpath],
                                          output_dir=snps_dir, genome_build=genome_build)
         locations = extract_locations_from_file(run.snps_file)
@@ -132,7 +131,7 @@ class Run(db.Model):
         
         info()
         info('Genotyping')
-        gt_work_dir = safe_mkdir(join(run.work_dir, 'genotyping'))
+        gt_work_dir = safe_mkdir(join(run.work_dir_path(), 'genotyping'))
         samples = [s for p in projects for s in p.samples]
         if parall_view:
             fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view, work_dir=gt_work_dir)
@@ -167,12 +166,25 @@ class Run(db.Model):
         db.session.commit()
         info('Saved locations in the DB')
         return run
+    
+    @staticmethod
+    def find_by_projects(projects):
+        for r in Run.query.all():
+            if sorted(tuple(p.name for p in projects)) == sorted(tuple(p.name for p in r.projects)):
+                return r
+        return None
+
+    @staticmethod
+    def find_by_project_names_line(project_names_line):
+        pnames = project_names_line.split('--')
+        projects = Project.query.filter(Project.name.in_(pnames))
+        return Run.find_by_projects(projects)
 
 
 def _genotype(run, samples, genome_build, parall_view, work_dir=None):
     snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
 
-    gt_work_dir = work_dir or safe_mkdir(join(run.work_dir, 'genotyping'))
+    gt_work_dir = work_dir or safe_mkdir(join(run.work_dir_path(), 'genotyping'))
     bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
     vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                              output_dir=gt_work_dir, genome_build=genome_build)
@@ -180,38 +192,25 @@ def _genotype(run, samples, genome_build, parall_view, work_dir=None):
     info()
     info('** Post-genotyping **')
     fasta_file, vcf_by_sample = post_genotype(bs, vcf_by_sample, snps_left_to_call_file,
-        parall_view, output_dir=run.work_dir, work_dir=gt_work_dir, out_fasta=run.fasta_file_path())
+        parall_view, output_dir=run.work_dir_path(), work_dir=gt_work_dir, out_fasta=run.fasta_file_path())
 
     info('Loading BAMs sliced to fingerprints')
     parall_view.run(load_bam_file,
-        [[s.bam, safe_mkdir(join(run.work_dir, 'bams')), run.snps_file, s.long_name()]
+        [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
          for s in samples])
     return fasta_file, vcf_by_sample
     
 
-def get_or_create_run(run_id, parall_view=None):
-    run_id = ','.join(sorted(run_id.split(',')))
-    run = Run.query.filter_by(id=run_id).first()
+def get_or_create_run(projects, parall_view=None):
+    run = Run.find_by_projects(projects)
     if not run:
-        debug('Creating new run ' + run_id)
-        project_names = run_id.split(',')
-        projects = []
-        not_found = []
-        for pn in project_names:
-            p = Project.query.filter_by(name=pn).first()
-            if p:
-                projects.append(p)
-            else:
-                not_found.append(pn)
-        if not_found:
-            err('Some projects not found in the database: ' + ', '.join(project_names))
-            return None
+        debug('Creating new run for projects ' + ', '.join(p.name for p in projects))
         run = Run.create(projects, parall_view)
         db.session.add(run)
         db.session.commit()
-        debug('Done creating new run ' + run_id)
+        debug('Done creating new run with ID ' + str(run.id))
     else:
-        debug('Found run ' + run.id)
+        debug('Found run for ' + ', '.join([p.name for p in projects]) + ' with ID ' + str(run.id))
     return run
 
 

@@ -45,12 +45,12 @@ def get_snp_record(snps_dict, snp_a, snp_b, snp_index):
 
 
 def get_sample_by_name(sample_name, project_name):
-    project = Project.query.filter_by(name=project_name).first()
+    project = Project.query.get(project_name)
     if not project:
         log.err('Project ' + project_name + ' not found in database')
         return None
-    sample = project.samples.filter_by(name=sample_name).first()
-    if not project:
+    sample = project.samples.get(sample_name)
+    if not sample:
         log.err('Sample ' + sample_name + ' not found in ' + project_name)
         return None
     return sample

@@ -54,7 +54,7 @@ def load_project(bcbio_dir, name=None):
     
     log.info('Initializing run for single project')
     with parallel_view(len(bcbio_proj.samples), parallel_cfg, work_dir) as parall_view:
-        get_or_create_run(bcbio_proj.project_name, parall_view=parall_view)
+        get_or_create_run([fp_proj], parall_view=parall_view)
     
     log.info('Genotyping sex')
     sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
@@ -116,9 +116,14 @@ def _sex_from_bam(db_sample, sample, work_dir, bcbio_summary_file=None):
 
 
 @manager.command
-def analyse_projects(run_id):
+def analyse_projects(project_names_line):
     log.init(is_debug_=True)
-    get_or_create_run(run_id)
+    project_names = project_names_line.split('--')
+    projects = Project.query.filter(Project.name.in_(project_names))
+    if projects.count() < len(project_names):
+        raise RuntimeError('Some projects in ' + str(project_names) + ' are not found in the database: ' +
+                           str(set(project_names) - set(p.name for p in projects)))
+    get_or_create_run(projects)
 
 
 @manager.command
@@ -137,7 +142,13 @@ def reload_all_data():
         load_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
         load_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')
     elif is_us():
-        load_project(abspath(''), '')
+        load_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/bcbio/final'))
+        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0288_HiSeq4000_PlasmaSeqExome/bcbio/final'))
+        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0287_HiSeq4000_PlasmaSeqAZ100/bcbio_umi/final_vardict_1.4.8'))
+        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0306_HiSeq4000_PlasmaSeq_Tissue_Exome/bcbio_umi/final'))
+        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0309_HiSeq4000_PlasmaSeq_Tissue_Exome/bcbio_umi/final'))
+        load_project(abspath('/ngs/oncology/Analysis/dev/Dev_0310_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi/final'))
+        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0300_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi/final'))
 
 
 if __name__ == "__main__":

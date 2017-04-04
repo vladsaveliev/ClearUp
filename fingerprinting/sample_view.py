@@ -14,7 +14,7 @@ from ngs_utils import logger as log
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 
 from fingerprinting.model import Project, db, Sample, Run
-from fingerprinting.lookups import get_snp_record, get_sample_by_name
+from fingerprinting.lookups import get_snp_record
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR
 
 
@@ -25,23 +25,22 @@ def _find_closest_match(sample, run):
     paired_clade = min(other_terminals, key=lambda c2: tree.distance(clade, c2))
     if paired_clade:
         sn, pn = paired_clade.name.split(FASTA_ID_PROJECT_SEPARATOR)
-        p = run.projects.filter_by(name=pn).first()
-        matching_sample = p.samples.filter_by(name=sn).first()
+        p = run.projects.get(pn)
+        matching_sample = p.samples.get(sn)
         return matching_sample
     else:
         return None
 
 
-def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
-    run_id = ','.join(sorted(run_id.split(',')))
-    run = Run.query.filter_by(id=run_id).first()
+def render_closest_comparison_page(project_names_line, sample_id, selected_idx=None):
+    run = Run.find_by_project_names_line(project_names_line)
     if not run:
-        log.err('Run ' + run_id + ' not found')
-        abort(404, {'message': 'Phylogenetic comparison for ' + run_id + ' is not found'})
-    sample = Sample.query.filter_by(id=sample_id).first()
+        log.err('Run ' + str(project_names_line) + ' not found')
+        abort(404, {'message': 'Phylogenetic comparison for ' + str(project_names_line) + ' is not found'})
+    sample = Sample.query.get(sample_id)
     if not sample:
-        log.err('Sample ' + sample_id + ' not found in ' + run_id)
-        abort(404, {'message': 'Sample ' + sample_id + ' not found in ' + run_id})
+        log.err('Sample ' + sample_id + ' not found in ' + str(project_names_line))
+        abort(404, {'message': 'Sample ' + sample_id + ' not found in ' + str(project_names_line)})
     matching_sample = _find_closest_match(sample, run)
     if not matching_sample:
         log.err('No matching sample for ' + sample.long_name())
@@ -62,7 +61,7 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
 
     bam_fpath_a = '/%s/bamfiles/%s' % (sample.project.name, sample.long_name() + '.bam')
     bam_fpath_b = '/%s/bamfiles/%s' % (matching_sample.project.name, matching_sample.long_name() + '.bam')
-    snps_bed = '/%s/snps_bed' % run_id
+    snps_bed = '/%s/snps_bed' % project_names_line
     sample_a = {
         'id': sample.id,
         'name': sample.name,
@@ -77,7 +76,7 @@ def render_closest_comparison_page(run_id, sample_id, selected_idx=None):
     }
     t = render_template(
         'sample.html',
-        run_id=run_id,
+        project_names_line=project_names_line,
         genome=sample.project.genome,
         sampleA=sample_a,
         sampleB=sample_b,

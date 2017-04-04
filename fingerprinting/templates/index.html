@@ -9,7 +9,7 @@
 
 {% block body %}
         <p style="font-size: 1.5em;">
-            <span style="font-weight: bold;">AZ projects with pre-computed fingerprints</span>
+            <span style="font-weight: bold;">AZ projects</span>
         </p>
 
         <button type="button" class="btn disabled" id="run_btn" style="margin: 20px 0">Fingerprint selected projects</button>
@@ -47,8 +47,7 @@
                     tbody.find('tr.selected').each(function() {
                         projectNames.push($(this).attr('project_name'));
                     });
-                    var runId = projectNames.join();
-                    location.href = "/" + runId + "/tree";
+                    location.href = "/" + projectNames.join('--') + "/tree";
                 });
 
                 tbody.on('click', 'tr', function () {

@@ -19,35 +19,34 @@ def send_favicon():
     return send_from_directory('static', 'favicon.ico')
 
 
-@app.route('/<run_id>/run_analysis/')
-def run_analysis(run_id):
-    return run_analysis_socket_handler(run_id)
+@app.route('/<project_names_line>/run_analysis/')
+def run_analysis(project_names_line):
+    return run_analysis_socket_handler(project_names_line)
 
 
-@app.route('/<run_id>/tree/')
-def phylo_tree_page(run_id):
-    return render_phylo_tree_page(run_id)
+@app.route('/<project_names_line>/tree/')
+def phylo_tree_page(project_names_line):
+    return render_phylo_tree_page(project_names_line)
 
 
-@app.route('/<run_id>/tree/<int:sample_id>/')
-def closest_comparison_page(run_id, sample_id):
-    return render_closest_comparison_page(run_id, sample_id, request.args.get('snpIndex'))
+@app.route('/<project_names_line>/tree/<int:sample_id>/')
+def closest_comparison_page(project_names_line, sample_id):
+    return render_closest_comparison_page(project_names_line, sample_id, request.args.get('snpIndex'))
 
 
-@app.route('/<run_id>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
-def add_user_call(run_id, sample_id):
-    run_id = ','.join(run_id.split(',').sort())
+@app.route('/<project_names_line>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
+def add_user_call(project_names_line, sample_id):
     logger.info('Adding user call for ' + str(sample_id))
     edit_sample_id = request.form['editSampleId']
-    sample = Sample.query.filter_by(id=edit_sample_id).first()
+    sample = Sample.query.get(id=edit_sample_id)
     if not sample:
         logger.err('Sample with ID=' + str(edit_sample_id) + ' not found')
-        return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id))
+        return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id))
 
     snp = sample.snps.join(Location).filter(Location.rsid==request.form['rsid']).first()
     snp.usercall = request.form['usercall']
     db.session.commit()
-    return redirect(url_for('closest_comparison_page', run_id=run_id, sample_id=sample_id,
+    return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id,
                             snpIndex=request.form['snpIndex']))
 
 
@@ -56,33 +55,31 @@ def bam_files_page(project_name, bam_fname):
     return send_file_for_igv(join(DATA_DIR, project_name, 'bams', bam_fname))
 
 
-@app.route('/<run_id>/snps_bed/')
-def locations_bed(run_id):
-    run_id = ','.join(sorted(run_id.split(',')))
-    run = Run.query.filter_by(id=run_id).first()
+@app.route('/<project_names_line>/snps_bed/')
+def locations_bed(project_names_line):
+    run = Run.find_by_project_names_line(project_names_line)
     if not run:
-        logger.err('Run ' + run_id + ' not found')
-        abort(404, {'message': 'Phylogenetic comparison for ' + run_id + ' is not found'})
+        logger.err('Run ' + project_names_line + ' not found')
+        abort(404, {'message': 'Phylogenetic comparison for ' + project_names_line + ' is not found'})
     return send_file(run.snps_file)
 
 
-@app.route('/<run_id>/')
-def project_page(run_id):
+@app.route('/<project_names_line>/')
+def project_page(project_names_line):
     return redirect(url_for('phylo_tree_page', **locals()))
 
 
-@app.route('/<run_id>/<sample_id>/')
-def sample_page(run_id, sample_id):
+@app.route('/<project_names_line>/<sample_id>/')
+def sample_page(project_names_line, sample_id):
     return redirect(url_for('closest_comparison_page', **locals()))
 
 
 @app.route('/')
 def homepage():
     projects = []
-    for p in Project.query.all():
-        run = db.session.query(Run).filter(Run.id==p.name).first()
-        if verify_file(run.fasta_file_path(), silent=True):
-            projects.append(p)
+    for run in Run.query.all():  # Finding projects with ready-to-view runs
+        if verify_file(run.fasta_file_path(), silent=True) and run.projects.count() == 1:
+            projects.append(run.projects[0])
     t = render_template(
         'index.html',
         projects=[{

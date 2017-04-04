@@ -43,9 +43,8 @@ PROJ_COLORS = [
 ]
 
 
-def run_analysis_socket_handler(run_id):
-    run_id = ','.join(sorted(run_id.split(',')))
-    log.debug('Recieved request to start analysis for ' + run_id)
+def run_analysis_socket_handler(project_names_line):
+    log.debug('Recieved request to start analysis for ' + project_names_line)
     ws = request.environ.get('wsgi.websocket', None)
     if not ws:
         raise RuntimeError('Environment lacks WSGI WebSocket support')
@@ -65,16 +64,15 @@ def run_analysis_socket_handler(run_id):
         log.debug('Exit from the subprocess')
 
     manage_py = abspath(join(dirname(__file__), '..', 'manage.py'))
-    _run_cmd(sys.executable + ' ' + manage_py + ' analyse_projects ' + run_id)
-    run = Run.query.get(run_id)
+    _run_cmd(sys.executable + ' ' + manage_py + ' analyse_projects ' + project_names_line)
+    run = Run.find_by_project_names_line(project_names_line)
     if not run:
-        _send_line(ws, 'Run ' + run_id + ' cannot be found. Has genotyping been failed?', error=True)
-
+        _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' cannot be found. Has genotyping been failed?', error=True)
     fasta_file = verify_file(run.fasta_file_path())
     if not fasta_file:
-        _send_line(ws, 'Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing in another window?', error=True)
+        _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' does not contain ready fasta file. Is genotyping ongoing in another window?', error=True)
 
-    prank_out = join(run.work_dir, splitext(basename(fasta_file))[0])
+    prank_out = join(run.work_dir_path(), splitext(basename(fasta_file))[0])
     _send_line(ws, '')
     _send_line(ws, 'Building phylogeny tree using prank...')
     _run_cmd(prank_bin + ' -d=' + fasta_file + ' -o=' + prank_out + ' -showtree')
@@ -98,22 +96,22 @@ def _send_line(ws, line, error=False):
     }))
 
 
-def render_phylo_tree_page(run_id):
-    run_id = ','.join(sorted(run_id.split(',')))
-    run = Run.query.filter_by(id=run_id).first()
-    if not run or not can_reuse(verify_file(run.tree_file_path(), silent=True),
-                                verify_file(run.fasta_file_path(), silent=True)):
+def render_phylo_tree_page(project_names_line):
+    run = Run.find_by_project_names_line(project_names_line)
+    if not run:
+        pnames = project_names_line.split('--')
         return render_template(
             'processing.html',
-            projects=run_id.split(','),
-            run_id=run_id,
-            title='Processing ' + ', '.join(run_id.split(',')),
+            projects=pnames,
+            title='Comparing projects ' + ', '.join(pnames),
+            project_names_line=project_names_line,
         )
 
     log.debug('Prank results found, rendering tree!')
     fasta_file = verify_file(run.fasta_file_path())
     if not fasta_file:
-        raise RuntimeError('Run ' + run_id + ' does not contain ready fasta file. Is genotyping ongoing in another window?')
+        raise RuntimeError('Run ' + project_names_line + ' does not contain ready fasta file. ' +
+                           'Is genotyping ongoing in another window?')
     seq_by_id = read_fasta(fasta_file)
 
     info_by_sample_by_project = dict()
@@ -140,7 +138,8 @@ def render_phylo_tree_page(run_id):
     
     tree_file = verify_file(run.tree_file_path())
     if not tree_file:
-        raise RuntimeError('Run ' + run_id + ' does not contain the tree file (probably failed building phylogeny)')
+        raise RuntimeError('Run ' + project_names_line +
+                           ' does not contain the tree file (probably failed building phylogeny)')
         
     return render_template(
         'tree.html',
