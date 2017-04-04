@@ -80,6 +80,7 @@ def homepage():
     for run in Run.query.all():  # Finding projects with ready-to-view runs
         if verify_file(run.fasta_file_path(), silent=True) and run.projects.count() == 1:
             projects.append(run.projects[0])
+    projects.sort(key=lambda p_: p_.name)
     t = render_template(
         'index.html',
         projects=[{
