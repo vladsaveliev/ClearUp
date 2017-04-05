@@ -97,6 +97,7 @@ def _send_line(ws, line, error=False):
 
 
 def render_phylo_tree_page(project_names_line):
+    log.debug('Finding run for ' + project_names_line)
     run = Run.find_by_project_names_line(project_names_line)
     if not run or not isfile(run.fasta_file_path()) or not isfile(run.tree_file_path()):
         pnames = project_names_line.split('--')
@@ -107,13 +108,14 @@ def render_phylo_tree_page(project_names_line):
             project_names_line=project_names_line,
         )
 
-    log.debug('Prank results found, rendering tree!')
+    log.debug('Prank results found, rendering a tree for run ' + str(run.id))
     fasta_file = verify_file(run.fasta_file_path())
     if not fasta_file:
         raise RuntimeError('Run ' + project_names_line + ' does not contain ready fasta file. ' +
                            'Is genotyping ongoing in another window?')
     seq_by_id = read_fasta(fasta_file)
 
+    log.debug('Preparing info for run ' + str(run.id))
     info_by_sample_by_project = dict()
     for i, p in enumerate(run.projects):
         info_by_sample_by_project[p.name] = dict()
@@ -128,7 +130,8 @@ def render_phylo_tree_page(project_names_line):
                 'seq': [nt for nt in seq_by_id[s.name + FASTA_ID_PROJECT_SEPARATOR + p.name]],
                 'snps': [snp.genotype for snp in s.snps_from_run(run)],
             }
-    all_samples_count = sum(len(p.samples.all()) for p in run.projects)
+    all_samples_count = sum(len(info_by_sample['samples']) for info_by_sample in info_by_sample_by_project.values())
+    log.debug('Total samples: ' + str(all_samples_count))
     locations = [dict(
             chrom=l.chrom.replace('chr', ''),
             pos=l.pos,
@@ -137,6 +140,7 @@ def render_phylo_tree_page(project_names_line):
         for i, l in enumerate(run.locations)]
     
     tree_file = verify_file(run.tree_file_path())
+    log.debug('Tree file found: ' + tree_file)
     if not tree_file:
         raise RuntimeError('Run ' + project_names_line +
                            ' does not contain the tree file (probably failed building phylogeny)')
@@ -144,12 +148,12 @@ def render_phylo_tree_page(project_names_line):
     return render_template(
         'tree.html',
         projects=[{
-            'name': str(p.name),
+            'name': str(info_by_sample['name']),
             'color': PROJ_COLORS[i % len(PROJ_COLORS)],
-            'samples': [str(sample.name) for sample in p.samples],
-            'ids': [str(sample.id) for sample in p.samples]
-        } for i, p in enumerate(run.projects)],
-        title=', '.join(p.name for p in run.projects),
+            'samples': [info['name'] for info in info_by_sample['samples']],
+            'ids': [info['id'] for info in info_by_sample['samples']]
+        } for i, info_by_sample in enumerate(info_by_sample_by_project.values())],
+        title=', '.join(sorted(info_by_sample_by_project.keys())),
         tree_newick=open(tree_file).read(),
         info_by_sample_by_project=json.dumps(info_by_sample_by_project),
         samples_count=all_samples_count,
