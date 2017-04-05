@@ -201,8 +201,16 @@ bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
         > dbsnp_maf10pct.no_selfchain_lowcomplexity1to50_gc.bed
-
-
+        
+        
+        1772719   dbsnp_maf10pct.good.bed
+        2045141   dbsnp_maf10pct.no_gc25tp30.bed
+        1817857   dbsnp_maf10pct.no_gc70tp75.bed
+        2059411   dbsnp_maf10pct.no_gc.bed
+        1819416   dbsnp_maf10pct.no_lowcomplexity1to50.bed
+        1853549   dbsnp_maf10pct.noselfchain.bed
+        2134550   dbsnp_maf10pct.no_selfchain_lowcomplexity1to50_gc.bed
+        2578547   dbsnp.mafs10pct.bed
     '''
     
     return subset_dbsnp

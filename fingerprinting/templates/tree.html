@@ -77,13 +77,13 @@
           setRadius(root, root.data.length = 0, treeWidth / maxLength(root));
           setColor(root);
 
-{#          var linkExtension = chart.append("g")#}
-{#              .attr("class", "link-extensions")#}
-{#            .selectAll("path")#}
-{#            .data(root.links().filter(function(d) { return !d.target.children; }))#}
-{#            .enter().append("path")#}
-{#              .each(function(d) { d.target.linkExtensionNode = this; })#}
-{#              .attr("d", linkExtensionVariable);#}
+          var linkExtension = chart.append("g")
+              .attr("class", "link-extensions")
+            .selectAll("path")
+            .data(root.links().filter(function(d) { return !d.target.children; }))
+            .enter();  //.append("path")
+              //.each(function(d) { d.target.linkExtensionNode = this; })
+              //.attr("d", linkExtensionVariable);
 
           var link = chart.append("g")
               .attr("class", "links")
@@ -100,20 +100,22 @@
               ncInterPairSpace = 2,
               ncIntraPairSpace = -1;
 
+          var leafsHorizontalPositions = [];
           chart.selectAll()
               .data(root.leaves())
             .enter().append("g")
               .attr("class", "leaf")
-              .attr("transform", function(d) { return "translate(" + d.x + "," + (treeLabelSpace + treeWidth) + ")rotate(90)"; })
+              .attr("transform", function(d) { 
+                leafsHorizontalPositions.push(d.radius);
+                return "translate(" + d.x + "," + (d.radius + treeLabelSpace) + ")rotate(90)"; 
+              })
               // Keep in mind that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
-
           var leafsTexts = chart.selectAll(".leaf")
             .append("a")
               .attr("xlink:href", function(d) { return getSampleId(d.data.name); })
               .attr("pointer", "cursor")
             .append("text")
               .attr("dy", 3)
-              .attr("text-anchor", "start")
               .text(function(d) { return getSampleName(d.data.name); })
               .style("fill", function(d) { return setColor(d); })
               .on("mouseover", mouseovered(true))
@@ -127,24 +129,23 @@
             .append("text")
               .text(function(d) { return getSample(d.data.name) && getSample(d.data.name).sex ? getSample(d.data.name).sex.toLowerCase() : ""; })
               .attr("dy", 3)
-              .attr("x", function() { return maxTextWidth + genderSpace; })
+              .attr("x", function(d, i) { return treeWidth - d.radius + maxTextWidth + genderSpace; })
               .attr("class", function(d) { return "gender " + (getSample(d.data.name) && getSample(d.data.name).sex ? "gender_" + getSample(d.data.name).sex.toLowerCase() : ""); })
               .node()
               .getComputedTextLength();
 
-
-          var seqX = maxTextWidth + genderSpace + genderWidth + sampleSeqSpace,
+          var seqX = treeWidth + maxTextWidth + genderSpace + genderWidth + sampleSeqSpace,
               locWidth = 7;
           chart.selectAll(".leaf")
             .append("g")
-              .attr("x", function() { return seqX; })
+              .attr("x", function(d, i) { return seqX - d.radius; })
               .attr("class", "seq")
               .each(function(d, i) {
                 var nucEl = d3.select(this).selectAll(".nucRect")
                     .data(getSample(d.data.name).seq)
                   .enter().append("g")
                     .attr("transform", function(_, i) {
-                        var horizontalShift = seqX + i*locWidth; // + ((i%2 == 0) ? ncInterPairSpace : 0);
+                        var horizontalShift = seqX - d.radius + i*locWidth; // + ((i%2 == 0) ? ncInterPairSpace : 0);
                         return "translate(" + horizontalShift + "," + -4 + ")";
                     });
                 nucEl.append("rect")
@@ -154,15 +155,13 @@
                     .attr("class", function(d) { return d.toLowerCase(); })
                 nucEl.append("text")
                     .attr("x", function(_, i) { return 1 + ((i%2 == 0) ? 1 : -1); })
-                    .attr("y", 6)
+                    .attr("y", 7)
                     .text(function(d) { return d; });
               })
               .node()
           var seqWidth = locWidth*locations.length*2;
 
-          annoX = treeWidth +
-              treeLabelSpace +
-              maxTextWidth +
+          var annoX = treeWidth + maxTextWidth + 8 +
               genderSpace +
               genderWidth +
               sampleSeqSpace;
@@ -170,7 +169,7 @@
           locWidth = (seqWidth)/locations.length;
           indexHeight = 9;
           chart.append("g")
-              .attr("transform", function(d) { return "translate(" + (topAnnoY+indexHeight) + "," + (annoX+10) + ")rotate(90)"; })
+              .attr("transform", function(d, i) { return "translate(" + (topAnnoY+indexHeight) + "," + (annoX+10) + ")rotate(90)"; })
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
@@ -183,11 +182,16 @@
               .attr("fill", "#999")
               .text(function(d) { return ' ' + d.rsid; });
           chart.append("g")
-              .attr("transform", function(d) { return "translate(" + (topAnnoY-2) + "," + (annoX+4) + ")rotate(90)"; })
+              .attr("transform", function(d, i) { return "translate(" + (topAnnoY-2) + "," + annoX + ")rotate(90)"; })
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
-              .attr("transform", function(d, i) { return "translate(" + i*locWidth + "," + (topAnnoHeight-5) + ")"; })
+              .attr("transform", function(d, i) { 
+                var x = 6;
+                if (i+1>=10) x = 4; 
+                if (i+1>=100) x = 2;
+                return "translate(" + (i*locWidth+x) + "," + (topAnnoHeight-5) + ")"; 
+              })
               .attr("class", "loc_index")
             .append("tspan")
               .attr("fill", "#999")
@@ -204,9 +208,7 @@
               .attr("fill", "#999")
               .text(function(d) { return d.gene; });
 
-          svg.attr("width", treeWidth +
-              treeLabelSpace +
-              maxTextWidth +
+          svg.attr("width", treeWidth + maxTextWidth  +
               genderSpace +
               genderWidth +
               sampleSeqSpace +
