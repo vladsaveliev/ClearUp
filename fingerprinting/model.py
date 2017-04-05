@@ -76,7 +76,7 @@ class SNP(db.Model):
             self.genotype, self.sample.name)
 
 
-def _get_snps_not_calls(snps_file, samples):
+def _get_snps_not_called(snps_file, samples):
     # TODO: select and save only snps per sample that are not called in taht sample (special treatment for gender?)
     # lines_to_rerun = []
     # for i, interval in enumerate(BedTool(snps_file)):
@@ -182,7 +182,7 @@ class Run(db.Model):
 
 
 def _genotype(run, samples, genome_build, parall_view, work_dir=None):
-    snps_left_to_call_file = _get_snps_not_calls(run.snps_file, samples)
+    snps_left_to_call_file = _get_snps_not_called(run.snps_file, samples)
 
     gt_work_dir = work_dir or safe_mkdir(join(run.work_dir_path(), 'genotyping'))
     bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]

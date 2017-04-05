@@ -42,7 +42,7 @@
             topAnnoHeight = 70,
             bottomAnnoHeight = 70;
 
-        var treeWidth = numSamples * 15,
+        var treeWidth = Math.min(Math.max(250, numSamples * 15), 800),
             height = numSamples * sampleHeight,
             svgWidth = treeWidth,
             svgHeight = height + topAnnoHeight;
