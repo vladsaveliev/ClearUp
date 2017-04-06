@@ -98,7 +98,7 @@ def homepage():
 
 @app.errorhandler(404)
 def page_not_found(error):
-    return render_template('404.html', error=error.description['message']), 404
+    return render_template('404.html', error=error.description), 404
 
 
 if __name__ == "__main__":

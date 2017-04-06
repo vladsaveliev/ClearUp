@@ -17,9 +17,14 @@ from ngs_utils.logger import info, debug, err
 from ngs_utils.parallel import ParallelCfg, parallel_view
 
 from fingerprinting.panel import build_snps_panel
-from fingerprinting.genotype import genotype, vcfrec_to_seq, DEPTH_CUTOFF, post_genotype
+from fingerprinting.genotype import genotype, vcfrec_to_seq, DEPTH_CUTOFF, write_fasta
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
 from fingerprinting import app, db, DATA_DIR, parallel_cfg
+
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 
 run_to_project_assoc_table = db.Table(
     'run_to_project_association', db.Model.metadata,
@@ -54,6 +59,11 @@ class Location(db.Model):
 
 class SNP(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    rsid = db.Column(db.String)
+    chrom = db.Column(db.String)
+    pos = db.Column(db.Integer)
+    gene = db.Column(db.String)
+
     genotype = db.Column(db.String)
     depth = db.Column(db.Integer)
     usercall = db.Column(db.String)
@@ -64,12 +74,13 @@ class SNP(db.Model):
     sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
     sample = db.relationship('Sample', backref=db.backref('snps', lazy='dynamic'))
 
-    def __init__(self, location=None):
-        self.location = location
-        self.genotype = None
-        self.depth = None
-        self.usercall = None
-
+    def __init__(self, loc):
+        self.location = loc
+        self.rsid = loc.rsid
+        self.chrom = loc.chrom
+        self.pos = loc.pos
+        self.gene = loc.gene
+        
     def __repr__(self):
         return '<SNP {}:{} {} {} for sample {}>'.format(
             str(self.location.chrom), str(self.location.pos), self.location.rsid,
@@ -131,14 +142,13 @@ class Run(db.Model):
         
         info()
         info('Genotyping')
-        gt_work_dir = safe_mkdir(join(run.work_dir_path(), 'genotyping'))
         samples = [s for p in projects for s in p.samples]
         if parall_view:
-            fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view, work_dir=gt_work_dir)
+            fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
         else:
             samples = [s for p in projects for s in p.samples]
-            with parallel_view(len(samples), parallel_cfg, gt_work_dir) as parall_view:
-                fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view, work_dir=gt_work_dir)
+            with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as parall_view:
+                fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
 
         info('Loading called SNPs into the DB')
         for s in samples:
@@ -146,12 +156,13 @@ class Run(db.Model):
             for i, rec in enumerate(recs):
                 loc = location_by_rsid[rec.ID]
                 assert loc.pos == rec.POS
-                snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
+                # snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
+                snp = s.snps.filter(SNP.rsid==rec.ID).first()
                 if snp:
                     assert snp.depth == rec.INFO['DP']
                     assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
                 else:
-                    snp = SNP(location=loc)
+                    snp = SNP(loc)
                     snp.depth = rec.INFO['DP']
                     snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
                     s.snps.append(snp)
@@ -181,18 +192,21 @@ class Run(db.Model):
         return Run.find_by_projects(projects)
 
 
-def _genotype(run, samples, genome_build, parall_view, work_dir=None):
+def _genotype(run, samples, genome_build, parall_view):
     snps_left_to_call_file = _get_snps_not_called(run.snps_file, samples)
 
-    gt_work_dir = work_dir or safe_mkdir(join(run.work_dir_path(), 'genotyping'))
+    vcf_dir = safe_mkdir(join(run.work_dir_path(), 'vcf'))
+    work_dir = safe_mkdir(join(vcf_dir, 'work'))
     bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
     vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
-                             output_dir=gt_work_dir, genome_build=genome_build)
+                             work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
     
     info()
-    info('** Post-genotyping **')
-    fasta_file, vcf_by_sample = post_genotype(bs, vcf_by_sample, snps_left_to_call_file,
-        parall_view, output_dir=run.work_dir_path(), work_dir=gt_work_dir, out_fasta=run.fasta_file_path())
+    info('** Building fasta **')
+    fasta_dir = safe_mkdir(join(run.work_dir_path(), 'fasta'))
+    work_dir = safe_mkdir(join(fasta_dir, 'fasta'))
+    fasta_file, vcf_by_sample = write_fasta(bs, vcf_by_sample, snps_left_to_call_file,
+                                            parall_view, output_dir=fasta_dir, work_dir=work_dir, out_fasta=run.fasta_file_path())
 
     info('Loading BAMs sliced to fingerprints')
     parall_view.run(load_bam_file,
@@ -269,13 +283,13 @@ class Sample(db.Model):
 
     def snps_from_run(self, run):
         locs_ids = set([l.rsid for l in run.locations.all()])
-        snps = []
-        for snp in self.snps:
-            if snp.location.rsid in locs_ids:
-                snps.append(snp)
+        info(locs_ids)
+        # sq = run.locations.subquery()
+        snps = self.snps.filter(SNP.rsid.in_(locs_ids))
+        # snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
+        # snps = [snp for snp in self.snps if snp.rsid in locs_ids]
         return snps
     
-
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
 

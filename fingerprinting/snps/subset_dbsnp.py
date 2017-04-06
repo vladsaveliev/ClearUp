@@ -23,31 +23,35 @@ def subset_dbsnp():
     total_snps_written = 0
     current_chrom = None
     output_path = join(dirname(__name__), 'dbsnp.mafs10pct.bed')
-    met_locations = set()
+    prev_pos = 0
     with file_transaction(None, output_path) as tx:
         with open(tx, 'w') as out:
             for v in VCF(dbsnp_file):
                 caf = v.INFO.get('CAF')
-                if caf and len(v.REF) == 1:
-                    gene_val = v.INFO.get('GENEINFO')
-                    if gene_val:
-                        cafs = [float(a) if a != '.' else 0 for a in caf.split(',')[1:]]
-                        alts = v.ALT
-                        assert len(cafs) == len(alts)
-                        caf_by_snp_alt = dict({a: c for a, c in zip(alts, cafs) if c > 0.1 and len(a) == 1})
-                        if len(caf_by_snp_alt) > 0:
-                            gene = gene_val.split(':')[0]
-                            if gene not in blacklisted_genes:
-                                locid = v.CHROM, v.POS
-                                if locid not in met_locations:
-                                    met_locations.add(locid)
-                                    fields = [v.CHROM, str(v.POS - 1), str(v.POS), v.ID + '|' + gene, v.REF, ','.join(v.ALT)]
-                                    out.write('\t'.join(fields) + '\n')
-                                    if current_chrom != v.CHROM:
-                                        current_chrom = v.CHROM
-                                        print(v.CHROM + ', written ' + str(total_snps_written))
-                                    total_snps_written += 1
-                                
+                if not caf or not len(v.REF) == 1:
+                    continue
+                gene_val = v.INFO.get('GENEINFO')
+                if not gene_val:
+                    continue
+                if 0 < v.POS - prev_pos < 1:  # Checking if clustered (1 means basically turn off, i.e. removing only exact duplicates)
+                    continue
+                prev_pos = v.POS
+                cafs = [float(a) if a != '.' else 0 for a in caf.split(',')[1:]]
+                alts = v.ALT
+                assert len(cafs) == len(alts)
+                caf_by_snp_alt = dict({a: c for a, c in zip(alts, cafs) if c > 0.1 and len(a) == 1})
+                if len(caf_by_snp_alt) == 0:
+                    continue
+                gene = gene_val.split(':')[0]
+                if gene in blacklisted_genes:
+                    continue
+                fields = [v.CHROM, str(v.POS - 1), str(v.POS), v.ID + '|' + gene, v.REF, ','.join(v.ALT)]
+                out.write('\t'.join(fields) + '\n')
+                if current_chrom != v.CHROM:
+                    current_chrom = v.CHROM
+                    print(v.CHROM + ', written ' + str(total_snps_written))
+                total_snps_written += 1
+                
     # exclude those from LCR and tricky regions:
     ''' scp dbsnp.mafs10pct.bed chi:~/tmp
         ssh chi:~/tmp

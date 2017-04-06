@@ -94,8 +94,18 @@ def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, max_autosomal_n
         locs.append(loc)
     
     chrom_order = get_chrom_order(genome_build)
+    locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
 
-    autosomal_locs = [l for l in locs if not is_sex_chrom(l[0])]
+    non_clustered_locs = []
+    prev_pos = 0
+    for (chrom, pos, rsid, gene) in locs:
+        if 0 < pos - prev_pos < 200:
+            continue
+        else:
+            prev_pos = pos
+            non_clustered_locs.append((chrom, pos, rsid, gene))
+
+    autosomal_locs = [l for l in non_clustered_locs if not is_sex_chrom(l[0])]
     if len(autosomal_locs) > max_autosomal_number:
         autosomal_locs = random.sample(autosomal_locs, max_autosomal_number)
     autosomal_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))

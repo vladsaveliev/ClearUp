@@ -116,21 +116,24 @@ def render_phylo_tree_page(project_names_line):
     seq_by_id = read_fasta(fasta_file)
 
     log.debug('Preparing info for run ' + str(run.id))
-    info_by_sample_by_project = dict()
-    for i, p in enumerate(run.projects):
-        info_by_sample_by_project[p.name] = dict()
-        info_by_sample_by_project[p.name]['name'] = p.name
-        info_by_sample_by_project[p.name]['color'] = PROJ_COLORS[i % len(PROJ_COLORS)]
-        info_by_sample_by_project[p.name]['samples'] = dict()
-        for s in p.samples:
-            info_by_sample_by_project[p.name]['samples'][s.name] = {
+    info_by_project = dict()
+    for i, p in enumerate(run.projects.all()):
+        info_by_project[p.name] = dict()
+        info_by_project[p.name]['name'] = p.name
+        info_by_project[p.name]['color'] = PROJ_COLORS[i % len(PROJ_COLORS)]
+        info_by_project[p.name]['samples'] = dict()
+        for s in p.samples.all():
+            log.debug('Searching SNPs for sample ' + s.name + ' in ' + p.name)
+            sample_snps = s.snps_from_run(run)
+            info_by_project[p.name]['samples'][s.name] = {
                 'name': s.name,
                 'id': s.id,
                 'sex': s.sex,
                 'seq': [nt for nt in seq_by_id[s.name + FASTA_ID_PROJECT_SEPARATOR + p.name]],
-                'snps': [snp.genotype for snp in s.snps_from_run(run)],
+                'snps': [snp.genotype for snp in sample_snps],
             }
-    all_samples_count = sum(len(info_by_sample['samples']) for info_by_sample in info_by_sample_by_project.values())
+    log.debug('Prepared info_by_sample_by_project. Counting all samples now')
+    all_samples_count = sum(len(info_by_sample['samples']) for info_by_sample in info_by_project.values())
     log.debug('Total samples: ' + str(all_samples_count))
     locations = [dict(
             chrom=l.chrom.replace('chr', ''),
@@ -148,14 +151,14 @@ def render_phylo_tree_page(project_names_line):
     return render_template(
         'tree.html',
         projects=[{
-            'name': str(info_by_sample['name']),
+            'name': str(project_info['name']),
             'color': PROJ_COLORS[i % len(PROJ_COLORS)],
-            'samples': [info['name'] for info in info_by_sample['samples']],
-            'ids': [info['id'] for info in info_by_sample['samples']]
-        } for i, info_by_sample in enumerate(info_by_sample_by_project.values())],
-        title=', '.join(sorted(info_by_sample_by_project.keys())),
+            'samples': [info['name'] for info in project_info['samples'].values()],
+            'ids': [info['id'] for info in project_info['samples'].values()]
+        } for i, project_info in enumerate(info_by_project.values())],
+        title=', '.join(sorted(info_by_project.keys())),
         tree_newick=open(tree_file).read(),
-        info_by_sample_by_project=json.dumps(info_by_sample_by_project),
+        info_by_sample_by_project=json.dumps(info_by_project),
         samples_count=all_samples_count,
         locations=json.dumps(locations)
     )
