@@ -160,7 +160,7 @@ class Run(db.Model):
                 snp = s.snps.filter(SNP.rsid==rec.ID).first()
                 if snp:
                     assert snp.depth == rec.INFO['DP']
-                    assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF)
+                    assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF), str(snp) + '   |   ' + str(rec)
                 else:
                     snp = SNP(loc)
                     snp.depth = rec.INFO['DP']
