@@ -221,15 +221,23 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
         vcf_writer = vcf.Writer(out, vcf_reader)
         recs = [r for r in vcf_reader]
         recs_by_rsid = defaultdict(list)
-        for r in recs: recs_by_rsid[r.ID].append(r)
+        for r in recs:
+            recs_by_rsid[r.ID].append(r)
         for r in recs:
             rs = recs_by_rsid[r.ID]
+            if not rs:
+                continue
+            del recs_by_rsid[r.ID]
+            if len(rs) > 1:
+                debug('Multiple records found for id ' + r.ID)
             if len(rs) == 1:
                 vcf_writer.write_record(rs[0])
             else:
                 snp_rs = [r for r in rs if r.INFO['TYPE'] == 'SNV']
-                if len(snp_rs) == 1:
+                if len(snp_rs) > 0:
                     vcf_writer.write_record(snp_rs[0])
+                else:
+                    vcf_writer.write_record(rs[0])
     assert verify_file(unq_vcf_file), unq_vcf_file
 
     ann_hdr_vcf_file = add_suffix(unq_vcf_file, 'hdr')
