@@ -142,13 +142,19 @@ def reload_all_data():
         load_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
         load_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')
     elif is_us():
-        load_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/bcbio/final'))
-        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0288_HiSeq4000_PlasmaSeqExome/bcbio/final'))
-        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0287_HiSeq4000_PlasmaSeqAZ100/bcbio_umi/final_vardict_1.4.8'))
-        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0306_HiSeq4000_PlasmaSeq_Tissue_Exome/bcbio_umi/final'))
-        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0309_HiSeq4000_PlasmaSeq_Tissue_Exome/bcbio_umi/final'))
-        load_project(abspath('/ngs/oncology/Analysis/dev/Dev_0310_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi/final'))
-        load_project(abspath('/ngs/oncology/analysis/dev/Dev_0300_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi/final'))
+        load_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Resolution')
+        load_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation')
+        load_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/plasma/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation_plasma')
+        load_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/tissue/OurType/bcbio_complete'), 'EXT_070_Plasma_Seq_Pilot_Foundation_tissue')
+        load_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/PGDx/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_PGDx')
+
+        # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0288_HiSeq4000_PlasmaSeqExome/bcbio/final'))
+        # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0287_HiSeq4000_PlasmaSeqAZ100/bcbio_umi/final_vardict_1.4.8'))
+        # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0300_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi/final'))
+        # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0306_HiSeq4000_PlasmaSeq_Tissue_Exome/bcbio_umi/final'))
+        # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0308_HiSeq4000_MerckFFPE_AZ100/bcbio_umi_102/final'))
+        # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0309_HiSeq4000_PlasmaSeq_Tissue_Exome/bcbio_umi/final'))
+        # load_project(abspath('/ngs/oncology/Analysis/dev/Dev_0310_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi_102/final'))
 
 
 if __name__ == "__main__":

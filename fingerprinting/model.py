@@ -21,9 +21,9 @@ from fingerprinting.genotype import genotype, vcfrec_to_seq, DEPTH_CUTOFF, write
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
 from fingerprinting import app, db, DATA_DIR, parallel_cfg
 
-import logging
-logging.basicConfig()
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+# import logging
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 
 run_to_project_assoc_table = db.Table(
