@@ -169,11 +169,13 @@ class Run(db.Model):
                     db.session.add(snp)
 
         info('Adding locations into the DB')
-        for l in run.locations:
-            l.run = None
-        for snp in samples[0].snps:
-            if snp.location.rsid in location_by_rsid:
-                run.locations.append(snp.location)
+        run.locations.delete()
+        for l in locations:
+            run.locations.append(l)
+            # db.session.delete(l)
+            # Location.delete().where(Location.c.id==run.id)
+        # for snp in samples[0].snps:
+        #     if snp.location.rsid in location_by_rsid:
         db.session.commit()
         info('Saved locations in the DB')
         return run

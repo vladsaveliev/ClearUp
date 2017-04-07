@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import random
 import shutil
+from collections import OrderedDict, defaultdict
+
 import click
 from os.path import join, dirname, isfile, isdir, basename
 
@@ -11,13 +13,13 @@ from ngs_utils import logger as log
 from ngs_utils.call_process import run
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file, file_transaction, verify_dir, add_suffix, splitext_plus
 from ngs_utils.logger import debug
+from ngs_utils.reference_data import get_chrom_order
 
 from fingerprinting import get_version
 from fingerprinting.genotype import DEPTH_CUTOFF
 
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
-from ngs_utils.reference_data import get_chrom_order
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
@@ -80,39 +82,46 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     return _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build)
 
 
-def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, max_autosomal_number=200):
-    out_file = add_suffix(dbsnp_snps_in_bed, str(max_autosomal_number))
+def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, autosomal_locations_limit=200):
+    out_file = add_suffix(dbsnp_snps_in_bed, str(autosomal_locations_limit))
     if can_reuse(out_file, dbsnp_snps_in_bed):
         return out_file
 
     # TODO: split at <max_number> same-size clusters with at least 1 snp in each, and select 1 snp from each
-    locs = []
+    locs_by_gene = defaultdict(list)
+    total_locs = 0
     for i, interval in enumerate(BedTool(dbsnp_snps_in_bed)):
+        if is_sex_chrom(interval.chrom):
+            continue
         pos = int(interval.start) + 1
         rsid, gene = interval.name.split('|')
         loc = (interval.chrom, pos, rsid, gene)
-        locs.append(loc)
+        locs_by_gene[gene].append(loc)
+        total_locs += 1
     
-    chrom_order = get_chrom_order(genome_build)
-    locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
+    gnames = random.sample(locs_by_gene.keys(), min(len(locs_by_gene), autosomal_locations_limit))
+    min_locs_per_gene = min(len(locs) for locs in locs_by_gene.values())
+    locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
+    selected_locs_by_gene = {g: random.sample(locs, locs_per_gene) for g, locs in locs_by_gene.items()}
+    selected_locs = [l for locs in selected_locs_by_gene.values() for l in locs]
+    selected_locs.sort(key=lambda a: (get_chrom_order(genome_build).get(a[0], -1), a[1:]))
 
-    non_clustered_locs = []
-    prev_pos = 0
-    for (chrom, pos, rsid, gene) in locs:
-        if 0 < pos - prev_pos < 200:
-            continue
-        else:
-            prev_pos = pos
-            non_clustered_locs.append((chrom, pos, rsid, gene))
-
-    autosomal_locs = [l for l in non_clustered_locs if not is_sex_chrom(l[0])]
-    if len(autosomal_locs) > max_autosomal_number:
-        autosomal_locs = random.sample(autosomal_locs, max_autosomal_number)
-    autosomal_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
+    # non_clustered_locs = []
+    # prev_pos = 0
+    # for (chrom, pos, rsid, gene) in selected_locs:
+    #     if 0 < pos - prev_pos < 200:
+    #         continue
+    #     else:
+    #         prev_pos = pos
+    #         non_clustered_locs.append((chrom, pos, rsid, gene))
+    
+    log.debug('Autosomal locations:')
+    for l in selected_locs:
+        log.debug('  ' + str(l))
     
     with file_transaction(None, out_file) as tx:
         with open(tx, 'w') as out:
-            for (chrom, pos, rsid, gene) in autosomal_locs:
+            for (chrom, pos, rsid, gene) in selected_locs:
                 out.write('\t'.join([chrom, str(pos-1), str(pos), rsid + '|' + gene]) + '\n')
     return out_file
 
