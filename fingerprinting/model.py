@@ -283,7 +283,6 @@ class Sample(db.Model):
 
     def snps_from_run(self, run):
         locs_ids = set([l.rsid for l in run.locations.all()])
-        info(locs_ids)
         # sq = run.locations.subquery()
         snps = self.snps.filter(SNP.rsid.in_(locs_ids))
         # snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()

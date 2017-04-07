@@ -152,7 +152,7 @@ def render_phylo_tree_page(project_names_line):
         'tree.html',
         projects=[{
             'name': str(project_info['name']),
-            'color': PROJ_COLORS[i % len(PROJ_COLORS)],
+            'color': project_info['color'],
             'samples': [info['name'] for info in project_info['samples'].values()],
             'ids': [info['id'] for info in project_info['samples'].values()]
         } for i, project_info in enumerate(info_by_project.values())],
