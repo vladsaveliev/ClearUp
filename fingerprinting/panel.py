@@ -102,9 +102,10 @@ def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, autosomal_locat
     gnames = random.sample(locs_by_gene.keys(), min(len(locs_by_gene), autosomal_locations_limit))
     min_locs_per_gene = min(len(locs) for locs in locs_by_gene.values())
     locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
-    selected_locs_by_gene = {g: random.sample(locs, locs_per_gene) for g, locs in locs_by_gene.items()}
+    selected_locs_by_gene = {g: random.sample(locs_by_gene[g], locs_per_gene) for g in gnames}
     selected_locs = [l for locs in selected_locs_by_gene.values() for l in locs]
-    selected_locs.sort(key=lambda a: (get_chrom_order(genome_build).get(a[0], -1), a[1:]))
+    chrom_order = get_chrom_order(genome_build)
+    selected_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
 
     # non_clustered_locs = []
     # prev_pos = 0
