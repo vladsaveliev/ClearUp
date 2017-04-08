@@ -16,7 +16,7 @@ pip install requirements.txt
 module load bcbio-nextgen  #UK and US
 echo "" > load.sh
 echo "module load python" >> load.sh  #UK and US
-echo "export PATH=`pwd`/venv_fp/bin:echo `dirname $(dirname $(which bcbio_nextgen.py))`/anaconda/bin:\$PATH" >> load.sh
+echo "export PATH=`pwd`/venv_fp/bin:`dirname $(dirname $(which bcbio_nextgen.py))`/anaconda/bin:\$PATH" >> load.sh
 echo "export PYTHONPATH=" >> load.sh
 ```
 

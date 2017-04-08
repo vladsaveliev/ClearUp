@@ -124,13 +124,11 @@ def render_phylo_tree_page(project_names_line):
         info_by_project[p.name]['samples'] = dict()
         for s in p.samples.all():
             log.debug('Searching SNPs for sample ' + s.name + ' in ' + p.name)
-            sample_snps = s.snps_from_run(run)
             info_by_project[p.name]['samples'][s.name] = {
                 'name': s.name,
                 'id': s.id,
                 'sex': s.sex,
                 'seq': [nt for nt in seq_by_id[s.name + FASTA_ID_PROJECT_SEPARATOR + p.name]],
-                'snps': [snp.genotype for snp in sample_snps],
             }
     log.debug('Prepared info_by_sample_by_project. Counting all samples now')
     all_samples_count = sum(len(info_by_sample['samples']) for info_by_sample in info_by_project.values())
@@ -143,7 +141,7 @@ def render_phylo_tree_page(project_names_line):
         for i, l in enumerate(run.locations)]
     
     tree_file = verify_file(run.tree_file_path())
-    log.debug('Tree file found: ' + tree_file)
+    log.debug('Found the tree file: ' + tree_file)
     if not tree_file:
         raise RuntimeError('Run ' + project_names_line +
                            ' does not contain the tree file (probably failed building phylogeny)')

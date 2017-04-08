@@ -284,6 +284,8 @@ class Sample(db.Model):
         return self.name + FASTA_ID_PROJECT_SEPARATOR + self.project.name
 
     def snps_from_run(self, run):
+        """ Warning: returns unordered! Use run.locations to get order
+        """
         locs_ids = set([l.rsid for l in run.locations.all()])
         # sq = run.locations.subquery()
         snps = self.snps.filter(SNP.rsid.in_(locs_ids))

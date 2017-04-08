@@ -50,8 +50,11 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
     # snps_dict['confidence'] = 'Low'
     snp_tables = []
     snp_records = []
-    for i, (snp_a, snp_b) in enumerate(zip(sample.snps_from_run(run),
-                                           matching_sample.snps_from_run(run))):
+    snps_a_by_rsid = {snp.rsid: snp for snp in sample.snps_from_run(run)}
+    snps_b_by_rsid = {snp.rsid: snp for snp in matching_sample.snps_from_run(run)}
+    for i, l in enumerate(run.locations):
+        snp_a = snps_a_by_rsid[l.rsid]
+        snp_b = snps_b_by_rsid[l.rsid]
         snp_records.append(get_snp_record(snps_dict, snp_a, snp_b, i + 1))
         if (i + 1) % 40 == 0:
             snp_tables.append(snp_records)
