@@ -22,25 +22,18 @@ def get_snp_record(snps_dict, snp_a, snp_b, snp_index):
         snps_dict['snp_missing'] += 1
         snp_record['class'] += ' nocall'
         return snp_record
-
-    is_match = seq_a == seq_b
-    is_homozygous = False
-    if len(seq_a) == 1:
-        is_homozygous = True
-    elif seq_a[0] == seq_a[1] and seq_b[0] == seq_b[1]:
-        is_homozygous = True
-    if is_match and is_homozygous:
-        snps_dict['hom_matches'] += 1
-    elif is_match and not is_homozygous:
+    if seq_a == seq_b:
+        snps_dict['matches'] += 1
+        snp_record['class'] += ' match'
+        snp_record['penalty'] = 0
+    elif seq_a[0] == seq_b[0] or seq_a[1] == seq_b[1]:
         snps_dict['het_matches'] += 1
-    elif not is_match and is_homozygous:
-        snps_dict['hom_mismatches'] += 1
-        snp_record['class'] += ' hom_mismatch'
-        snp_record['penalty'] = 3
-    elif not is_match and not is_homozygous:
-        snps_dict['het_mismatches'] += 1
-        snp_record['class'] += ' het_mismatch'
-        snp_record['penalty'] = 3
+        snp_record['class'] += ' het_match'
+        snp_record['penalty'] = 1
+    else:
+        snps_dict['mismatches'] += 1
+        snp_record['class'] += ' mistmatch'
+        snp_record['penalty'] = 2
     return snp_record
 
 

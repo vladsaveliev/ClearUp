@@ -442,15 +442,15 @@ td.quality_E, td.quality_F, td.usercall  {
 
 
 /* Match Value */
-td.hom_match, td.het_match, td.match {
+td.match {
 	background: #44cd40;
 }
 
-td.het_mismatch {
+td.het_match {
 	background: #FFDD00;
 }
 
-td.hom_mismatch {
+td.mismatch {
 	background: #EE0000;
 }
 

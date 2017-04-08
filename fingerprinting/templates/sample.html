@@ -41,11 +41,10 @@
         <div style="float: left; margin-left: 60px; margin-top: 5px;">
 {#            <div class="score_total" style="margin-left: -1px; margin-bottom: 3px;">Total Score: {{ snps_data.total_score }} ({{ snps_data.confidence }} Confidence)</div>#}
             <table class="score_details" style="margin-left: -1px;">
-                <tr><td class="scoreName">Heterozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
-                <tr><td class="scoreName">Homozygous SNP Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_matches }}</td></tr>
-                <tr><td class="scoreName">Heterozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_mismatches }}</td></tr>
-                <tr><td class="scoreName">Homozygous SNP Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.hom_mismatches }}</td></tr>
-                <tr><td class="scoreName">Missing/Ignored SNPs:&nbsp;</td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
+                <tr><td class="scoreName">Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.matches }}</td></tr>
+                <tr><td class="scoreName">One allele matches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
+                <tr><td class="scoreName">Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.mismatches }}</td></tr>
+                <tr><td class="scoreName">Missing/ignored SNPs:&nbsp;</td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
             </table>
         </div>
         <div style="clear: both"></div>
@@ -66,7 +65,7 @@
             <tr class="table_variant snprow">
                 <td class=abSmall>A&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="hom_match quality_A toprow cell {{ snp_record.class }} {{ snp_record.usercallA }}"
+                    <td class="match quality_A toprow cell {{ snp_record.class }} {{ snp_record.usercallA }}"
                            id="{{ snp_record.index }}_a"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
@@ -86,7 +85,7 @@
             <tr class="table_variant snprow">
                 <td class=abSmall>B&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="hom_match quality_A bottomrow cell {{ snp_record.class }} {{ snp_record.usercallB }}"
+                    <td class="match quality_A bottomrow cell {{ snp_record.class }} {{ snp_record.usercallB }}"
                            id="{{ snp_record.index }}_b"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
@@ -105,7 +104,7 @@
             <tr class="table_variant penaltyrow">
                 <td class=abSmall>Penalty&nbsp;</td>
                 {% for snp_record in snp_records %}
-                    <td class="hom_match scorerow cell {{ snp_record.class }}"
+                    <td class="match scorerow cell {{ snp_record.class }}"
                            id="{{ snp_record.index }}_penalty"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
@@ -141,9 +140,9 @@
         <table class=legend>
             <tr><td class=legendHeader colspan=4>Legend</td>    </tr>
             <tr><td class=match>&nbsp;&nbsp;</td>               <td>Match</td>                  <td class="thirdcol conservative">AT</td>  <td>Conservative Call</td></tr>
-            <tr><td class=het_mismatch>&nbsp;&nbsp;</td>        <td>Heterozygous Mismatch</td>  <td class="thirdcol moderate">AT</td>      <td>Moderate Call</td></tr>
-            <tr><td class=hom_mismatch>&nbsp;&nbsp;</td>        <td>Homozygous Mismatch</td>    <td class="thirdcol aggressive">AT</td>    <td>Aggressive Call</td></tr>
-            <tr><td class=nocall>&nbsp;&nbsp;</td>              <td>Missing/Ignored SNP</td>    <td class="thirdcol usercall">AT</td>      <td>User Call</td></tr>
+            <tr><td class=het_match>&nbsp;&nbsp;</td>        <td>One allele matches</td>  <td class="thirdcol moderate">AT</td>      <td>Moderate Call</td></tr>
+            <tr><td class=mismatch>&nbsp;&nbsp;</td>        <td>Mismatch</td>    <td class="thirdcol aggressive">AT</td>    <td>Aggressive Call</td></tr>
+            <tr><td class=nocall>&nbsp;&nbsp;</td>              <td>Missing/ignored SNP or non-SNP</td>    <td class="thirdcol usercall">AT</td>      <td>User Call</td></tr>
         </table>
 
         <br><br>
