@@ -10,12 +10,16 @@ from Bio import Phylo
 from flask import Flask, render_template, send_from_directory, abort, redirect, send_file
 from flask import Response, request
 
-from ngs_utils import logger as log
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
+from ngs_utils import logger as log
 
 from fingerprinting.model import Project, db, Sample, Run
 from fingerprinting.lookups import get_snp_record
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR
+from fingerprinting import app
+
+
+SNPS_IN_ROW = 35
 
 
 def _find_closest_match(sample, run):
@@ -46,8 +50,6 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
         log.err('No matching sample for ' + sample.long_name())
         abort(404, {'message': 'No matching sample for ' + sample.long_name()})
     snps_dict = defaultdict(int)
-    # snps_dict['total_score'] = 0
-    # snps_dict['confidence'] = 'Low'
     snp_tables = []
     snp_records = []
     snps_a_by_rsid = {snp.rsid: snp for snp in sample.snps_from_run(run)}
@@ -56,11 +58,14 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
         snp_a = snps_a_by_rsid[l.rsid]
         snp_b = snps_b_by_rsid[l.rsid]
         snp_records.append(get_snp_record(snps_dict, snp_a, snp_b, i + 1))
-        if (i + 1) % 40 == 0:
+        if (i + 1) % SNPS_IN_ROW == 0:
             snp_tables.append(snp_records)
             snp_records = []
     if snp_records:
         snp_tables.append(snp_records)
+
+    snps_dict['total_score'] = sum((rec['score']) for recs in snp_tables for rec in recs)
+    # snps_dict['confidence'] = 'Low'
 
     bam_fpath_a = '/%s/bamfiles/%s' % (run.id, sample.long_name() + '.bam')
     bam_fpath_b = '/%s/bamfiles/%s' % (run.id, matching_sample.long_name() + '.bam')
@@ -87,7 +92,8 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
         snp_tables=snp_tables,
         snps_bed=snps_bed,
         selected_idx=selected_idx or "null",
-        total_snps=sum([len(snps) for snps in snp_tables])
+        total_snps=sum([len(snps) for snps in snp_tables]),
+        snps_in_row=SNPS_IN_ROW,
     )
     return t
 

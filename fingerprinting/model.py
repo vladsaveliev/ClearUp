@@ -7,14 +7,12 @@ from cyvcf2 import VCF
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
-from Bio import SeqIO
 from pybedtools import BedTool
-import vcf
 
 from ngs_utils.Sample import BaseSample
 from ngs_utils.file_utils import safe_mkdir, can_reuse, file_transaction
-from ngs_utils.logger import info, debug, err
 from ngs_utils.parallel import ParallelCfg, parallel_view
+from ngs_utils import logger as log
 
 from fingerprinting.panel import build_snps_panel
 from fingerprinting.genotype import genotype, vcfrec_to_seq, DEPTH_CUTOFF, write_fasta
@@ -140,8 +138,8 @@ class Run(db.Model):
         db.session.commit()
         location_by_rsid = {l.rsid: l for l in locations}
         
-        info()
-        info('Genotyping')
+        log.info()
+        log.info('Genotyping')
         samples = [s for p in projects for s in p.samples]
         if parall_view:
             fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
@@ -150,7 +148,7 @@ class Run(db.Model):
             with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as parall_view:
                 fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
 
-        info('Loading called SNPs into the DB')
+        log.info('Loading called SNPs into the DB')
         for s in samples:
             recs = [r for r in VCF(vcf_by_sample[s.long_name()])]
             for i, rec in enumerate(recs):
@@ -168,7 +166,7 @@ class Run(db.Model):
                     s.snps.append(snp)
                     db.session.add(snp)
 
-        info('Adding locations into the DB')
+        log.info('Adding locations into the DB')
         run.locations.delete()
         for l in locations:
             run.locations.append(l)
@@ -177,7 +175,7 @@ class Run(db.Model):
         # for snp in samples[0].snps:
         #     if snp.location.rsid in location_by_rsid:
         db.session.commit()
-        info('Saved locations in the DB')
+        log.info('Saved locations in the DB')
         return run
     
     @staticmethod
@@ -203,14 +201,14 @@ def _genotype(run, samples, genome_build, parall_view):
     vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                              work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
     
-    info()
-    info('** Building fasta **')
+    log.info()
+    log.info('** Building fasta **')
     fasta_dir = safe_mkdir(join(run.work_dir_path(), 'fasta'))
     work_dir = safe_mkdir(join(fasta_dir, 'fasta'))
     fasta_file, vcf_by_sample = write_fasta(bs, vcf_by_sample, snps_left_to_call_file,
                                             parall_view, output_dir=fasta_dir, work_dir=work_dir, out_fasta=run.fasta_file_path())
 
-    info('Loading BAMs sliced to fingerprints')
+    log.info('Loading BAMs sliced to fingerprints')
     parall_view.run(load_bam_file,
         [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
          for s in samples])
@@ -220,13 +218,13 @@ def _genotype(run, samples, genome_build, parall_view):
 def get_or_create_run(projects, parall_view=None):
     run = Run.find_by_projects(projects)
     if not run:
-        debug('Creating new run for projects ' + ', '.join(p.name for p in projects))
+        log.debug('Creating new run for projects ' + ', '.join(p.name for p in projects))
         run = Run.create(projects, parall_view)
         db.session.add(run)
         db.session.commit()
-        debug('Done creating new run with ID ' + str(run.id))
+        log.debug('Done creating new run with ID ' + str(run.id))
     else:
-        debug('Found run for ' + ', '.join([p.name for p in projects]) + ' with ID ' + str(run.id))
+        log.debug('Found run for ' + ', '.join([p.name for p in projects]) + ' with ID ' + str(run.id))
     return run
 
 
@@ -251,13 +249,13 @@ def get_or_create_run(projects, parall_view=None):
 class Project(db.Model):
     __tablename__ = 'project'
     name = db.Column(db.String(), primary_key=True)
-    bcbio_final_path = db.Column(db.String)
+    data_dir = db.Column(db.String)
     genome = db.Column(db.String(20))
     bed_fpath = db.Column(db.String)
     
-    def __init__(self, name, bcbio_final_path, genome, bed_fpath):
+    def __init__(self, name, data_dir, genome, bed_fpath):
         self.name = name
-        self.bcbio_final_path = bcbio_final_path
+        self.data_dir = data_dir
         self.genome = genome
         self.bed_fpath = bed_fpath
 
@@ -309,7 +307,3 @@ def extract_locations_from_file(snps_file):
             gene=gene)
         locs.append(loc)
     return locs
-
-
-if __name__ == '__main__':
-    db.create_all()

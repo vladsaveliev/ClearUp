@@ -1,6 +1,5 @@
 import shutil
 from collections import OrderedDict, defaultdict
-
 import os
 from os.path import join, dirname, splitext, basename
 import sys
@@ -11,8 +10,6 @@ from ngs_utils.bed_utils import bgzip_and_tabix
 from ngs_utils.call_process import run
 from ngs_utils.utils import is_local, is_us
 from ngs_utils.parallel import ParallelCfg, parallel_view
-from pybedtools import BedTool
-
 from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adjust_path, can_reuse, add_suffix, \
     verify_file, intermediate_fname, splitext_plus
 from ngs_utils.logger import info, err, critical, debug, warn

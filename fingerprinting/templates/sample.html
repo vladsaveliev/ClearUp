@@ -14,14 +14,14 @@
             <a href="/" style="margin-left: -1em;">
             < AZ projects with pre-computed fingerprints</a>
             <br><br>
-            <a href="/{{ run_id }}/tree" style="margin-left: -1em;">
+            <a href="/{{ project_names_line }}/tree" style="margin-left: -1em;">
             < Phylogeny tree based on fingerprints</a>
             <br><br>
             <span style="font-weight: bold; margin-left: -0.2em;">Closest match for {{ sampleA.name }}</span>
         </p>
 
         <div style="float: left;">
-            <table class=samplePair style="margin-left: -0.3em;">
+            <table class="samplePair" style="margin-left: -6px;">
                 <tr><td class=ab>A</td><td class="sampleIntoTd">
                     <table class=sampleInfo>
                         <tr><td class=sampleInfoName>Sample:&nbsp;</td><td class=sampleInfoValue colspan=7>{{ sampleA.name }}</td></tr>
@@ -38,15 +38,6 @@
             <br>
         </div>
 
-        <div style="float: left; margin-left: 60px; margin-top: 5px;">
-{#            <div class="score_total" style="margin-left: -1px; margin-bottom: 3px;">Total Score: {{ snps_data.total_score }} ({{ snps_data.confidence }} Confidence)</div>#}
-            <table class="score_details" style="margin-left: -1px;">
-                <tr><td class="scoreName">Matches:&nbsp;</td><td class=scoreValue>{{ snps_data.matches }}</td></tr>
-                <tr><td class="scoreName">One allele matches:&nbsp;</td><td class=scoreValue>{{ snps_data.het_matches }}</td></tr>
-                <tr><td class="scoreName">Mismatches:&nbsp;</td><td class=scoreValue>{{ snps_data.mismatches }}</td></tr>
-                <tr><td class="scoreName">Missing/ignored SNPs:&nbsp;</td><td class=scoreValue>{{ snps_data.snp_missing }}</td></tr>
-            </table>
-        </div>
         <div style="clear: both"></div>
 
         {% for snp_records in snp_tables %}
@@ -101,17 +92,6 @@
                     </td>
                 {% endfor %}
             </tr>
-            <tr class="table_variant penaltyrow">
-                <td class=abSmall>Penalty&nbsp;</td>
-                {% for snp_record in snp_records %}
-                    <td class="match scorerow cell {{ snp_record.class }}"
-                           id="{{ snp_record.index }}_penalty"
-                        chrom="{{ snp_record.chrom }}"
-                          pos="{{ snp_record.pos }}">
-                        {{ snp_record.penalty }}
-                    </td>
-                {% endfor %}
-            </tr>
             <tr class="table_variant depthrow">
                 <td class="abSmall depthrow" style="text-align: right; padding-top: 2px;">Depth&nbsp;A&nbsp;</td>
                 {% for snp_record in snp_records %}
@@ -137,12 +117,12 @@
         </table>
         {% endfor %}
 
-        <table class=legend>
-            <tr><td class=legendHeader colspan=4>Legend</td>    </tr>
-            <tr><td class=match>&nbsp;&nbsp;</td>               <td>Match</td>                  <td class="thirdcol conservative">AT</td>  <td>Conservative Call</td></tr>
-            <tr><td class=het_match>&nbsp;&nbsp;</td>        <td>One allele matches</td>  <td class="thirdcol moderate">AT</td>      <td>Moderate Call</td></tr>
-            <tr><td class=mismatch>&nbsp;&nbsp;</td>        <td>Mismatch</td>    <td class="thirdcol aggressive">AT</td>    <td>Aggressive Call</td></tr>
-            <tr><td class=nocall>&nbsp;&nbsp;</td>              <td>Missing/ignored SNP or non-SNP</td>    <td class="thirdcol usercall">AT</td>      <td>User Call</td></tr>
+        <table class="legend">
+            <tr><td class="legend_item match">&nbsp;&nbsp;</td>            <td>Matches ({{ snps_data.matches }})</td>                                 </tr>
+            <tr><td class="legend_item het_match">&nbsp;&nbsp;</td>        <td>One allele matches ({{ snps_data.het_matches }})</td>                </tr>
+            <tr><td class="legend_item mismatch">&nbsp;&nbsp;</td>         <td>Mismatches ({{ snps_data.mismatches }})</td>                           </tr>
+            <tr><td class="legend_item nocall">&nbsp;&nbsp;</td>           <td>Missing/ignored SNP or non-SNP ({{ snps_data.snp_missing }})</td>    </tr>
+            <tr><td class="legend_item usercall"">AT</td>                  <td>User calls ({{ snps_data.usercalls }})</td>                           </tr>
         </table>
 
         <br><br>
@@ -174,8 +154,7 @@
         if (selectedEls) {
             selectedEls.indexCell.removeClass("selectedIdxCell");
             selectedEls.aCell.removeClass("selectedInnerCell");
-            selectedEls.bCell.removeClass("selectedInnerCell");
-            selectedEls.penaltyCell.removeClass("selectedPenaltyCell");
+            selectedEls.bCell.removeClass("selectedBottomCell");
         } else {
             selectedEls = {};
         }
@@ -185,15 +164,13 @@
             index = id.split("_")[0];
 
         selectedEls.indexCell = $("#" + index + "_idx");
-        selectedEls.penaltyCell = $("#" +index + "_penalty");
         selectedEls.aCell = $("#" + index + "_a");
         selectedEls.bCell = $("#" + index + "_b");
         selectedIdx = parseInt(index);
 
         selectedEls.indexCell.addClass("selectedIdxCell");
         selectedEls.aCell.addClass("selectedInnerCell");
-        selectedEls.bCell.addClass("selectedInnerCell");
-        selectedEls.penaltyCell.addClass("selectedPenaltyCell");
+        selectedEls.bCell.addClass("selectedBottomCell");
 
         return [chrom, parseInt(pos)];
     }
@@ -226,10 +203,10 @@
             e = e || window.event;
             var newIdx = -1;
             if (e.keyCode == '38') {       // up arrow
-                newIdx = selectedIdx - 40;
+                newIdx = selectedIdx - {{ snps_in_row }};
             }
             else if (e.keyCode == '40') {  // down arrow
-                newIdx = selectedIdx + 40;
+                newIdx = selectedIdx + {{ snps_in_row }};
             }
             else if (e.keyCode == '37') {  // left arrow
                 newIdx = selectedIdx - 1;

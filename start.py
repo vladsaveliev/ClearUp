@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
 from os.path import abspath, join, dirname, splitext, basename
-import logging
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
+from ngs_utils import logger as log
 
-from ngs_utils import logger
+from ngs_utils.file_utils import verify_file
+
 from fingerprinting import app, DATA_DIR, HOST_IP, PORT
 from fingerprinting.model import db, Sample, Project, Run, Location
 from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
 from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
-from ngs_utils.file_utils import verify_file
 
 
 @app.route('/favicon.ico/')
@@ -36,11 +36,11 @@ def closest_comparison_page(project_names_line, sample_id):
 
 @app.route('/<project_names_line>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
 def add_user_call(project_names_line, sample_id):
-    logger.info('Adding user call for ' + str(sample_id))
+    log.info('Adding user call for ' + str(sample_id))
     edit_sample_id = request.form['editSampleId']
     sample = Sample.query.get(edit_sample_id)
     if not sample:
-        logger.err('Sample with ID=' + str(edit_sample_id) + ' not found')
+        log.error('Sample with ID=' + str(edit_sample_id) + ' not found')
         return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id))
 
     snp = sample.snps.join(Location).filter(Location.rsid==request.form['rsid']).first()
@@ -59,7 +59,7 @@ def bam_files_page(run_id, bam_fname):
 def locations_bed(project_names_line):
     run = Run.find_by_project_names_line(project_names_line)
     if not run:
-        logger.err('Run ' + project_names_line + ' not found')
+        log.error('Run ' + project_names_line + ' not found')
         abort(404, {'message': 'Phylogenetic comparison for ' + project_names_line + ' is not found'})
     return send_file(run.snps_file)
 
@@ -85,7 +85,7 @@ def homepage():
         'index.html',
         projects=[{
             'name': p.name,
-            'bcbio_final_path': p.bcbio_final_path,
+            'data_dir': p.data_dir,
             'genome': p.genome,
             'samples': [{
                 'id': s.id,
@@ -102,7 +102,6 @@ def page_not_found(error):
 
 
 if __name__ == "__main__":
-    logger.init(True, join(dirname(__file__), 'data', 'log.txt'))
     # app.run(host=config.HOST_IP, debug=config.IS_DEBUG)
 
     # if start_local_browser:
@@ -110,7 +109,7 @@ if __name__ == "__main__":
         # url = "http://{HOST}:{PORT}".format(HOST=config.HOST_IP, PORT=PORT)
         # wb = webbrowser.get(None)  # instead of None, can be "firefox" etc
         # threading.Timer(1.25, lambda: wb.open(url)).start()
-
+    
     http_server = WSGIServer((HOST_IP, PORT), app, handler_class=WebSocketHandler)
-    logger.info('Starting a webserver at ' + HOST_IP + ':' + str(PORT))
+    log.info('Starting a webserver at ' + HOST_IP + ':' + str(PORT))
     http_server.serve_forever()

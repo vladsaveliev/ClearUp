@@ -16,24 +16,25 @@ def get_snp_record(snps_dict, snp_a, snp_b, snp_index):
                   'snpB': seq_b,
                   'usercallA': 'usercall' if snp_a.usercall else '',
                   'usercallB': 'usercall' if snp_b.usercall else '',
-                  'penalty': 0,
+                  'score': 0,
                   'class': ''}
     if not seq_a or not seq_b:
         snps_dict['snp_missing'] += 1
         snp_record['class'] += ' nocall'
+        snp_record['score'] = 0
         return snp_record
     if seq_a == seq_b:
         snps_dict['matches'] += 1
         snp_record['class'] += ' match'
-        snp_record['penalty'] = 0
+        snp_record['score'] = 2
     elif seq_a[0] == seq_b[0] or seq_a[1] == seq_b[1]:
         snps_dict['het_matches'] += 1
         snp_record['class'] += ' het_match'
-        snp_record['penalty'] = 1
+        snp_record['score'] = 1
     else:
         snps_dict['mismatches'] += 1
         snp_record['class'] += ' mistmatch'
-        snp_record['penalty'] = 2
+        snp_record['score'] = 0
     return snp_record
 
 

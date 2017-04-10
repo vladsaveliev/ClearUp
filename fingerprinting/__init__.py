@@ -1,7 +1,7 @@
-import os
 from os.path import abspath, join, dirname
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from ngs_utils import logger
 from ngs_utils.utils import is_us
 from ngs_utils.parallel import ParallelCfg
 import az
@@ -20,6 +20,9 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + join(DATA_DIR, 'projects.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+
+logger.init(True, join(DATA_DIR, 'log.txt'))
 
 
 if is_us():

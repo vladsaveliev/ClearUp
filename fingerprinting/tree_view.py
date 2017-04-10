@@ -15,13 +15,15 @@ from os.path import abspath, join, dirname, splitext, basename
 from Bio import SeqIO, Phylo
 from flask import Flask, render_template, abort, request
 
-from ngs_utils import logger as log
 from ngs_utils.bed_utils import Region
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse, verify_file
 from ngs_utils.file_utils import can_reuse, safe_mkdir
+from ngs_utils import logger as log
 
 from fingerprinting.model import Project, db, Sample, Run, get_or_create_run
 from fingerprinting.utils import read_fasta, FASTA_ID_PROJECT_SEPARATOR
+from fingerprinting import app
+
 
 suffix = 'lnx' if 'linux' in platform else 'osx'
 prank_bin = join(dirname(__file__), 'prank', 'prank_' + suffix, 'bin', 'prank')

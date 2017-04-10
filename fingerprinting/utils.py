@@ -1,20 +1,16 @@
 import glob
 import shutil
-
 import itertools
 from collections import defaultdict, OrderedDict
 import os
-from os.path import isfile
-
-from Bio import SeqIO
-from pybedtools import BedTool
-
-from ngs_utils.call_process import run
 from os.path import join, dirname
+from Bio import SeqIO
 
+from ngs_utils import logger
+from ngs_utils.call_process import run
 from ngs_utils.file_utils import verify_file, safe_mkdir, file_transaction, which, can_reuse
-import ngs_utils.logger as log
 from ngs_utils.sambamba import index_bam
+
 
 FASTA_ID_PROJECT_SEPARATOR = '____PROJECT_'
 
@@ -33,7 +29,8 @@ def load_bam_file(bam_file, bams_dir, snp_bed, sample_name):
     """
     bam_index_file = bam_file + '.bai'
     if not verify_file(bam_index_file):
-        log.critical('BAM index file not found in ' + bam_index_file)
+        logger.error('BAM index file not found in ' + bam_index_file)
+        raise RuntimeError
     sliced_bam_file = join(bams_dir, sample_name + '.bam')
     if not can_reuse(sliced_bam_file, [bam_file, snp_bed]):
         cmdl = 'sambamba view {bam_file} -L {snp_bed} -f bam -o {sliced_bam_file}'.format(**locals())

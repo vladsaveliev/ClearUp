@@ -54,10 +54,11 @@ def main(paths, output_dir, genome, depth):
 
 
 def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_build=None):
-    # TODO:
-    #   if a BED is found:
-    #       if only exomes or wgs: select get_snps_by_type('exome')
-    #       if panel present (check if is_small_bed()): select from the dbSNP_v149.mafs10pct.vcf.gz.tx. If too many, select less clustered
+    selected_snps_file = join(output_dir, 'snps.bed')
+    if can_reuse(selected_snps_file, bed_files):
+        return selected_snps_file
+    
+    work_dir = safe_mkdir(join(output_dir, 'work'))
 
     all_bed_files = set()
     for proj in bcbio_projs or []:
@@ -69,28 +70,29 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     if not all_bed_files:  # Empty list? Using exome
         all_bed_files.add(get_snps_by_type('exome'))
     
-    overlapped_bed = join(output_dir, 'merged_panel.bed')
+    overlapped_bed = join(work_dir, 'merged_bed_files.bed')
     _overlap_bed_files(all_bed_files, overlapped_bed)
     
     # Selecting SNPs from dbSNP
     dbsnp_file = get_dbsnp(genome_build)
-    dbsnp_snps_in_bed = join(output_dir, 'snps.bed')
-    if not can_reuse(dbsnp_snps_in_bed, [dbsnp_file, overlapped_bed]):
+    dbsnp_snps_file = join(work_dir, 'snps_in_merged_bed_files.bed')
+    if not can_reuse(dbsnp_snps_file, [dbsnp_file, overlapped_bed]):
         cmdl = 'bedtools intersect -header -a ' + dbsnp_file + ' -b ' + overlapped_bed
-        run(cmdl, dbsnp_snps_in_bed)
+        run(cmdl, dbsnp_snps_file)
+
+    subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')
+    _reduce_number_of_locations(dbsnp_snps_file, genome_build, subset_bed_file)
     
-    return _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build)
+    shutil.copyfile(subset_bed_file, selected_snps_file)
 
 
-def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, autosomal_locations_limit=200):
-    out_file = add_suffix(dbsnp_snps_in_bed, str(autosomal_locations_limit))
-    if can_reuse(out_file, dbsnp_snps_in_bed):
-        return out_file
+def _reduce_number_of_locations(dbsnp_snps_file, genome_build, output_file, autosomal_locations_limit=175):
+    if can_reuse(output_file, dbsnp_snps_file):
+        return output_file
 
-    # TODO: split at <max_number> same-size clusters with at least 1 snp in each, and select 1 snp from each
     locs_by_gene = defaultdict(list)
     total_locs = 0
-    for i, interval in enumerate(BedTool(dbsnp_snps_in_bed)):
+    for i, interval in enumerate(BedTool(dbsnp_snps_file)):
         if is_sex_chrom(interval.chrom):
             continue
         pos = int(interval.start) + 1
@@ -116,15 +118,15 @@ def _reduce_number_of_locations(dbsnp_snps_in_bed, genome_build, autosomal_locat
     #         prev_pos = pos
     #         non_clustered_locs.append((chrom, pos, rsid, gene))
     
-    log.debug('Autosomal locations:')
+    log.debug('Selecting the following autosomal SNPs:')
     for l in selected_locs:
         log.debug('  ' + str(l))
     
-    with file_transaction(None, out_file) as tx:
+    with file_transaction(None, output_file) as tx:
         with open(tx, 'w') as out:
             for (chrom, pos, rsid, gene) in selected_locs:
                 out.write('\t'.join([chrom, str(pos-1), str(pos), rsid + '|' + gene]) + '\n')
-    return out_file
+    return output_file
 
 
 def _overlap_bed_files(bed_files, output_bed_file):

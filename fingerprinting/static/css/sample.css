@@ -2,276 +2,10 @@ td, tr {
     vertical-align: top;
 }
 
-/* Header Stuff */
-
-table.sqnmHeader
-{
-	width: 100%;
-}
-
-td.sqnmHeader
-{
-	text-align: left;
-	vertical-align: top;
-}
-
-h1.sqnmHeader
-{
-	font-size: 1.5em;
-	font-weight: normal;
-	font-style: italic;
-}
-
-td.summaryLink
-{
-	text-align: right;
-	vertical-align: top;
-}
-
-p.small
-{
-	font-size: 0.8em;
-	text-indent: 4em;
-}
-
-/* Summary */
-
-table.summaryInfo
-{
-	margin-left: 50px;
-}
-
-td.summaryName, td.summaryValue
-{
-	font-size: 1.25em;
-}
-
-td.summaryName
-{
-	text-align: right;
-}
-
-td.summaryValue
-{
-	text-align: left;
-	font-weight: bold;
-	color: #002776;
-}
-
-h3.subHeading
-{
-	font-size: 1.5em;
-	font-weight: bold;
-	margin-top: 40px;
-}
-
-table.summaryPlate
-{
-}
-
-td.summaryPlateHeader
-{
-	font-size: 1.25em;
-	font-weight: bold;
-	padding-left: 20px;
-}
-
-td.summaryPlateValue
-{
-	font-size: 1.25em;
-	padding-left: 20px;
-}
-
-td.unexpectedName
-{
-	font-size: 1.25em;
-	text-align: right;
-	padding-left: 20px;
-}
-
-td.unexpectedValue
-{
-	font-size: 1.25em;
-	text-align: left;
-	font-weight: bold;
-	color: #002776;
-	padding-left: 20px;
-}
-
-table.summaryMatches
-{
-	border-collapse: collapse;
-	border: 2px solid #888888;
-	margin-left: 20px;
-}
-
-td.summaryMatchesHeader
-{
-	font-size: 1.25em;
-	font-weight: bold;
-	text-align: center;
-}
-
-td.summaryScore
-{
-	font-size: 2em;
-	text-align: center;
-	white-space: nowrap;
-}
-
-td.summaryMatchesHeader, td.summaryScore, td.summaryA, td.summaryB
-{
-	border: 2px solid #BBBBBB;
-	padding: 5px;
-	font-weight: bold;
-}
-
-td.summaryMatchesName
-{
-	text-align: right;
-	font-size: 0.9em;
-}
-
-td.summaryMatchesDetails
-{
-	font-size: 0.9em;
-	font-weight: bold;
-}
-
-table.qcSummary
-{
-	margin-left: 20px;
-	margin-bottom: 20px;
-}
-
-td.qcSummaryName
-{
-	text-align: right;
-	font-size: 1.2em;
-}
-
-td.qcSummaryValue
-{
-	text-align: left;
-	font-weight: bold;
-	color: #002776;
-	font-size: 1.25em;
-}
-
-table.qcSample
-{
-	border-bottom: 2px solid #888888;
-	margin-bottom: 20px;
-	width: 100%;
-}
-
-td.qcDetailsBox
-{
-	border: 2px solid #888888;
-	margin-bottom: 20px;
-}
-
-td.qcDetailsName
-{
-	text-align: right;
-	vertical-align: top;
-	padding: 5px;
-}
-
-td.qcDetailsValue
-{
-	text-align: left;
-	font-weight: bold;
-	color: #002776;
-	vertical-align: top;
-	padding: 5px;
-}
-
-/* Plate Report - Title */
-
-h2.pageTitle
-{
-	font-size: 2.25em;
-}
-
-/* Plate Report - Plate Info */
-
-table.plateInfo
-{
-	margin-left: 50px;
-	margin-bottom: 25px;
-}
-
-td.plateInfoName, td.plateInfoValue
-{
-	font-size: 1.5em;
-	padding-bottom: 10px;
-}
-
-td.plateInfoName
-{
-	text-align: right;
-}
-
-td.plateInfoValue
-{
-	text-align: left;
-	color: #002776;
-	font-weight: bold;
-}
-
-/* Plate Report - Samples Table */
-
-table.plateTable
-{
-	border: 2px solid #888888;
-	border-collapse: collapse;
-}
-
-table.plateTable td
-{
-	border: 2px solid #BBBBBB;
-	padding: 5px;
-	text-align: center;
-	font-size: 0.8em;
-}
-
-tr.plateTableHeader
-{
-	font-size: 1.25em;
-	font-weight: bold;
-	text-align: center;
-}
-
-tr.plateTableHeader2
-{
-	font-weight: bold;
-	text-align: center;
-	background: #EEEEEE;
-}
-
-td.plateSampleId
-{
-	white-space: nowrap;
-}
-
-tr.rowB, tr.rowD, tr.rowF, tr.rowH, tr.rowJ, tr.rowL, tr.rowN, tr.rowP, tr.rowR, tr.rowT
-{
-	background: #EEEEEE;
-}
-
-table.plateTable td.gtzero
-{
-	font-weight: bold;
-	font-size: 1.25em;
-	line-height: 0.8em;
-}
-
 /* Sample Report - Sample Info Table */
 table.samplePair td.sampleIntoTd {
-	padding-top: 3px;
+	padding-top: 2px;
 }
-
 table.sampleInfo {
 	margin-left: 10px;
 	margin-bottom: 0;
@@ -279,7 +13,6 @@ table.sampleInfo {
 td.sampleInfoName, td.sampleInfoValue, td.sampleInfoValueB  {
 	padding-top: 3px;
 	padding-bottom: 3px;
-    white-space: nowrap;
 }
 td.sampleInfoValue {
 	text-align: left;
@@ -294,23 +27,19 @@ td.sampleInfoValueB  {
 }
 
 /* Sample Report - Tumor/Mismatch Headers */
-
 td.sampleSuperCategory  {
 	font-size: 1.5em;
 	font-weight: bold;
 	padding-top: 20px;
 }
-
 td.sampleCategory  {
 	font-size: 1.25em;
 	font-style: italic;
 	padding-top: 10px;
 }
-
 table.sampleMatch  {
 	border: 2px solid #888888;
 }
-
 table.snpCalls  {
 	border: 2px solid #FFFFFF;
 }
@@ -327,22 +56,19 @@ td.matchSampleInfoValue  {
 
 /* Match Report */
 td.ab  {
-	font-size: 3.5em;
+	font-size: 40px;
     padding-top: 0;
-    font-weight: bold;
 }
-
 td.abSmall {
 	font-size: 0.8em;
 	text-align: right;
     padding-right: 3px;
 }
-
 .score_total {
 	font-weight: bold;
 }
 .score_details td {
-    padding-bottom: 5px;
+    padding-bottom: 3px;
 }
 td.scoreValue  {
 	text-align: left;
@@ -377,24 +103,19 @@ td.toprow, td.bottomrow, td.scorerow, td.snpIndex {
 	font-size: 11px;
 	font-family: monospace;
 }
+td.bottomrow {
+    border-bottom: 1px solid white;
+}
 td.snpIndex {
 	text-align: center;
 	font-size: 8px;
     border-top: 1px solid white;
     padding-bottom: 0 !important;
 }
-td.scorerow  {
-	text-align: center;
-    border-bottom: 1px solid white;
-}
 td.depthrow {
 	text-align: center;
 	font-size: 7px;
 }
-tr.penaltyrow td {
-    padding-top: 0 !important;
-}
-
 .usercall_input {
     width: 13px;
     padding: 0;
@@ -414,7 +135,7 @@ td.selectedInnerCell {
     padding-left: 0 !important;
     padding-right: 0 !important;
 }
-td.selectedPenaltyCell {
+td.selectedBottomCell {
     border-left: 1px solid black;
     border-right: 1px solid black;
     border-bottom: 1px solid black;
@@ -424,68 +145,39 @@ td.selectedPenaltyCell {
 }
 
 /* Quality Score Values */
-td.quality_A, td.conservative  {
-	font-weight: bold;
-}
-
-td.quality_B, td.moderate {
-	font-weight: normal;
-}
-
-td.quality_C, td.aggressive  {
-	color: #888888;
-}
-
-td.quality_E, td.quality_F, td.usercall  {
+td.usercall  {
 	font-style: italic;
 }
-
 
 /* Match Value */
 td.match {
 	background: #44cd40;
 }
-
 td.het_match {
 	background: #FFDD00;
 }
-
 td.mismatch {
 	background: #EE0000;
 }
-
 td.nocall {
 	background: #EEEEEE;
 }
 
-
 /* Legend */
 table.legend {
-	margin-top: 15px;
+	margin-top: 20px;
+    margin-left: -2px;
 	border: 0 solid #888888;
 	border-collapse: collapse;
 }
-
 table.legend td.legendHeader {
 	font-weight: bold;
     padding-left: 0;
 	border-bottom: 0 solid #888888;
 }
-
-table.legend td.thirdcol {
-    padding-left: 50px;
+table.legend tr td.legend_item {
+	padding: 1px 1px 1px 1px;
 }
-
 table.legend td {
-	padding: 4px;
+	padding: 1px 3px 1px 5px;
 }
-
-/* Confidence Values */
-
-td.Low {
-	background-color: #FFF600;
-}
-
-td.High {
-}
-

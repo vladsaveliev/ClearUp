@@ -27,7 +27,7 @@
             {% for project in projects %}
                 <tr project_name="{{ project.name }}">
                     <td>{{ project.name }}</td>
-                    <td>{{ project.bcbio_final_path }}</td>
+                    <td>{{ project.data_dir }}</td>
                     <td>{{ project.genome }}</td>
                     <td>{{ project.samples|count }}</td>
                 </tr>

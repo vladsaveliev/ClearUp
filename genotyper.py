@@ -9,7 +9,7 @@ from ngs_utils.parallel import ParallelCfg
 
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
-from fingerprinting.config import get_version
+from fingerprinting import get_version
 from fingerprinting.genotype import genotype_bcbio_proj, DEPTH_CUTOFF
 
 import az
