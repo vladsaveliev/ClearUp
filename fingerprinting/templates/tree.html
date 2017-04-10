@@ -18,7 +18,9 @@
         <ul style="margin-left: -23px;">
         <span style="margin-left: -16px;">Samples from the following projects are used:</span>
         {% for project in projects %}
-            <li style="color: {{ project.color }}">{{ project.name }}</li>
+            <li style="color: {{ project.color }}" class="{{ project.name }}--label">
+              <span class="project-label">{{ project.name }}</span>
+            </li>
         {% endfor %}
         </ul>
         <br>
@@ -109,20 +111,26 @@
                 leafsHorizontalPositions.push(d.radius);
                 return "translate(" + d.x + "," + (d.radius + treeLabelSpace) + ")rotate(90)"; 
               })
-              // Keep in mind that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
-          var leafsTexts = chart.selectAll(".leaf")
-            .append("a")
+          // Keep in mind that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
+          var leafsLabels = chart.selectAll(".leaf")
+            .append("svg:a")
               .attr("xlink:href", function(d) { return getSampleId(d.data.name); })
-              .attr("pointer", "cursor")
-            .append("text")
+              .attr("pointer", "cursor");
+          var leafsTexts = leafsLabels.append("text")
               .attr("dy", 3)
               .text(function(d) { return getSampleName(d.data.name); })
               .style("fill", function(d) { return setColor(d); })
+          var labelSizes = [];
+          leafsTexts.each(function() { labelSizes.push(this.getComputedTextLength()); });
+          leafsLabels.append("svg:rect")
+              .attr("y", -(sampleHeight / 2 + 3))
+              .attr("height", sampleHeight + 1)
+              .attr("width", function(d, i) { return labelSizes[i]; })
+              .attr("fill", "black")
+              .style("opacity", 0.0)
               .on("mouseover", mouseovered(true))
               .on("mouseout", mouseovered(false));
 
-          var labelSizes = [];
-          leafsTexts.each(function() { labelSizes.push(this.getComputedTextLength()); });
           var maxTextWidth = d3.max(labelSizes);
 
           var genderWidth = chart.selectAll(".leaf")
@@ -224,6 +232,10 @@
 
           function mouseovered(active) {
             return function(d) {
+              if (Object.keys(projects).length > 1) {
+                var project = getSampleProject(d.data.name);
+                $('.' + project.name + '--label>span').toggleClass("project-label--highlighted");
+              }
               d3.select(this).classed("label--active", active);
               d3.select(d.linkExtensionNode).classed("link-extension--active", active).each(moveToFront);
               do d3.select(d.linkNode).classed("link--active", active).each(moveToFront); while (d = d.parent);
@@ -257,7 +269,9 @@
                     if($.inArray(color, colors) === -1) colors.push(color);
                 });
                 if (colors.length == 1) d.color = colors[0];
-                else d.color = '#ccc';
+                else { 
+                  d.color = '#ccc';
+                }
             }
             else if (name) {
                 project = getSampleProject(name);

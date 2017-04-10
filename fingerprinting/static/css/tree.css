@@ -1,6 +1,13 @@
 #tree_svg {
   margin-left: -90px; }
 
+.project-label {
+  padding: 1px 2px 0 2px;
+  margin-left: -2px; }
+
+.project-label--highlighted {
+  background: #dfdfdf; }
+
 .links {
   fill: none;
   stroke: #000; }
@@ -12,7 +19,7 @@
 
 .link--active {
   stroke: #000 !important;
-  stroke-width: 1.5px; }
+  stroke-width: 1.4px; }
 
 .link-extension--active {
   stroke-opacity: 0.6; }
