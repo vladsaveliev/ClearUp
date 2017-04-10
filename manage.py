@@ -47,7 +47,8 @@ def _add_project(bam_by_sample, bed_file, project_name, data_dir='', genome_buil
     sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
     with parallel_view(len(bam_by_sample), parallel_cfg, sex_work_dir) as parall_view:
         sexes = parall_view.run(_sex_from_bam, [
-            [db_s, bam_file, bed_file, sex_work_dir, genome_build, bcbio_summary_file]
+            [db_s.name, bam_file, bed_file, sex_work_dir, genome_build, bcbio_summary_file,
+             [snp.depth for snp in db_s.snps.all()]]
             for db_s, bam_file in zip(db_samples, bam_by_sample.values())])
         for s, sex in zip(db_samples, sexes):
             s.sex = sex
@@ -117,19 +118,18 @@ def _sex_from_x_snps(vcf_file):
     return None
     
 
-def _sex_from_bam(db_sample, bam_file, bed_file, work_dir, genome_build, bcbio_summary_file=None):
+def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, bcbio_summary_file=None, depths=None):
     from os.path import join
     from ngs_utils.file_utils import safe_mkdir
     from ngs_reporting.coverage import get_avg_depth, determine_sex
     avg_depth = None
     if bcbio_summary_file:
-        avg_depth = get_avg_depth(bcbio_summary_file, db_sample.name)
+        avg_depth = get_avg_depth(bcbio_summary_file, sname)
     if avg_depth is None:
-        depths = [snp.depth for snp in db_sample.snps.all()]
         if not depths:
-            critical('Error: no SNPs in sample ' + db_sample.long_name())
+            critical('Error: no SNPs in sample ' + sname)
         avg_depth = sum(depths) / len(depths)
-    sex = determine_sex(safe_mkdir(join(work_dir, db_sample.name)), bam_file, avg_depth,
+    sex = determine_sex(safe_mkdir(join(work_dir, sname)), bam_file, avg_depth,
                         genome_build, target_bed=bed_file)
     return sex
 
