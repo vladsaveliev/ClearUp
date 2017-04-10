@@ -84,6 +84,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     _reduce_number_of_locations(dbsnp_snps_file, genome_build, subset_bed_file)
     
     shutil.copyfile(subset_bed_file, selected_snps_file)
+    return selected_snps_file
 
 
 def _reduce_number_of_locations(dbsnp_snps_file, genome_build, output_file, autosomal_locations_limit=175):
