@@ -86,6 +86,7 @@ celerybeat-schedule
 .idea
 venv_*
 data
+data.bak*
 tests/test_project/
 *.bam
 

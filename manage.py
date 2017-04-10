@@ -3,7 +3,7 @@ import glob
 import os
 from collections import defaultdict
 from logging import critical
-from os.path import join, abspath, basename, splitext
+from os.path import join, abspath, basename, splitext, isdir
 
 from cyvcf2 import VCF
 from datetime import datetime
@@ -155,7 +155,8 @@ def init_db():
 
 @manager.command
 def reload_all_data():
-    os.rename(DATA_DIR, DATA_DIR + '.bak' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
+    if verify_dir(DATA_DIR):
+        os.rename(DATA_DIR, DATA_DIR + '.bak' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
     safe_mkdir(DATA_DIR)
     init_db()
     if is_local():
