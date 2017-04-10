@@ -36,7 +36,7 @@ def _add_project(bam_by_sample, bed_file, project_name, data_dir='', genome_buil
     db_samples = []
     for sname, bam_file in bam_by_sample.items():
         db_samples.append(Sample(sname, fp_proj, bam_file))
-        db.session.add(db_samples[-1])
+    db.session.add_all(db_samples)
     db.session.commit()
     
     log.info('Initializing run for single project')
