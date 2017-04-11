@@ -3,6 +3,7 @@
 from copy import copy
 from os.path import abspath, join, dirname, splitext, basename
 
+from collections import defaultdict
 from cyvcf2 import VCF
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -15,7 +16,7 @@ from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_utils import logger as log
 
 from fingerprinting.panel import build_snps_panel
-from fingerprinting.genotype import genotype, vcfrec_to_seq, DEPTH_CUTOFF, write_fasta
+from fingerprinting.genotype import genotype, DEPTH_CUTOFF, build_tree
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
 from fingerprinting import app, db, DATA_DIR, parallel_cfg
 
@@ -37,18 +38,18 @@ class Location(db.Model):
     chrom = db.Column(db.String)
     pos = db.Column(db.Integer)
     gene = db.Column(db.String)
-    # ref = db.Column(db.String)
+    ref = db.Column(db.String)
     # alt = db.Column(db.String)
     
     run_id = db.Column(db.String, db.ForeignKey('run.id'))
     run = db.relationship('Run', backref=db.backref('locations', lazy='dynamic'))
 
-    def __init__(self, rsid, chrom=None, pos=None, gene=None):
+    def __init__(self, rsid, chrom=None, pos=None, gene=None, ref=None):
         self.rsid = rsid
         self.chrom = chrom
         self.pos = pos
         self.gene = gene
-        # self.ref = None
+        self.ref = ref
         # self.alt = None
 
     def __repr__(self):
@@ -62,7 +63,8 @@ class SNP(db.Model):
     pos = db.Column(db.Integer)
     gene = db.Column(db.String)
 
-    genotype = db.Column(db.String)
+    allele1 = db.Column(db.String(1))
+    allele2 = db.Column(db.String(1))
     depth = db.Column(db.Integer)
     usercall = db.Column(db.String)
 
@@ -80,9 +82,42 @@ class SNP(db.Model):
         self.gene = loc.gene
         
     def __repr__(self):
-        return '<SNP {}:{} {} {} for sample {}>'.format(
+        return '<SNP {}:{} {} {}|{} for sample {}>'.format(
             str(self.location.chrom), str(self.location.pos), self.location.rsid,
-            self.genotype, self.sample.name)
+            self.allele1, self.allele2, self.sample.name)
+    
+    @staticmethod
+    def from_records(records, loc):
+        snp = SNP(loc)
+        if not records:
+            snp.depth = 0
+        else:
+            snp.depth = records[0].INFO['DP']
+        if snp.depth < DEPTH_CUTOFF:  # Not enough depth on location to call variation
+            snp.allele1, snp.allele2 = 'N', 'N'
+            return snp
+            
+        high_af_calls = [r for r in records if r.INFO['AF'] >= 0.35]
+        assert len(high_af_calls) <= 2, str(records)
+        
+        alleles = [loc.ref, loc.ref]  # Initialize genotype with REF, then loop through available alleles to replace
+        
+        for i, rec in enumerate(high_af_calls):
+            called = rec.num_called > 0
+            filter_failed = rec.FILTER and any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
+            is_complex = len(rec.REF) > 1 or any(len(a) > 1 for a in rec.ALT)
+            called = called and not filter_failed and not is_complex
+            if called:
+                alleles[i] = rec.ALT[0]
+            else:
+                alleles[i] = 'N'
+        
+        snp.allele1, snp.allele2 = alleles
+        return snp
+    
+    def get_gt(self):
+        assert self.allele1 and self.allele2, str(self)
+        return ''.join(sorted([self.allele1, self.allele2]))
 
 
 def _get_snps_not_called(snps_file, samples):
@@ -136,35 +171,40 @@ class Run(db.Model):
         for loc in locations:
             db.session.add(loc)
         db.session.commit()
-        location_by_rsid = {l.rsid: l for l in locations}
-        
+
         log.info()
         log.info('Genotyping')
         samples = [s for p in projects for s in p.samples]
+        snps_left_to_call_file = _get_snps_not_called(run.snps_file, samples)
+        vcf_dir = safe_mkdir(join(run.work_dir_path(), 'vcf'))
+        work_dir = safe_mkdir(join(vcf_dir, 'work'))
+        bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
         if parall_view:
-            fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
+            vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
+                 work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
         else:
-            samples = [s for p in projects for s in p.samples]
             with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as parall_view:
-                fasta_file, vcf_by_sample = _genotype(run, samples, genome_build, parall_view)
+                vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
+                     work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
 
         log.info('Loading called SNPs into the DB')
         for s in samples:
             recs = [r for r in VCF(vcf_by_sample[s.long_name()])]
-            for i, rec in enumerate(recs):
-                loc = location_by_rsid[rec.ID]
-                # assert loc.pos == rec.POS
-                # snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
-                snp = s.snps.filter(SNP.rsid==rec.ID).first()
-                if snp:
-                    assert snp.depth == rec.INFO['DP']
-                    assert snp.genotype == vcfrec_to_seq(rec, DEPTH_CUTOFF), str(snp) + '   |   ' + str(rec)
-                else:
-                    snp = SNP(loc)
-                    snp.depth = rec.INFO['DP']
-                    snp.genotype = vcfrec_to_seq(rec, DEPTH_CUTOFF)
+            recs_by_rsid = defaultdict(list)
+            for r in recs:
+                recs_by_rsid[r.ID].append(r)
+            for loc in locations:
+                snp = s.snps.filter(SNP.rsid==loc.rsid).first()
+                if not snp:
+                    snp = SNP.from_records(recs_by_rsid[loc.rsid], loc)
                     s.snps.append(snp)
                     db.session.add(snp)
+
+        log.info()
+        log.info('Loading BAMs sliced to fingerprints')
+        parall_view.run(load_bam_file,
+            [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
+             for s in samples])
 
         log.info('Adding locations into the DB')
         run.locations.delete()
@@ -176,6 +216,9 @@ class Run(db.Model):
         #     if snp.location.rsid in location_by_rsid:
         db.session.commit()
         log.info('Saved locations in the DB')
+        
+        log.info('Building tree')
+        build_tree(run)
         return run
     
     @staticmethod
@@ -200,19 +243,7 @@ def _genotype(run, samples, genome_build, parall_view):
     bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
     vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                              work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
-    
-    log.info()
-    log.info('** Building fasta **')
-    fasta_dir = safe_mkdir(join(run.work_dir_path(), 'fasta'))
-    work_dir = safe_mkdir(join(fasta_dir, 'fasta'))
-    fasta_file, vcf_by_sample = write_fasta(bs, vcf_by_sample, snps_left_to_call_file,
-                                            parall_view, output_dir=fasta_dir, work_dir=work_dir, out_fasta=run.fasta_file_path())
-
-    log.info('Loading BAMs sliced to fingerprints')
-    parall_view.run(load_bam_file,
-        [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
-         for s in samples])
-    return fasta_file, vcf_by_sample
+    return vcf_by_sample
     
 
 def get_or_create_run(projects, parall_view=None):
@@ -289,7 +320,8 @@ class Sample(db.Model):
         snps = self.snps.filter(SNP.rsid.in_(locs_ids))
         # snp = s.snps.join(Location).filter(Location.rsid==loc.rsid).first()
         # snps = [snp for snp in self.snps if snp.rsid in locs_ids]
-        return snps
+        snps_by_rsid = {snp.rsid: snp for snp in snps}
+        return snps_by_rsid
     
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
@@ -299,11 +331,12 @@ def extract_locations_from_file(snps_file):
     locs = []
     for i, interval in enumerate(BedTool(snps_file)):
         pos = int(interval.start) + 1
-        rsid, gene = interval.name.split('|')
+        rsid, gene, ref = interval.name.split('|')
         loc = Location(
             rsid=rsid,
             chrom=interval.chrom,
             pos=pos,
-            gene=gene)
+            gene=gene,
+            ref=ref)
         locs.append(loc)
     return locs

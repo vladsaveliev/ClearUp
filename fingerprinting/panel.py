@@ -10,7 +10,7 @@ from fingerprinting.utils import is_sex_chrom
 from pybedtools import BedTool
 
 from ngs_utils import logger as log
-from ngs_utils.call_process import run
+from ngs_utils import call_process
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file, file_transaction, verify_dir, add_suffix, splitext_plus
 from ngs_utils.logger import debug
 from ngs_utils.reference_data import get_chrom_order
@@ -78,7 +78,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     dbsnp_snps_file = join(work_dir, 'snps_in_merged_bed_files.bed')
     if not can_reuse(dbsnp_snps_file, [dbsnp_file, overlapped_bed]):
         cmdl = 'bedtools intersect -header -a ' + dbsnp_file + ' -b ' + overlapped_bed
-        run(cmdl, dbsnp_snps_file)
+        call_process.run(cmdl, dbsnp_snps_file)
 
     subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')
     _reduce_number_of_locations(dbsnp_snps_file, genome_build, subset_bed_file)
@@ -97,8 +97,13 @@ def _reduce_number_of_locations(dbsnp_snps_file, genome_build, output_file, auto
         if is_sex_chrom(interval.chrom):
             continue
         pos = int(interval.start) + 1
-        rsid, gene = interval.name.split('|')
-        loc = (interval.chrom, pos, rsid, gene)
+        annots = interval.name.split('|')
+        if len(annots) == 2:
+            rsid, gene = interval.name.split('|')
+            ref = interval[4]
+        else:
+            rsid, gene, ref = interval.name.split('|')
+        loc = (interval.chrom, pos, rsid, gene, ref)
         locs_by_gene[gene].append(loc)
         total_locs += 1
     
@@ -125,8 +130,8 @@ def _reduce_number_of_locations(dbsnp_snps_file, genome_build, output_file, auto
     
     with file_transaction(None, output_file) as tx:
         with open(tx, 'w') as out:
-            for (chrom, pos, rsid, gene) in selected_locs:
-                out.write('\t'.join([chrom, str(pos-1), str(pos), rsid + '|' + gene]) + '\n')
+            for (chrom, pos, rsid, gene, ref) in selected_locs:
+                out.write('\t'.join([chrom, str(pos-1), str(pos), rsid + '|' + gene + '|' + ref]) + '\n')
     return output_file
 
 
@@ -137,7 +142,7 @@ def _overlap_bed_files(bed_files, output_bed_file):
         shutil.copy(bed_files.pop(), output_bed_file)
         return output_bed_file
     cmdl = 'bedops --intersect' + ''.join([' <(sort-bed ' + bf + ')' for bf in bed_files])
-    run(cmdl, output_bed_file)
+    call_process.run(cmdl, output_bed_file)
     return output_bed_file
 
 

@@ -45,7 +45,7 @@ def subset_dbsnp():
                 gene = gene_val.split(':')[0]
                 if gene in blacklisted_genes:
                     continue
-                fields = [v.CHROM, str(v.POS - 1), str(v.POS), v.ID + '|' + gene, v.REF, ','.join(v.ALT)]
+                fields = [v.CHROM, str(v.POS - 1), str(v.POS), v.ID + '|' + gene + '|' + v.REF]
                 out.write('\t'.join(fields) + '\n')
                 if current_chrom != v.CHROM:
                     current_chrom = v.CHROM

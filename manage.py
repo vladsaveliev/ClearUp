@@ -155,8 +155,8 @@ def init_db():
 
 @manager.command
 def reload_all_data():
-    if verify_dir(DATA_DIR):
-        os.rename(DATA_DIR, DATA_DIR + '.bak' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
+    # if verify_dir(DATA_DIR):
+    #     os.rename(DATA_DIR, DATA_DIR + '.bak' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
     safe_mkdir(DATA_DIR)
     init_db()
     if is_local():

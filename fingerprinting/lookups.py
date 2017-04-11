@@ -3,8 +3,8 @@ from fingerprinting.model import Project
 
 
 def get_snp_record(snps_dict, snp_a, snp_b, snp_index):
-    seq_a, seq_b = snp_a.usercall or snp_a.genotype, snp_b.usercall or snp_b.genotype
-    seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
+    seq_a, seq_b = snp_a.usercall or snp_a.get_gt(), snp_b.usercall or snp_b.get_gt()
+    # seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
     snp_record = {'index': snp_index,
                   'chrom': snp_a.location.chrom,
                   'pos': snp_a.location.pos,
@@ -18,7 +18,7 @@ def get_snp_record(snps_dict, snp_a, snp_b, snp_index):
                   'usercallB': 'usercall' if snp_b.usercall else '',
                   'score': 0,
                   'class': ''}
-    if not seq_a or not seq_b:
+    if seq_a == 'NN' or seq_b == 'NN':
         snps_dict['snp_missing'] += 1
         snp_record['class'] += ' nocall'
         snp_record['score'] = 0

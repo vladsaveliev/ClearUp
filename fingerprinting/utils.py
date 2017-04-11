@@ -7,7 +7,7 @@ from os.path import join, dirname
 from Bio import SeqIO
 
 from ngs_utils import logger
-from ngs_utils.call_process import run
+from ngs_utils import call_process
 from ngs_utils.file_utils import verify_file, safe_mkdir, file_transaction, which, can_reuse
 from ngs_utils.sambamba import index_bam
 
@@ -34,7 +34,7 @@ def load_bam_file(bam_file, bams_dir, snp_bed, sample_name):
     sliced_bam_file = join(bams_dir, sample_name + '.bam')
     if not can_reuse(sliced_bam_file, [bam_file, snp_bed]):
         cmdl = 'sambamba view {bam_file} -L {snp_bed} -f bam -o {sliced_bam_file}'.format(**locals())
-        run(cmdl, output_fpath=sliced_bam_file, stdout_to_outputfile=False)
+        call_process.run(cmdl, output_fpath=sliced_bam_file, stdout_to_outputfile=False)
         index_bam(sliced_bam_file)
     return sliced_bam_file
 

@@ -7,7 +7,7 @@ import vcf
 from subprocess import check_output
 
 from ngs_utils.bed_utils import bgzip_and_tabix
-from ngs_utils.call_process import run
+from ngs_utils import call_process
 from ngs_utils.utils import is_local, is_us
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_utils.file_utils import file_transaction, safe_mkdir, chdir, which, adjust_path, can_reuse, add_suffix, \
@@ -21,6 +21,37 @@ from fingerprinting import DEPTH_CUTOFF
 from fingerprinting.utils import is_sex_chrom
 
 
+def build_tree(run):
+    info()
+    info('** Building fasta **')
+    fasta_dir = safe_mkdir(join(run.work_dir_path(), 'tree'))
+    work_dir = safe_mkdir(join(fasta_dir, 'work'))
+    # fasta_file = write_fasta(bs, vcf_by_sample, snps_left_to_call_file,
+    #     parall_view, output_dir=fasta_dir, work_dir=work_dir, out_fasta=run.fasta_file_path())
+    
+    info('Writing fasta to ' + run.fasta_file_path())
+    samples = [s for p in run.projects for s in p.samples]
+    with open(run.fasta_file_path(), 'w') as fhw:
+        for s in samples:
+            snps_by_rsid = s.snps_from_run(run)
+            fhw.write('>' + s.long_name() + '\n')
+            fhw.write(''.join(snps_by_rsid[loc.rsid].get_gt() for loc in run.locations.all()) + '\n')
+    info('All fasta saved to ' + run.fasta_file_path())
+
+    info()
+    info('Building phylogeny tree using prank...')
+    prank_out = join(run.work_dir_path(), splitext(basename(run.fasta_file_path()))[0])
+    suffix = 'lnx' if 'linux' in sys.platform else 'osx'
+    prank_bin = join(dirname(__file__), 'prank', 'prank_' + suffix, 'bin', 'prank')
+    call_process.run(prank_bin + ' -d=' + run.fasta_file_path() + ' -o=' + prank_out + ' -showtree')
+    if not verify_file(prank_out + '.best.dnd'):
+        critical('Prank failed to run')
+    os.rename(prank_out + '.best.dnd', run.tree_file_path())
+    os.remove(prank_out + '.best.fas')
+    
+    return run.fasta_file_path()
+
+
 def genotype(samples, snp_bed, parall_view, work_dir, output_dir, genome_build):
     genome_cfg = az.get_refdata(genome_build)
     info('** Running VarDict ** ')
@@ -32,42 +63,7 @@ def genotype(samples, snp_bed, parall_view, work_dir, output_dir, genome_build):
     return vcf_by_sample
     
     
-def write_fasta(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work_dir, out_fasta, depth_cutoff=DEPTH_CUTOFF):
-    info('Removing sex chromosomes')
-    autosomal_vcf_by_sample = OrderedDict()
-    for sn, vf in vcf_by_sample.items():
-        autosomal_vcf_by_sample[sn] = add_suffix(vf, 'autosomal')
-        run('grep -v chrX ' + vf + ' | grep -v chrY', output_fpath=autosomal_vcf_by_sample[sn])
-    
-    info('Writing fasta')
-    fasta_by_sample = OrderedDict((s.name, join(work_dir, s.name + '.fasta')) for s in samples)
-    parall_view.run(_vcf_to_fasta, [[s, autosomal_vcf_by_sample[s.name], fasta_by_sample[s.name], depth_cutoff]
-                                    for s in samples])
-    info('Merging fasta')
-    if not can_reuse(out_fasta, fasta_by_sample.values()):
-        with open(out_fasta, 'w') as out_f:
-            for s in samples:
-                with open(fasta_by_sample[s.name]) as f:
-                    out_f.write(f.read())
-    info('All fasta saved to ' + out_fasta)
-
-    info('Saving VCFs into the output directory')
-    for sn, vf in autosomal_vcf_by_sample.items():
-        shutil.copy(vf, join(output_dir, basename(autosomal_vcf_by_sample[sn]) + '.gz'))
-        shutil.copy(vf, join(output_dir, basename(autosomal_vcf_by_sample[sn]) + '.gz.tbi'))
-
-    # info('Combining VCFs')
-    # combined_vcf = combine_vcfs(vcf_by_sample.values(), join(output_dir, 'fingerprints.vcf'))
-    # assert combined_vcf
-
-    # ped_file = splitext_plus(combined_vcf)[0]
-    # cmdl = 'vcftools --plink --gzvcf {combined_vcf}'.format(**locals())
-    # cmdl += ' --out ' + splitext(ped_file)[0]
-    # run(cmd=cmdl)
-    # info('Converting VCFs to PED')
-    # ped_file = vcf_to_ped(vcf_by_sample, join(output_dir, 'fingerprints.ped'), sex_by_sample, depth_cutoff)
-    
-    return out_fasta, autosomal_vcf_by_sample
+# def write_fasta(samples, locations, snps_by_sample, parall_view, output_dir, work_dir, out_fasta):
 
 
 # def vcf_to_ped(vcf_by_sample, ped_file, sex_by_sample, depth_cutoff):
@@ -90,17 +86,17 @@ def write_fasta(samples, vcf_by_sample, snp_bed, parall_view, output_dir, work_d
 #     return ped_file
 
 
-def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
-                        output_dir=None, work_dir=None):
-    output_dir = output_dir or safe_mkdir(join(proj.date_dir, 'fingerprints'))
-    work_dir = work_dir or safe_mkdir(proj.work_dir)
-    with parallel_view(len(proj.samples), parallel_cfg, work_dir) as parall_view:
-        vcf_by_sample = genotype(proj.samples, snp_bed, parall_view, work_dir, output_dir, proj.genome_build)
-        fasta_file, vcf_by_sample = write_fasta(proj.samples, vcf_by_sample,
-                                                snp_bed, parall_view, output_dir, work_dir,
-                                                out_fasta=join(output_dir, 'fingerprints.fasta'), depth_cutoff=depth_cutoff)
-    return vcf_by_sample
-    
+# def genotype_bcbio_proj(proj, snp_bed, parallel_cfg, depth_cutoff=DEPTH_CUTOFF,
+#                         output_dir=None, work_dir=None):
+#     output_dir = output_dir or safe_mkdir(join(proj.date_dir, 'fingerprints'))
+#     work_dir = work_dir or safe_mkdir(proj.work_dir)
+#     with parallel_view(len(proj.samples), parallel_cfg, work_dir) as parall_view:
+#         vcf_by_sample = genotype(proj.samples, snp_bed, parall_view, work_dir, output_dir, proj.genome_build)
+#         fasta_file, vcf_by_sample = write_fasta(proj.samples, vcf_by_sample,
+#                                                 snp_bed, parall_view, output_dir, work_dir,
+#                                                 out_fasta=join(output_dir, 'fingerprints.fasta'), depth_cutoff=depth_cutoff)
+#     return vcf_by_sample
+
 
 def _split_bed(bed_file, work_dir):
     """ Splits into autosomal and sex chromosomes
@@ -139,7 +135,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
     vardict = join(vardict_dir, 'vardict.pl')
     ref_file = adjust_path(genome_cfg['seq'])
     cmdl = '{vardict} -G {ref_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'.format(**locals())
-    run(cmdl, output_fpath=vardict_snp_vars)
+    call_process.run(cmdl, output_fpath=vardict_snp_vars)
 
     # Complex variants might have a shifted start positions with respect to rsid so we are
     # associating starts with rsid for futher snp identification
@@ -156,10 +152,10 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
     cmdl = ('cut -f-34 ' + vardict_snp_vars +
             ' | awk -F"\\t" -v OFS="\\t" \'{for (i=1;i<=NF;i++) { if ($i=="") $i="0" } print $0 }\''
             ' | ' + join(vardict_dir, 'teststrandbias.R') +
-            ' | ' + join(vardict_dir, 'var2vcf_valid.pl') +
+            ' | ' + join(vardict_dir, 'var2vcf_valid.pl') + ' -A' +
             # ' | grep "^#\|TYPE=SNV\|TYPE=REF" ' +
             '')
-    run(cmdl, output_fpath=work_vcf_file)
+    call_process.run(cmdl, output_fpath=work_vcf_file)
     
     # Fix non-call records with empty REF and LAT, and "NA" values assigned to INFO's SN and HICOV
     fixed_vcf_file = add_suffix(work_vcf_file, 'fixed')
@@ -205,45 +201,83 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
             # if len(ref) > 1 or len(alt) > 1:
             #     fs[3] = fs[4] = ''
             ann = ann_by_var[(rec.CHROM, str(rec.POS))]
-            rsid, gene = ann.split('|')
+            rsid, gene, ref = ann.split('|')
             rec.INFO['GENE'] = gene
             rec.ID = rsid
             vcf_writer.write_record(rec)
     assert verify_file(ann_vcf_file), ann_vcf_file
 
-    info('Selecting unique records per rsid (prioritizing SNV)')
-    unq_vcf_file = add_suffix(ann_vcf_file, 'unq')
-    with open(ann_vcf_file) as f, open(unq_vcf_file, 'w') as out:
-        vcf_reader = vcf.Reader(f)
-        vcf_writer = vcf.Writer(out, vcf_reader)
-        recs = [r for r in vcf_reader]
-        recs_by_rsid = defaultdict(list)
-        for r in recs:
-            recs_by_rsid[r.ID].append(r)
-        for r in recs:
-            rs = recs_by_rsid[r.ID]
-            if not rs:
-                continue
-            del recs_by_rsid[r.ID]
-            if len(rs) > 1:
-                debug('Multiple records found for id ' + r.ID)
-            if len(rs) == 1:
-                vcf_writer.write_record(rs[0])
-            else:
-                snp_rs = [r for r in rs if r.INFO['TYPE'] == 'SNV']
-                if len(snp_rs) > 0:
-                    vcf_writer.write_record(snp_rs[0])
-                else:
-                    vcf_writer.write_record(rs[0])
-    assert verify_file(unq_vcf_file), unq_vcf_file
+    # info('Selecting unique records per rsid (prioritizing SNV)')
+    # unq_vcf_file = add_suffix(ann_vcf_file, 'unq')
+    # with open(ann_vcf_file) as f, open(unq_vcf_file, 'w') as out:
+    #     vcf_reader = vcf.Reader(f)
+    #     vcf_writer = vcf.Writer(out, vcf_reader)
+    #     recs = [r for r in vcf_reader]
+    #     recs_by_rsid = defaultdict(list)
+    #     for r in recs:
+    #         recs_by_rsid[r.ID].append(r)
+    #     for r in recs:
+    #         rs = recs_by_rsid[r.ID]
+    #         if not rs:
+    #             continue
+    #         del recs_by_rsid[r.ID]
+    #         if len(rs) > 1:
+    #             debug(ann_vcf_file + ': multiple records found for rsid ' + r.ID)
+    #         if len(rs) == 1:
+    #             vcf_writer.write_record(rs[0])
+    #         else:
+    #             snp_rs = [r for r in rs if r.INFO['TYPE'] == 'SNV']
+    #             if len(snp_rs) > 0:
+    #                 vcf_writer.write_record(snp_rs[0])
+    #             else:
+    #                 vcf_writer.write_record(rs[0])
+    # assert verify_file(unq_vcf_file), unq_vcf_file
 
-    ann_hdr_vcf_file = add_suffix(unq_vcf_file, 'hdr')
-    cmdl = 'bcftools annotate -h <(echo \'##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">\') ' + bgzip_and_tabix(unq_vcf_file)
-    run(cmdl, output_fpath=ann_hdr_vcf_file)
+    ann_hdr_vcf_file = add_suffix(ann_vcf_file, 'hdr')
+    cmdl = 'bcftools annotate -h <(echo ' \
+           '\'##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">\') ' + \
+           bgzip_and_tabix(ann_vcf_file)
+    call_process.run(cmdl, output_fpath=ann_hdr_vcf_file)
     
     debug('Renaming ' + ann_hdr_vcf_file + ' -> ' + vcf_file)
     os.rename(ann_hdr_vcf_file, vcf_file)
     return vcf_file
+
+
+# def vcfrec_to_seq(rec, depth_cutoff):
+#     called = rec.num_called > 0
+#     depth_failed = rec.INFO['DP'] < depth_cutoff
+#     filter_failed = rec.FILTER and any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
+#     non_snp = len(rec.REF) > 1 or any(len(a) > 1 for a in rec.ALT)
+#     if depth_failed or filter_failed or non_snp:
+#         called = False
+#
+#     if is_sex_chrom(rec.CHROM):  # We cannot confidentelly determine sex, and thus determine X heterozygocity,
+#         gt_bases = 'NN'          # so we can't promise constant fingerprint length across all samples
+#     elif called:
+#         if 0.25 < rec.INFO['AF'] < 0.75:  # Heterozygous
+#             gt_bases = rec.REF + rec.ALT[0]
+#         elif rec.INFO['AF'] >= 0.75:
+#             gt_bases = rec.ALT[0] + rec.ALT[0]
+#         gt_bases = sorted(gt_bases)
+#     else:
+#         gt_bases = 'NN'
+#
+#     return gt_bases
+
+
+# def _vcf_to_fasta(sample, vcf_file, fasta_file, depth_cutoff):
+#     if can_reuse(fasta_file, vcf_file):
+#         return fasta_file
+#
+#     from cyvcf2 import VCF
+#     info('Parsing VCF ' + vcf_file)
+#     recs = [v for v in VCF(vcf_file)]
+#     with open(fasta_file, 'w') as fhw:
+#         fhw.write('>' + sample.name + '\n')
+#         fhw.write(''.join(vcfrec_to_seq(rec, depth_cutoff) for rec in recs) + '\n')
+#
+#     info('Fasta saved to ' + fasta_file)
 
 
 def _get_fasta_ref(ref_file, chrom, pos):
@@ -301,41 +335,11 @@ def _get_fasta_ref(ref_file, chrom, pos):
 #     ann_hdr_vcf_file = add_suffix(ann_vcf_file, 'hdr')
 #     header = '##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">'
 #     cmdl = 'bcftools annotate -h <(echo \'{header}\') {ann_vcf_file}'.format(**locals())
-#     run(cmdl, output_fpath=ann_hdr_vcf_file)
+#     call_process.run(cmdl, output_fpath=ann_hdr_vcf_file)
 #
 #     debug('Renaming ' + ann_hdr_vcf_file + ' -> ' + vcf_file)
 #     os.rename(ann_hdr_vcf_file, vcf_file)
 #     return vcf_file
-
-
-# def __p(rec):
-#     s = rec.samples[0]
-#     gt_type = {
-#         0: 'hom_ref',
-#         1: 'het',
-#         2: 'hom_alt',
-#         None: 'uncalled'
-#     }.get(s.gt_type)
-#     gt_bases = s.gt_bases
-#     return str(rec) + ' FILTER=' + str(rec.FILTER) + ' gt_bases=' + str(gt_bases) + ' gt_type=' + gt_type + ' GT=' + str(s['GT']) + ' Depth=' + str(s['VD']) + '/' + str(s['DP'])
-
-
-def vcfrec_to_seq(rec, depth_cutoff):
-    called = rec.num_called > 0
-    depth_failed = rec.INFO['DP'] < depth_cutoff
-    filter_failed = rec.FILTER and any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
-    non_snp = len(rec.REF) > 1 or any(len(a) > 1 for a in rec.ALT)
-    if depth_failed or filter_failed or non_snp:
-        called = False
-
-    if is_sex_chrom(rec.CHROM):  # We cannot confidentelly determine sex, and thus determine X heterozygocity,
-        gt_bases = 'NN'          # so we can't promise constant fingerprint length across all samples
-    elif called:
-        gt_bases = ''.join(sorted(rec.gt_bases[0].split('/')))
-    else:
-        gt_bases = 'NN'
-    
-    return gt_bases
 
 
 # def calc_avg_depth(vcf_file):
@@ -353,17 +357,3 @@ def vcfrec_to_seq(rec, depth_cutoff):
 #         if 'Y' in rec.CHROM:
 #             y_total_depth += depth
 #     return y_total_depth >= 5
-
-
-def _vcf_to_fasta(sample, vcf_file, fasta_file, depth_cutoff):
-    if can_reuse(fasta_file, vcf_file):
-        return fasta_file
-
-    from cyvcf2 import VCF
-    info('Parsing VCF ' + vcf_file)
-    recs = [v for v in VCF(vcf_file)]
-    with open(fasta_file, 'w') as fhw:
-        fhw.write('>' + sample.name + '\n')
-        fhw.write(''.join(vcfrec_to_seq(rec, depth_cutoff) for rec in recs) + '\n')
-
-    info('Fasta saved to ' + fasta_file)

@@ -5,7 +5,6 @@ import os
 import re
 import subprocess
 import time
-from sys import platform
 
 import sys
 from os.path import join, dirname, isfile
@@ -23,10 +22,6 @@ from ngs_utils import logger as log
 from fingerprinting.model import Project, db, Sample, Run, get_or_create_run
 from fingerprinting.utils import read_fasta, FASTA_ID_PROJECT_SEPARATOR
 from fingerprinting import app
-
-
-suffix = 'lnx' if 'linux' in platform else 'osx'
-prank_bin = join(dirname(__file__), 'prank', 'prank_' + suffix, 'bin', 'prank')
 
 
 PROJ_COLORS = [
@@ -70,20 +65,23 @@ def run_analysis_socket_handler(project_names_line):
     run = Run.find_by_project_names_line(project_names_line)
     if not run:
         _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' cannot be found. Has genotyping been failed?', error=True)
-    fasta_file = verify_file(run.fasta_file_path())
-    if not fasta_file:
-        _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' does not contain ready fasta file. Is genotyping ongoing in another window?', error=True)
 
-    prank_out = join(run.work_dir_path(), splitext(basename(fasta_file))[0])
-    _send_line(ws, '')
-    _send_line(ws, 'Building phylogeny tree using prank...')
-    _run_cmd(prank_bin + ' -d=' + fasta_file + ' -o=' + prank_out + ' -showtree')
-    if not verify_file(prank_out + '.best.dnd'):
-        _send_line(ws, 'Prank failed to run', error=True)
-    
-    os.rename(prank_out + '.best.dnd', run.tree_file_path())
-    os.remove(prank_out + '.best.fas')
     ws.send(json.dumps({'finished': True}))
+
+    # fasta_file = verify_file(run.fasta_file_path())
+    # if not fasta_file:
+    #     _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' does not contain ready fasta file. Is genotyping ongoing in another window?', error=True)
+    #
+    # prank_out = join(run.work_dir_path(), splitext(basename(fasta_file))[0])
+    # _send_line(ws, '')
+    # _send_line(ws, 'Building phylogeny tree using prank...')
+    # _run_cmd(prank_bin + ' -d=' + fasta_file + ' -o=' + prank_out + ' -showtree')
+    # if not verify_file(prank_out + '.best.dnd'):
+    #     _send_line(ws, 'Prank failed to run', error=True)
+    #
+    # os.rename(prank_out + '.best.dnd', run.tree_file_path())
+    # os.remove(prank_out + '.best.fas')
+    # ws.send(json.dumps({'finished': True}))
     return ''
 
 

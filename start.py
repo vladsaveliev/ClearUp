@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-
 from os.path import abspath, join, dirname, splitext, basename
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
+from logging.handlers import RotatingFileHandler
+import logging
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
-from ngs_utils import logger as log
 
+from ngs_utils import logger as log
 from ngs_utils.file_utils import verify_file
 
 from fingerprinting import app, DATA_DIR, HOST_IP, PORT
@@ -109,6 +110,11 @@ if __name__ == "__main__":
         # url = "http://{HOST}:{PORT}".format(HOST=config.HOST_IP, PORT=PORT)
         # wb = webbrowser.get(None)  # instead of None, can be "firefox" etc
         # threading.Timer(1.25, lambda: wb.open(url)).start()
+    
+    # log_path = join(DATA_DIR, 'flask.log')
+    # handler = RotatingFileHandler(log_path, maxBytes=10000, backupCount=10)
+    # handler.setLevel(logging.INFO)
+    # app.logger.addHandler(handler)
     
     http_server = WSGIServer((HOST_IP, PORT), app, handler_class=WebSocketHandler)
     log.info('Starting a webserver at ' + HOST_IP + ':' + str(PORT))
