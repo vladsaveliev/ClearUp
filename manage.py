@@ -160,6 +160,7 @@ def reload_all_data():
     safe_mkdir(DATA_DIR)
     init_db()
     if is_local():
+        load_data(abspath('tests/test_project'), 'SA-1826796__SA-30853')
         load_bcbio_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle')
         load_bcbio_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
         load_bcbio_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')

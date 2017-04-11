@@ -2,12 +2,10 @@
 
 from copy import copy
 from os.path import abspath, join, dirname, splitext, basename
-
 from collections import defaultdict
 from cyvcf2 import VCF
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-
 from pybedtools import BedTool
 
 from ngs_utils.Sample import BaseSample
@@ -16,9 +14,9 @@ from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_utils import logger as log
 
 from fingerprinting.panel import build_snps_panel
-from fingerprinting.genotype import genotype, DEPTH_CUTOFF, build_tree
+from fingerprinting.genotype import genotype, build_tree
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
-from fingerprinting import app, db, DATA_DIR, parallel_cfg
+from fingerprinting import app, db, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
 
 # import logging
 # logging.basicConfig()
@@ -208,6 +206,7 @@ class Run(db.Model):
         db.session.commit()
         log.info('Saved locations in the DB')
         
+        log.info()
         log.info('Building tree')
         build_tree(run)
 
@@ -252,24 +251,6 @@ def get_or_create_run(projects, parall_view=None):
     else:
         log.debug('Found run for ' + ', '.join([p.name for p in projects]) + ' with ID ' + str(run.id))
     return run
-
-
-# def merge_fasta(projects, work_dirpath):
-#     fasta_fpaths = [p.fingerprints_fasta_fpath for p in projects]
-#     merged_fasta_fpath = join(work_dirpath, 'fingerprints.fasta')
-#     if not can_reuse(merged_fasta_fpath, fasta_fpaths):
-#         all_records = []
-#         for proj, fasta in zip(projects, fasta_fpaths):
-#             with open(fasta) as f:
-#                 recs = SeqIO.parse(f, 'fasta')
-#                 for rec in recs:
-#                     rec.id += FASTA_ID_PROJECT_SEPARATOR + proj.name
-#                     rec.name = rec.description = ''
-#                     all_records.append(rec)
-#         with file_transaction(None, merged_fasta_fpath) as tx:
-#             with open(tx, 'w') as out:
-#                 SeqIO.write(all_records, out, 'fasta')
-#     return merged_fasta_fpath
 
 
 class Project(db.Model):

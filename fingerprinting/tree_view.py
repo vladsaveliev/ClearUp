@@ -49,15 +49,9 @@ def run_analysis_socket_handler(project_names_line):
     def _run_cmd(cmdl):
         log.debug(cmdl)
         proc = subprocess.Popen(cmdl.split(), stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=os.environ)
-        # lines = []
-        # prev_time = time.time()
         for stdout_line in iter(proc.stdout.readline, ''):
-            # lines.append(stdout_line)
-            # cur_time = time.time()
-            # if cur_time - prev_time > 2:
             if '#(' not in stdout_line.strip():
                 _send_line(ws, stdout_line)
-            # lines = []
         log.debug('Exit from the subprocess')
 
     manage_py = abspath(join(dirname(__file__), '..', 'manage.py'))
@@ -67,21 +61,6 @@ def run_analysis_socket_handler(project_names_line):
         _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' cannot be found. Has genotyping been failed?', error=True)
 
     ws.send(json.dumps({'finished': True}))
-
-    # fasta_file = verify_file(run.fasta_file_path())
-    # if not fasta_file:
-    #     _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' does not contain ready fasta file. Is genotyping ongoing in another window?', error=True)
-    #
-    # prank_out = join(run.work_dir_path(), splitext(basename(fasta_file))[0])
-    # _send_line(ws, '')
-    # _send_line(ws, 'Building phylogeny tree using prank...')
-    # _run_cmd(prank_bin + ' -d=' + fasta_file + ' -o=' + prank_out + ' -showtree')
-    # if not verify_file(prank_out + '.best.dnd'):
-    #     _send_line(ws, 'Prank failed to run', error=True)
-    #
-    # os.rename(prank_out + '.best.dnd', run.tree_file_path())
-    # os.remove(prank_out + '.best.fas')
-    # ws.send(json.dumps({'finished': True}))
     return ''
 
 

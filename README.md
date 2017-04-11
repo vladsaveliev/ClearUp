@@ -31,6 +31,6 @@ echo "export PYTHONPATH=" >> load.sh
 - `python manage.py load_project <bcbio_final_path_of_fingerprints_project> --name=<project_name>`
 
 ## Load and add project in the AZ US HPC
-- `cd /group/ngs/src/Fingerprinting`
+- `cd /gpfs/group/ngs/src/Fingerprinting-1.1`
 - `source load.sh`
-- `python manage.py load_project <bcbio_final_path_of_fingerprints_project> --name=<project_name>`
+- `python manage.py load_bcbio_project <bcbio_final_path_of_fingerprints_project> --name=<project_name>`

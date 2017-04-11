@@ -26,7 +26,7 @@ logger.init(True, join(DATA_DIR, 'log.txt'))
 
 
 if is_us():
-    HOST_IP = '172.18.72.171'
+    HOST_IP = 'blue.usbod.astrazeneca.net'
     PORT = 5003
 else:
     HOST_IP = 'localhost'

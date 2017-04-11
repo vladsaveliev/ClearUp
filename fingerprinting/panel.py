@@ -2,11 +2,8 @@
 import random
 import shutil
 from collections import OrderedDict, defaultdict
-
 import click
 from os.path import join, dirname, isfile, isdir, basename
-
-from fingerprinting.utils import is_sex_chrom
 from pybedtools import BedTool
 
 from ngs_utils import logger as log
@@ -14,12 +11,10 @@ from ngs_utils import call_process
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file, file_transaction, verify_dir, add_suffix, splitext_plus
 from ngs_utils.logger import debug
 from ngs_utils.reference_data import get_chrom_order
-
-from fingerprinting import get_version
-from fingerprinting.genotype import DEPTH_CUTOFF
-
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
+from fingerprinting.utils import is_sex_chrom
+from fingerprinting import get_version, DEPTH_CUTOFF
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
