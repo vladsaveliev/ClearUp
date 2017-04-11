@@ -15,7 +15,7 @@ pip install requirements.txt
 ./setup.py develop
 module load bcbio-nextgen  #UK and US
 echo "" > load.sh
-echo "module load python" >> load.sh  #UK and US
+echo "module load python R bedops" >> load.sh  #UK and US
 echo "export PATH=`pwd`/venv_fp/bin:`dirname $(dirname $(which bcbio_nextgen.py))`/anaconda/bin:\$PATH" >> load.sh
 echo "export PYTHONPATH=" >> load.sh
 ```

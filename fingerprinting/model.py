@@ -200,25 +200,22 @@ class Run(db.Model):
                     s.snps.append(snp)
                     db.session.add(snp)
 
-        log.info()
-        log.info('Loading BAMs sliced to fingerprints')
-        parall_view.run(load_bam_file,
-            [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
-             for s in samples])
-
         log.info('Adding locations into the DB')
         run.locations.delete()
         for l in locations:
             run.locations.append(l)
-            # db.session.delete(l)
-            # Location.delete().where(Location.c.id==run.id)
-        # for snp in samples[0].snps:
-        #     if snp.location.rsid in location_by_rsid:
+        db.session.add(run)
         db.session.commit()
         log.info('Saved locations in the DB')
         
         log.info('Building tree')
         build_tree(run)
+
+        log.info()
+        log.info('Loading BAMs sliced to fingerprints')
+        parall_view.run(load_bam_file,
+            [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
+             for s in samples])
         return run
     
     @staticmethod
@@ -251,8 +248,6 @@ def get_or_create_run(projects, parall_view=None):
     if not run:
         log.debug('Creating new run for projects ' + ', '.join(p.name for p in projects))
         run = Run.create(projects, parall_view)
-        db.session.add(run)
-        db.session.commit()
         log.debug('Done creating new run with ID ' + str(run.id))
     else:
         log.debug('Found run for ' + ', '.join([p.name for p in projects]) + ' with ID ' + str(run.id))
