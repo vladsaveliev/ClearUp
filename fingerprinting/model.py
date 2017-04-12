@@ -14,7 +14,7 @@ from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_utils import logger as log
 
 from fingerprinting.panel import build_snps_panel
-from fingerprinting.genotype import genotype, build_tree
+from fingerprinting.genotype import genotype, build_tree, build_snp_from_records
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
 from fingerprinting import app, db, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
 
@@ -84,39 +84,10 @@ class SNP(db.Model):
             str(self.location.chrom), str(self.location.pos), self.location.rsid,
             self.allele1, self.allele2, self.sample.name)
     
-    @staticmethod
-    def from_records(records, loc):
-        snp = SNP(loc)
-        if not records:
-            snp.depth = 0
-        else:
-            snp.depth = records[0].INFO['DP']
-        if snp.depth < DEPTH_CUTOFF:  # Not enough depth on location to call variation
-            snp.allele1, snp.allele2 = 'N', 'N'
-            return snp
-            
-        high_af_calls = [r for r in records if r.INFO['AF'] >= 0.35]
-        assert len(high_af_calls) <= 2, str(records)
-        
-        alleles = [loc.ref, loc.ref]  # Initialize genotype with REF, then loop through available alleles to replace
-        
-        for i, rec in enumerate(high_af_calls):
-            called = rec.num_called > 0
-            filter_failed = rec.FILTER and any(v in ['MSI12', 'InGap'] for v in rec.FILTER)
-            is_complex = len(rec.REF) > 1 or any(len(a) > 1 for a in rec.ALT)
-            called = called and not filter_failed and not is_complex
-            if called:
-                alleles[i] = rec.ALT[0]
-            else:
-                alleles[i] = 'N'
-        
-        snp.allele1, snp.allele2 = alleles
-        return snp
-    
     def get_gt(self):
         assert self.allele1 and self.allele2, str(self)
         return ''.join(sorted([self.allele1, self.allele2]))
-
+    
 
 def _get_snps_not_called(snps_file, samples):
     # TODO: select and save only snps per sample that are not called in taht sample (special treatment for gender?)
@@ -194,7 +165,8 @@ class Run(db.Model):
             for loc in locations:
                 snp = s.snps.filter(SNP.rsid==loc.rsid).first()
                 if not snp:
-                    snp = SNP.from_records(recs_by_rsid[loc.rsid], loc)
+                    snp = SNP(loc)
+                    build_snp_from_records(snp, recs_by_rsid[loc.rsid])
                     s.snps.append(snp)
                     db.session.add(snp)
 

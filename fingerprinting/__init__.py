@@ -44,3 +44,4 @@ def get_version():
 
 
 DEPTH_CUTOFF = 5
+AF_CUTOFF = 0.2

@@ -18,6 +18,61 @@ from ngs_utils.sambamba import index_bam
 import az
 
 from fingerprinting.utils import is_sex_chrom
+from fingerprinting import DEPTH_CUTOFF, AF_CUTOFF
+
+
+class Allele:
+    def __init__(self, rec=None, nt=None, af=None):
+        self.nt = nt
+        self.af = af
+        self.passing = True
+        if rec:
+            self.af = rec.INFO['AF']
+            if rec.INFO['TYPE'] == 'REF':
+                self.af = 1.0
+                self.nt = rec.ALT[0]
+            else:
+                is_complex = len(rec.REF) > 1 or any(len(a) > 1 for a in rec.ALT)
+                self.passing = rec.num_called > 0 and not rec.FILTER and not is_complex
+                if self.passing:
+                    self.nt = rec.ALT[0]
+                else:
+                    self.nt = 'N'
+
+
+def build_snp_from_records(snp, records):
+    if not records:
+        snp.depth = 0
+    else:
+        snp.depth = records[0].INFO['DP']
+
+    if snp.depth < DEPTH_CUTOFF:  # Not enough depth on location to call variation
+        snp.allele1, snp.allele2 = 'N', 'N'
+
+    else:
+        alleles = [Allele(rec) for rec in records]
+        sum_af = sum(c.af for c in alleles)
+        if sum_af < 1:
+            alleles.append(Allele(nt=snp.location.ref, af=1.0 - sum_af))  # adding the reference allele
+        alleles = [a for a in alleles if a.af >= AF_CUTOFF]
+        alleles.sort(key=lambda a_: a_.af)
+        
+        if len(alleles) == 1:    # only 1 allele with AF>AF_CUTOFF - homozugous
+            snp.allele1 = snp.allele2 = alleles[-1].nt
+        else:  # multiple alleles with AF>AF_CUTOFF - heterozugous
+            snp.allele1 = alleles[-1].nt
+            snp.allele2 = alleles[-2].nt
+        
+        # for i, rec in enumerate(high_af_calls):
+        #     called = rec.num_called > 0
+        #     filter_failed = rec.FILTER
+        #     is_complex = len(rec.REF) > 1 or any(len(a) > 1 for a in rec.ALT)
+        #     called = called and not filter_failed and not is_complex
+        #     if called:
+        #         alleles[i] = rec.ALT[0]
+        #     else:
+        #         alleles[i] = 'N'
+    return snp
 
 
 def build_tree(run):
@@ -109,7 +164,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
     cmdl = ('cut -f-34 ' + vardict_snp_vars +
             ' | awk -F"\\t" -v OFS="\\t" \'{for (i=1;i<=NF;i++) { if ($i=="") $i="0" } print $0 }\''
             ' | ' + join(vardict_dir, 'teststrandbias.R') +
-            ' | ' + join(vardict_dir, 'var2vcf_valid.pl') + ' -A' +
+            ' | ' + join(vardict_dir, 'var2vcf_valid.pl') + ' -A -f 0.2' +
             '')
     call_process.run(cmdl, output_fpath=work_vcf_file)
     
@@ -128,6 +183,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
                 l = '\t'.join(fs)
                 l = l.replace('=NA;', '=.;')
                 l = l.replace('=;', '=.;')
+                l = l.replace('TYPE=0', 'TYPE=REF')
                 out_f.write(l)
     assert verify_file(fixed_vcf_file)
 
