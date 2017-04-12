@@ -102,6 +102,7 @@ def _reduce_number_of_locations(dbsnp_snps_file, genome_build, output_file, auto
         locs_by_gene[gene].append(loc)
         total_locs += 1
     
+    random.seed(1234)  # seeding random for reproducability
     gnames = random.sample(locs_by_gene.keys(), min(len(locs_by_gene), autosomal_locations_limit))
     min_locs_per_gene = min(len(locs) for locs in locs_by_gene.values())
     locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
