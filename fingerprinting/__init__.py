@@ -7,13 +7,22 @@ from ngs_utils.parallel import ParallelCfg
 import az
 
 
-sys_cfg = az.init_sys_cfg()
-# parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
-#                            sys_cfg.get('resources'), sys_cfg.get('threads'))
-parallel_cfg = ParallelCfg()
+if is_us():
+    HOST_IP = 'rask.usbod.astrazeneca.net'
+    PORT = 5003
+    # parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
+    #                            sys_cfg.get('resources'), sys_cfg.get('threads'))
+    parallel_cfg = ParallelCfg(threads=20)
+else:
+    HOST_IP = 'localhost'
+    PORT = 5004
+    parallel_cfg = ParallelCfg()
 
 
 DATA_DIR = abspath(join(dirname(__file__), '..', 'data'))
+
+
+sys_cfg = az.init_sys_cfg()
 
 
 app = Flask(__name__)
@@ -23,14 +32,6 @@ db = SQLAlchemy(app)
 
 
 logger.init(True, join(DATA_DIR, 'log.txt'))
-
-
-if is_us():
-    HOST_IP = 'blue.usbod.astrazeneca.net'
-    PORT = 5003
-else:
-    HOST_IP = 'localhost'
-    PORT = 5004
 
 
 def get_version():
@@ -44,4 +45,4 @@ def get_version():
 
 
 DEPTH_CUTOFF = 5
-AF_CUTOFF = 0.2
+AF_CUTOFF = 0.30
