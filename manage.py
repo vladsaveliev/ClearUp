@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 from logging import critical
 from os.path import join, abspath, basename, splitext, isdir
+from subprocess import check_output
 
 from cyvcf2 import VCF
 from datetime import datetime
@@ -12,18 +13,19 @@ from flask_script import Manager
 
 from ngs_utils.file_utils import safe_mkdir, file_transaction, intermediate_fname, can_reuse, verify_dir
 from ngs_utils.utils import is_local, is_us
-from ngs_utils import logger as log
+from ngs_utils import logger as log, call_process
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
 from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run
-from fingerprinting import app, DATA_DIR, parallel_cfg
+from fingerprinting import app, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
 
 manager = Manager(app)
 
 
 @manager.command
-def _add_project(bam_by_sample, bed_file, project_name, data_dir='', genome_build='hg19', bcbio_summary_file=None):
+def _add_project(bam_by_sample, bed_file, project_name, data_dir='', genome_build='hg19',
+                 bcbio_summary_file=None, min_depth=DEPTH_CUTOFF):
     work_dir = safe_mkdir(join(DATA_DIR, 'projects', project_name))
 
     log.info('Loading fingerprints into the DB')
@@ -31,7 +33,9 @@ def _add_project(bam_by_sample, bed_file, project_name, data_dir='', genome_buil
         name=project_name,
         data_dir=data_dir,
         genome=genome_build,
-        bed_fpath=bed_file)
+        bed_fpath=bed_file,
+        min_depth=min_depth,
+    )
     db.session.add(fp_proj)
     db_samples = []
     for sname, bam_file in bam_by_sample.items():
@@ -59,22 +63,28 @@ def _add_project(bam_by_sample, bed_file, project_name, data_dir='', genome_buil
 
 
 @manager.command
-def load_data(data_dir, project_name):
+def load_data(data_dir, project_name, min_depth=DEPTH_CUTOFF):
     data_dir = verify_dir(data_dir, is_critical=True)
     bam_files = glob.glob(join(data_dir, '*.bam'))
     assert bam_files, 'No BAM files in ' + data_dir
     bed_files = glob.glob(join(data_dir, '*.bed'))
     assert len(bed_files) == 1, 'Multuple BED files in ' + data_dir + ': ' + str(bed_files)
     
+    sample_by_bam = dict()
+    for bam_file in bam_files:
+        # sample_by_bam[bam_file] = check_output('goleft samplename ' + bam_file)
+        sample_by_bam[bam_file] = splitext(basename(bam_file))[0]
+    
     _add_project(
-        bam_by_sample={splitext(basename(bf))[0]: bf for bf in bam_files},
+        bam_by_sample={sample_by_bam[bf]: bf for bf in bam_files},
         bed_file=bed_files[0],
         project_name=project_name,
-        data_dir=data_dir)
+        data_dir=data_dir,
+        min_depth=min_depth)
     
 
 @manager.command
-def load_bcbio_project(bcbio_dir, name=None):
+def load_bcbio_project(bcbio_dir, name=None, min_depth=DEPTH_CUTOFF):
     log.info('-' * 70)
     log.info('Loading project into the fingerprints database from ' + bcbio_dir)
     log.info('-' * 70)
@@ -90,7 +100,8 @@ def load_bcbio_project(bcbio_dir, name=None):
         project_name=name,
         data_dir=bcbio_proj.final_dir,
         genome_build=bcbio_proj.genome_build,
-        bcbio_summary_file=bcbio_proj.find_in_log('project-summary.yaml'))
+        bcbio_summary_file=bcbio_proj.find_in_log('project-summary.yaml'),
+        min_depth=DEPTH_CUTOFF)
 
 
 def _sex_from_x_snps(vcf_file):
@@ -167,7 +178,7 @@ def reload_all_data():
     elif is_us():
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Resolution')
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation')
-        load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/plasma/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation_plasma')
+        load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/plasma/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation_plasma', min_depth=10)
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/tissue/OurType/bcbio_complete'), 'EXT_070_Plasma_Seq_Pilot_Foundation_tissue')
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/PGDx/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_PGDx')
         load_bcbio_project(abspath('/ngs/oncology/analysis/dev/Dev_0327_MiSeq_SNP251/bcbio_preprint/final'), 'Dev_0327_MiSeq_SNP251_initial_preprint')

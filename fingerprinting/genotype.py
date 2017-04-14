@@ -40,13 +40,13 @@ class Allele:
                     self.nt = 'N'
 
 
-def build_snp_from_records(snp, records):
+def build_snp_from_records(snp, records, min_depth):
     if not records:
         snp.depth = 0
     else:
         snp.depth = records[0].INFO['DP']
 
-    if snp.depth < DEPTH_CUTOFF:  # Not enough depth on location to call variation
+    if snp.depth < min_depth:  # Not enough depth on location to call variation
         snp.allele1, snp.allele2 = 'N', 'N'
 
     else:

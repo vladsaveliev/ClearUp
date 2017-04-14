@@ -16,7 +16,7 @@ from ngs_utils import logger as log
 from fingerprinting.panel import build_snps_panel
 from fingerprinting.genotype import genotype, build_tree, build_snp_from_records
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR, load_bam_file
-from fingerprinting import app, db, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
+from fingerprinting import app, db, DATA_DIR, parallel_cfg
 
 # import logging
 # logging.basicConfig()
@@ -166,7 +166,7 @@ class Run(db.Model):
                 snp = s.snps.filter(SNP.rsid==loc.rsid).first()
                 if not snp:
                     snp = SNP(loc)
-                    build_snp_from_records(snp, recs_by_rsid[loc.rsid])
+                    build_snp_from_records(snp, recs_by_rsid[loc.rsid], s.project.min_depth)
                     s.snps.append(snp)
                     db.session.add(snp)
 
@@ -231,12 +231,14 @@ class Project(db.Model):
     data_dir = db.Column(db.String)
     genome = db.Column(db.String(20))
     bed_fpath = db.Column(db.String)
+    min_depth = db.Column(db.Integer)
     
-    def __init__(self, name, data_dir, genome, bed_fpath):
+    def __init__(self, name, data_dir, genome, bed_fpath, min_depth):
         self.name = name
         self.data_dir = data_dir
         self.genome = genome
         self.bed_fpath = bed_fpath
+        self.min_depth = min_depth
 
     def __repr__(self):
         return '<Project {} {}>'.format(self.name, self.genome)
