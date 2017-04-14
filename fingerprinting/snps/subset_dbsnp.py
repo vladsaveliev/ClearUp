@@ -94,13 +94,10 @@ bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
-        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
-        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc25to30.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc70to75.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc80to85.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc85to100.bed.gz \
-        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_lt51bp.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_51to200bp.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/low_complexity_gt200bp.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/repeats.bed.gz \
@@ -108,7 +105,7 @@ bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/wgEncodeDacMapabilityConsensusExcludable.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/LCR.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/sv_repeat_telomere_centromere.bed.gz \
-        > dbsnp_maf10pct.noselfchain.bed
+        > dbsnp_maf10pct.noselfchain_gc25-30_65-70_lowcomp50.bed
         
 bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/self_chain.bed.gz \
@@ -154,7 +151,6 @@ bedtools intersect -v -header -a dbsnp.mafs10pct.bed -b \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/self_chain.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/bad_promoter.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc0to15.bed.gz \
-        /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc20to25.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc70to75.bed.gz \
         /home/vsaveliev/NGS_Reporting/az/reference_data/tricky_regions/hg19/gc75to80.bed.gz \

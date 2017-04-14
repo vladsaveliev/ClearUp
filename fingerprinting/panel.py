@@ -177,7 +177,8 @@ def get_snps_file(fname):
 
 def get_dbsnp(genome, take_autosomal=True, take_sex=False):
     if take_autosomal:
-        return get_snps_file('dbsnp.autosomal.bed.gz')
+        # return get_snps_file('dbsnp.autosomal.bed.gz')
+        return get_snps_file('dbsnp_maf10pct.no_selfchain_gc25-30_65-70_lowcomp50.autosomal.bed.gz')
     elif take_sex:
         return get_snps_file('dbsnp.chrX.bed.gz')
 

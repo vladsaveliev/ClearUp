@@ -1,6 +1,8 @@
-# WebServer for fingerprinting
+# Sample mix-up check
+
 ## Install
-```
+
+```bash
 source ~/reset_path.sh
 module load python
 git clone https://github.com/AstraZeneca-NGS/Fingerprinting && cd Fingerprinting
@@ -21,16 +23,20 @@ echo "export PYTHONPATH=" >> load.sh
 ```
 
 ## Set up
+
 - `python manage.py init_db`
 - `python manage.py reload_all_pdata`
 
 ## Start server
+
 - `python start.py`
 
 ## Add project
+
 - `python manage.py load_project <bcbio_final_path_of_fingerprints_project> --name=<project_name>`
 
 ## Load and add project in the AZ US HPC
+
 - `cd /gpfs/group/ngs/src/Fingerprinting-1.1`
 - `source load.sh`
 - `python manage.py load_bcbio_project <bcbio_final_path_of_fingerprints_project> --name=<project_name>`
