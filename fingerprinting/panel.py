@@ -76,13 +76,14 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
         call_process.run(cmdl, dbsnp_snps_file)
 
     subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')
-    _reduce_number_of_locations(dbsnp_snps_file, genome_build, subset_bed_file)
+    _make_snp_file(dbsnp_snps_file, genome_build, subset_bed_file, pick_unclustered=False)
     
     shutil.copyfile(subset_bed_file, selected_snps_file)
     return selected_snps_file
 
 
-def _reduce_number_of_locations(dbsnp_snps_file, genome_build, output_file, autosomal_locations_limit=175):
+def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
+                   pick_unclustered=True, autosomal_locations_limit=175):
     if can_reuse(output_file, dbsnp_snps_file):
         return output_file
 
@@ -105,8 +106,11 @@ def _reduce_number_of_locations(dbsnp_snps_file, genome_build, output_file, auto
     random.seed(1234)  # seeding random for reproducability
     gnames = random.sample(locs_by_gene.keys(), min(len(locs_by_gene), autosomal_locations_limit))
     min_locs_per_gene = min(len(locs) for locs in locs_by_gene.values())
-    locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
-    selected_locs_by_gene = {g: random.sample(locs_by_gene[g], locs_per_gene) for g in gnames}
+    if pick_unclustered:
+        locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
+        selected_locs_by_gene = {g: random.sample(locs_by_gene[g], locs_per_gene) for g in gnames}
+    else:
+        selected_locs_by_gene = locs_by_gene
     selected_locs = [l for locs in selected_locs_by_gene.values() for l in locs]
     chrom_order = get_chrom_order(genome_build)
     selected_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
@@ -162,25 +166,14 @@ def _overlap_bed_files(bed_files, output_bed_file):
 #     return snps
 #
 
-BED_BY_TYPE = {
-    'idt': 'idt_snps.bed',
-    'exome': 'exome_snps.bed',
-}
-def get_snps_by_type(panel_type):
-    snps_fname = BED_BY_TYPE.get(panel_type)
-    if not panel_type:
-        log.critical('SNPs for panel type ' + panel_type + ' is not defined')
-    return get_snps_file(snps_fname)
 
 def get_snps_file(fname):
     return verify_file(join(dirname(__file__), 'snps', fname), is_critical=True)
 
-def get_dbsnp(genome, take_autosomal=True, take_sex=False):
-    if take_autosomal:
-        # return get_snps_file('dbsnp.autosomal.bed.gz')
-        return get_snps_file('dbsnp_maf10pct.no_selfchain_gc25-30_65-70_lowcomp50.autosomal.bed.gz')
-    elif take_sex:
-        return get_snps_file('dbsnp.chrX.bed.gz')
+
+def get_dbsnp(genome):
+    # return get_snps_file('dbsnp.autosomal.bed.gz')
+    return get_snps_file('dbsnp_maf10pct.no_selfchain_gc25-30_65-70_lowcomp50.autosomal.bed.gz')
 
 
 if __name__ == '__main__':
