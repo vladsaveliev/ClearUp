@@ -104,13 +104,20 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
         total_locs += 1
     
     random.seed(1234)  # seeding random for reproducability
+
+    # Selecting random genes
     gnames = random.sample(locs_by_gene.keys(), min(len(locs_by_gene), autosomal_locations_limit))
+    locs_by_gene = {g: locs_by_gene[g] for g in gnames}
+
+    # Selecting random SNPs in each gene
     min_locs_per_gene = min(len(locs) for locs in locs_by_gene.values())
     if pick_unclustered:
         locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
         selected_locs_by_gene = {g: random.sample(locs_by_gene[g], locs_per_gene) for g in gnames}
     else:
         selected_locs_by_gene = locs_by_gene
+
+    # Sorting final locations
     selected_locs = [l for locs in selected_locs_by_gene.values() for l in locs]
     chrom_order = get_chrom_order(genome_build)
     selected_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
