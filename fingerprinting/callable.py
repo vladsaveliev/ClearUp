@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from ngs_utils.call_process import run
 from ngs_utils.logger import info, debug, err, warn, critical
 from ngs_utils.file_utils import tx_tmpdir, can_reuse, file_transaction, safe_mkdir, adjust_path, chdir, splitext_plus
+from ngs_utils.parallel import parallel_view, ParallelCfg
 
 from fingerprinting.utils import bam_samplename
 
@@ -25,7 +26,7 @@ def sample_callable_bed(bam_file, output_bed_file, work_dir, genome_cfg, min_dep
     return output_bed_file
 
 
-def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_depth, parall_view):
+def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_depth):
     """ Picking random 3 samples and getting a callable for them.
         Trade off between looping through all samples in a huge batch,
         and hitting an sample with outstanding coverage.
@@ -36,8 +37,9 @@ def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_dep
     random.seed(1234)  # seeding random for reproducability
     bam_files = random.sample(bam_files, min(len(bam_files), 3))
 
-    callable_beds = parall_view.run(_calculate, [[bam_file, work_dir, genome_cfg, min_depth]
-         for bam_file in bam_files])
+    with parallel_view(len(bam_files), ParallelCfg(threads=len(bam_files)), work_dir) as parall_view:
+        callable_beds = parall_view.run(_calculate, [[bam_file, work_dir, genome_cfg, min_depth]
+             for bam_file in bam_files])
 
     with bedtools_tmpdir(work_dir):
         with file_transaction(work_dir, output_bed_file) as tx:
