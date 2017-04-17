@@ -47,7 +47,7 @@ def load_bam_file(bam_file, bams_dir, snp_bed, sample_name):
     if not can_reuse(sliced_bam_file, [bam_file, snp_bed]):
         cmdl = 'view {bam_file} -L {snp_bed} -F "not duplicate" -f bam'.format(**locals())
         call_sambamba(cmdl, bam_fpath=bam_file, output_fpath=sliced_bam_file)
-        index_bam(sliced_bam_file)
+        # index_bam(sliced_bam_file)
     return sliced_bam_file
 
 

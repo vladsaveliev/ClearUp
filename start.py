@@ -10,6 +10,7 @@ from geventwebsocket.handler import WebSocketHandler
 
 from ngs_utils import logger as log
 from ngs_utils.file_utils import verify_file
+from ngs_utils.sambamba import index_bam
 from ngs_utils.utils import is_local
 
 from fingerprinting import app, DATA_DIR, HOST_IP, PORT, get_version
@@ -77,7 +78,9 @@ def add_user_call(project_names_line, sample_id):
 
 @app.route('/<run_id>/bamfiles/<bam_fname>/')
 def bam_files_page(run_id, bam_fname):
-    return send_file_for_igv(join(DATA_DIR, str(run_id), 'bams', bam_fname))
+    bam_file = join(DATA_DIR, str(run_id), 'bams', bam_fname)
+    index_bam(bam_file)
+    return send_file_for_igv(bam_file)
 
 
 @app.route('/<project_names_line>/snps_bed/')

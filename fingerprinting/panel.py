@@ -62,9 +62,6 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
             all_bed_files.add(proj.coverage_bed)
     all_bed_files |= set(bed_files or [])
     
-    if not all_bed_files:  # Empty list? Using exome
-        all_bed_files.add(get_snps_by_type('exome'))
-    
     overlapped_bed = join(work_dir, 'merged_bed_files.bed')
     _overlap_bed_files(all_bed_files, overlapped_bed)
     
@@ -76,7 +73,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
         call_process.run(cmdl, dbsnp_snps_file)
 
     subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')
-    _make_snp_file(dbsnp_snps_file, genome_build, subset_bed_file, pick_unclustered=False)
+    _make_snp_file(dbsnp_snps_file, genome_build, subset_bed_file, pick_unclustered=True)
     
     shutil.copyfile(subset_bed_file, selected_snps_file)
     return selected_snps_file
@@ -114,11 +111,12 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     if pick_unclustered:
         locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
         selected_locs_by_gene = {g: random.sample(locs_by_gene[g], locs_per_gene) for g in gnames}
+        selected_locs = [l for gene_locs in selected_locs_by_gene.values() for l in gene_locs]
     else:
-        selected_locs_by_gene = locs_by_gene
+        all_locs = [l for gene_locs in locs_by_gene.values() for l in gene_locs]
+        selected_locs = random.sample(all_locs, min(len(all_locs), autosomal_locations_limit))
 
     # Sorting final locations
-    selected_locs = [l for locs in selected_locs_by_gene.values() for l in locs]
     chrom_order = get_chrom_order(genome_build)
     selected_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
 

@@ -42,9 +42,13 @@ def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_dep
              for bf in bam_files])
 
     with file_transaction(work_dir, output_bed_file) as tx:
-        pybedtools.BedTool(callable_beds[0])\
-            .cat(*callable_beds[1:], postmerge=True)\
-            .saveas(tx)
+        bed = pybedtools.BedTool(callable_beds.pop())
+        while callable_beds:
+            bed = bed.intersect(callable_beds.pop())
+        bed.saveas(tx)
+        # pybedtools.BedTool(callable_beds[0])\
+        #     .cat(*callable_beds[1:], postmerge=True)\
+        #     .saveas(tx)
     return output_bed_file
     
 
