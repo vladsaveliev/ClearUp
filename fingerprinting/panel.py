@@ -4,6 +4,8 @@ import shutil
 from collections import OrderedDict, defaultdict
 import click
 from os.path import join, dirname, isfile, isdir, basename
+
+import math
 from pybedtools import BedTool
 
 from ngs_utils import logger as log
@@ -73,14 +75,14 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
         call_process.run(cmdl, dbsnp_snps_file)
 
     subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')
-    _make_snp_file(dbsnp_snps_file, genome_build, subset_bed_file, pick_unclustered=True)
+    _make_snp_file(dbsnp_snps_file, genome_build, subset_bed_file)
     
     shutil.copyfile(subset_bed_file, selected_snps_file)
     return selected_snps_file
 
 
 def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
-                   pick_unclustered=True, autosomal_locations_limit=175):
+                   autosomal_locations_limit=175, min_snp_amount=30):
     if can_reuse(output_file, dbsnp_snps_file):
         return output_file
 
@@ -105,33 +107,37 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     # Selecting random genes
     gnames = random.sample(locs_by_gene.keys(), min(len(locs_by_gene), autosomal_locations_limit))
     locs_by_gene = {g: locs_by_gene[g] for g in gnames}
-
     # Selecting random SNPs in each gene
-    min_locs_per_gene = min(len(locs) for locs in locs_by_gene.values())
-    if pick_unclustered:
-        locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
-        selected_locs_by_gene = {g: random.sample(locs_by_gene[g], locs_per_gene) for g in gnames}
-        selected_locs = [l for gene_locs in selected_locs_by_gene.values() for l in gene_locs]
-    else:
-        all_locs = [l for gene_locs in locs_by_gene.values() for l in gene_locs]
-        selected_locs = random.sample(all_locs, min(len(all_locs), autosomal_locations_limit))
+    # min_locs_per_gene = min(len(locs) for locs in locs_by_gene.values())
+    # if pick_unclustered:
+    #     locs_per_gene = min(autosomal_locations_limit / len(gnames), min_locs_per_gene)
+    #     while locs_per_gene * len(gnames) < min_snp_amount:
+    #         locs_per_gene = math.ceil(float(min_snp_amount) / len(gnames))
+    #     selected_locs_by_gene = {g: random.sample(locs_by_gene[g], locs_per_gene) for g in gnames}
+    #     selected_locs = [l for gene_locs in selected_locs_by_gene.values() for l in gene_locs]
+    # else:
+    all_locs = [l for gene_locs in locs_by_gene.values() for l in gene_locs]
+
+    # Selecting unclustered SNPs within genes
+    non_clustered_locs = []
+    prev_pos = 0
+    for (chrom, pos, rsid, gene) in all_locs:
+        if 0 < pos - prev_pos < 500:
+            continue
+        else:
+            prev_pos = pos
+            non_clustered_locs.append((chrom, pos, rsid, gene))
+
+    # Selecting random SNPs within the limit
+    selected_locs = random.sample(non_clustered_locs, min(len(non_clustered_locs), autosomal_locations_limit))
 
     # Sorting final locations
     chrom_order = get_chrom_order(genome_build)
     selected_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
 
-    # non_clustered_locs = []
-    # prev_pos = 0
-    # for (chrom, pos, rsid, gene) in selected_locs:
-    #     if 0 < pos - prev_pos < 200:
-    #         continue
-    #     else:
-    #         prev_pos = pos
-    #         non_clustered_locs.append((chrom, pos, rsid, gene))
-    
-    log.debug('Selecting the following autosomal SNPs:')
-    for l in selected_locs:
-        log.debug('  ' + str(l))
+    log.debug('Selected the following autosomal SNPs:')
+    for (chrom, pos, rsid, gene) in selected_locs:
+        log.debug('  ' + chrom + ':' + str(pos) + '\t' + rsid + '\t' + gene)
     
     with file_transaction(None, output_file) as tx:
         with open(tx, 'w') as out:
