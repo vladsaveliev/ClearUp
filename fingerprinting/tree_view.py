@@ -96,7 +96,8 @@ def render_phylo_tree_page(project_names_line):
 
     log.debug('Preparing info for run ' + str(run.id))
     info_by_project = dict()
-    for i, p in enumerate(run.projects.all()):
+    prs = sorted(run.projects.all(), key=lambda p_: p_.name)
+    for i, p in enumerate(prs):
         info_by_project[p.name] = dict()
         info_by_project[p.name]['name'] = p.name
         info_by_project[p.name]['color'] = PROJ_COLORS[i % len(PROJ_COLORS)]
