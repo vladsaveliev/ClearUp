@@ -64,6 +64,8 @@ class SNP(db.Model):
     allele1 = db.Column(db.String(1))
     allele2 = db.Column(db.String(1))
     depth = db.Column(db.Integer)
+    allele1_depth = db.Column(db.Integer)
+    allele2_depth = db.Column(db.Integer)
     usercall = db.Column(db.String)
 
     location_id = db.Column(db.String, db.ForeignKey('location.id'))

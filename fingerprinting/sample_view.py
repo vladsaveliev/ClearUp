@@ -14,7 +14,6 @@ from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 from ngs_utils import logger as log
 
 from fingerprinting.model import Project, db, Sample, Run
-from fingerprinting.lookups import get_snp_record
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR
 from fingerprinting import app
 
@@ -34,6 +33,46 @@ def _find_closest_match(sample, run):
         return matching_sample
     else:
         return None
+
+
+def _get_snp_record(snps_dict, snp_a, snp_b, snp_index):
+    seq_a, seq_b = snp_a.usercall or snp_a.get_gt(), snp_b.usercall or snp_b.get_gt()
+    # seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
+    snp_record = {'index': snp_index,
+                  'chrom': snp_a.location.chrom,
+                  'pos': snp_a.location.pos,
+                  'rsid': snp_a.location.rsid,
+                  'gene': snp_a.location.gene,
+                  'depthA': snp_a.depth,
+                  'depthB': snp_b.depth,
+                  'allele1_depthA': snp_a.allele1_depth,
+                  'allele2_depthA': snp_a.allele2_depth,
+                  'allele1_depthB': snp_b.allele1_depth,
+                  'allele2_depthB': snp_b.allele2_depth,
+                  'snpA': seq_a,
+                  'snpB': seq_b,
+                  'usercallA': 'usercall' if snp_a.usercall else '',
+                  'usercallB': 'usercall' if snp_b.usercall else '',
+                  'score': 0,
+                  'class': ''}
+    if seq_a == 'NN' or seq_b == 'NN':
+        snps_dict['snp_missing'] += 1
+        snp_record['class'] += ' nocall'
+        snp_record['score'] = 0
+        return snp_record
+    if seq_a == seq_b:
+        snps_dict['matches'] += 1
+        snp_record['class'] += ' match'
+        snp_record['score'] = 2
+    elif seq_a[0] == seq_b[0] or seq_a[1] == seq_b[1]:
+        snps_dict['het_matches'] += 1
+        snp_record['class'] += ' het_match'
+        snp_record['score'] = 1
+    else:
+        snps_dict['mismatches'] += 1
+        snp_record['class'] += ' mistmatch'
+        snp_record['score'] = 0
+    return snp_record
 
 
 def render_closest_comparison_page(project_names_line, sample_id, selected_idx=None):
@@ -57,7 +96,7 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
     for i, l in enumerate(run.locations):
         snp_a = snps_a_by_rsid[l.rsid]
         snp_b = snps_b_by_rsid[l.rsid]
-        snp_records.append(get_snp_record(snps_dict, snp_a, snp_b, i + 1))
+        snp_records.append(_get_snp_record(snps_dict, snp_a, snp_b, i + 1))
         if (i + 1) % SNPS_IN_ROW == 0:
             snp_tables.append(snp_records)
             snp_records = []
@@ -123,4 +162,5 @@ def send_file_for_igv(fpath):
 
     log.info("GET range request: %s-%s %s" % (m.group(1), m.group(2), fpath))
     return rv
+
 

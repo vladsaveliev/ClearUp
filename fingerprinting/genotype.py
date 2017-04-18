@@ -22,14 +22,17 @@ from fingerprinting import DEPTH_CUTOFF, AF_CUTOFF
 
 
 class Allele:
-    def __init__(self, rec=None, nt=None, af=None):
+    def __init__(self, rec=None, nt=None, af=None, depth=None):
         self.nt = nt
         self.af = af
+        self.depth = depth
         self.passing = True
         if rec:
             self.af = rec.INFO['AF']
+            self.depth = rec.INFO['VD']
             if rec.INFO['TYPE'] == 'REF':
                 self.af = 1.0
+                self.depth = rec.INFO['DP']
                 self.nt = rec.ALT[0]
             else:
                 is_complex = len(rec.REF) > 1 or any(len(a) > 1 for a in rec.ALT)
@@ -41,8 +44,10 @@ class Allele:
 
 
 def build_snp_from_records(snp, records, min_depth):
+    # TODO:
+    # keep alt in the dbSNP file, and select only the variant here with matching alt. Then report AF of that
     if not records:
-        snp.depth = 0
+        snp.depth = snp.allele1_depth = snp.allele2_depth = 0
     else:
         snp.depth = records[0].INFO['DP']
 
@@ -57,11 +62,14 @@ def build_snp_from_records(snp, records, min_depth):
         alleles = [a for a in alleles if a.af >= AF_CUTOFF]
         alleles.sort(key=lambda a_: a_.af)
         
-        if len(alleles) == 1:    # only 1 allele with AF>AF_CUTOFF - homozugous
+        if len(alleles) == 1:  # only 1 allele with AF>AF_CUTOFF - homozygous
             snp.allele1 = snp.allele2 = alleles[-1].nt
-        else:  # multiple alleles with AF>AF_CUTOFF - heterozugous
+            snp.allele1_depth = snp.allele2_depth = alleles[-1].depth
+        else:  # multiple alleles with AF>AF_CUTOFF - heterozygous
             snp.allele1 = alleles[-1].nt
             snp.allele2 = alleles[-2].nt
+            snp.allele1_depth = alleles[-1].depth
+            snp.allele2_depth = alleles[-2].depth
         
         # for i, rec in enumerate(high_af_calls):
         #     called = rec.num_called > 0

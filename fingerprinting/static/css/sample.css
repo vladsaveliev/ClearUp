@@ -48,7 +48,6 @@ table.snpCalls  {
 td.matchSampleInfoName  {
 	text-align: right;
 }
-
 td.matchSampleInfoValue  {
 	text-align: left;
 	font-weight: bold;
@@ -99,22 +98,35 @@ table.match td.cell {
     text-align: center;
 	padding: 1px 2px 1px 2px;
 }
-td.toprow, td.bottomrow, td.scorerow, td.snpIndex {
+td.toprow, td.bottomrow {
 	font-size: 11px;
 	font-family: monospace;
+}
+td.snp_index_td {
+	font-size: 9px;
+}
+td.snp_gene {
+	font-size: 7px;
+}
+td.snp_gene * {
+    transform: rotate(-90deg);
+	/*transform-origin: 50% 25%;*/
+	transform-origin: 100% 35%;
+    height: 30px;
 }
 td.bottomrow {
     border-bottom: 1px solid white;
 }
-td.snpIndex {
+table.match td.snp_index {
 	text-align: center;
 	font-size: 8px;
     border-top: 1px solid white;
-    padding-bottom: 0 !important;
+    padding-bottom: 0 ;
 }
-td.depthrow {
+table.match td.depthrow {
 	text-align: center;
 	font-size: 7px;
+    padding-top: 3px;
 }
 .usercall_input {
     width: 13px;
