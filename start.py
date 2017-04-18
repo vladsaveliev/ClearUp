@@ -76,11 +76,14 @@ def add_user_call(project_names_line, sample_id):
                             snpIndex=request.form['snpIndex']))
 
 
-@app.route('/<run_id>/bamfiles/<bam_fname>/')
-def bam_files_page(run_id, bam_fname):
-    bam_file = join(DATA_DIR, str(run_id), 'bams', bam_fname)
-    index_bam(bam_file)
-    return send_file_for_igv(bam_file)
+@app.route('/<run_id>/bamfiles/<fname>/')
+def bam_files_page(run_id, fname):
+    fpath = join(DATA_DIR, str(run_id), 'bams', fname)
+    bam_fpath = fpath
+    if fpath.endswith('.bai'):
+        bam_fpath = fpath[:-4]
+    index_bam(bam_fpath)
+    return send_file_for_igv(fpath)
 
 
 @app.route('/<project_names_line>/snps_bed/')
