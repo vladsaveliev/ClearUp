@@ -121,12 +121,12 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     # Selecting unclustered SNPs within genes
     non_clustered_locs = []
     prev_pos = 0
-    for (chrom, pos, rsid, gene) in all_locs:
+    for (chrom, pos, rsid, gene, ref) in all_locs:
         if 0 < pos - prev_pos < 500:
             continue
         else:
             prev_pos = pos
-            non_clustered_locs.append((chrom, pos, rsid, gene))
+            non_clustered_locs.append((chrom, pos, rsid, gene, ref))
 
     # Selecting random SNPs within the limit
     selected_locs = random.sample(non_clustered_locs, min(len(non_clustered_locs), autosomal_locations_limit))
@@ -136,7 +136,7 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     selected_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
 
     log.debug('Selected the following autosomal SNPs:')
-    for (chrom, pos, rsid, gene) in selected_locs:
+    for (chrom, pos, rsid, gene, ref) in selected_locs:
         log.debug('  ' + chrom + ':' + str(pos) + '\t' + rsid + '\t' + gene)
     
     with file_transaction(None, output_file) as tx:
