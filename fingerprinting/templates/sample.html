@@ -59,7 +59,11 @@
                         id="{{ snp_record.index }}_idx"
                      chrom="{{ snp_record.chrom }}"
                        pos="{{ snp_record.pos }}">
-                        {{ snp_record.index }}
+                        {% if snp_record.ngb_link %}
+                          <a href="{{ snp_record.ngb_link }}">{{ snp_record.index }}</a>
+                        {% else %}
+                          {{ snp_record.index }}
+                        {% endif %}
                     </td>
                 {% endfor %}
             </tr>
@@ -109,7 +113,9 @@
                            id="{{ snp_record.index }}_depth"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
-                        {{ snp_record.depthA }}<span style="color: gray;">x</span>
+                      <span class="bar" style="width: {{ 100 * snp_record.allele1_depthA / snp_record.depthA }}%;"></span>
+{#                      <span class="bar" style="width: {{ 100 * snp_record.allele2_depthA / snp_record.depthA }}%; margin-left: 50%;"></span>#}
+                      <span class="val">{{ snp_record.depthA }}<span style="color: gray;">x</span></span>
                     </td>
                 {% endfor %}
             </tr>
@@ -120,7 +126,9 @@
                            id="{{ snp_record.index }}_depth"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
-                        {{ snp_record.depthB }}<span style="color: gray;">x</span>
+                      <span class="bar" style="width: {{ 100 * snp_record.allele1_depthB / snp_record.depthB }}%;"></span>
+{#                      <span class="bar" style="width: {{ 100 * snp_record.allele2_depthB / snp_record.depthB }}%; margin-left: 50%;"></span>#}
+                      <span class="val">{{ snp_record.depthB }}<span style="color: gray;">x</span></span>
                     </td>
                 {% endfor %}
             </tr>
@@ -132,7 +140,7 @@
             <tr><td class="legend_item het_match">&nbsp;&nbsp;</td>        <td>One allele matches ({{ snps_data.het_matches }})</td>                </tr>
             <tr><td class="legend_item mismatch">&nbsp;&nbsp;</td>         <td>Mismatches ({{ snps_data.mismatches }})</td>                           </tr>
             <tr><td class="legend_item nocall">&nbsp;&nbsp;</td>           <td>Missing/ignored SNP or non-SNP ({{ snps_data.snp_missing }})</td>    </tr>
-            <tr><td class="legend_item usercall">AT</td>                  <td>User calls ({{ snps_data.usercalls }})</td>                           </tr>
+            <tr><td class="legend_item usercall">AT</td>         <td>User calls ({{ snps_data.usercalls }})</td>                           </tr>
         </table>
 
         <br><br>

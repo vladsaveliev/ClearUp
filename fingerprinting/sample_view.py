@@ -3,6 +3,9 @@ import os
 import re
 import subprocess
 import time
+
+from az.ngb import get_ngb_link, get_ngb_link_template
+from ngs_utils.utils import is_us, is_uk
 from os.path import abspath, join, dirname, splitext, basename
 from collections import defaultdict
 
@@ -35,10 +38,11 @@ def _find_closest_match(sample, run):
         return None
 
 
-def _get_snp_record(snps_dict, snp_a, snp_b, snp_index):
+def _get_snp_record(snps_dict, snp_a, snp_b, snp_index, ngb_link=None):
     seq_a, seq_b = snp_a.usercall or snp_a.get_gt(), snp_b.usercall or snp_b.get_gt()
     # seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
     snp_record = {'index': snp_index,
+                  'ngb_link': ngb_link,
                   'chrom': snp_a.location.chrom,
                   'pos': snp_a.location.pos,
                   'rsid': snp_a.location.rsid,
@@ -93,10 +97,16 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
     snp_records = []
     snps_a_by_rsid = sample.snps_from_run(run)
     snps_b_by_rsid = matching_sample.snps_from_run(run)
+    ngb_link_tmpl = None
+    if is_us() or is_uk():
+        ngb_link_tmpl = get_ngb_link_template(
+            sample.name, sample.project.genome, sample.project.name,
+            sample.project.bed_fpath, matching_sample.name, matching_sample.bam)
     for i, l in enumerate(run.locations):
         snp_a = snps_a_by_rsid[l.rsid]
         snp_b = snps_b_by_rsid[l.rsid]
-        snp_records.append(_get_snp_record(snps_dict, snp_a, snp_b, i + 1))
+        ngb_link = get_ngb_link(ngb_link_tmpl, snp_a.chrom, snp_a.pos) if ngb_link_tmpl else None
+        snp_records.append(_get_snp_record(snps_dict, snp_a, snp_b, i + 1, ngb_link=ngb_link))
         if (i + 1) % SNPS_IN_ROW == 0:
             snp_tables.append(snp_records)
             snp_records = []
@@ -104,8 +114,6 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
         snp_tables.append(snp_records)
 
     snps_dict['total_score'] = sum((rec['score']) for recs in snp_tables for rec in recs)
-    # snps_dict['confidence'] = 'Low'
-
     bam_fpath_a = '/%s/bamfiles/%s' % (run.id, sample.long_name() + '.bam')
     bam_fpath_b = '/%s/bamfiles/%s' % (run.id, matching_sample.long_name() + '.bam')
     snps_bed = '/%s/snps_bed' % project_names_line

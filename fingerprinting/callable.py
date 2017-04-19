@@ -25,7 +25,8 @@ def sample_callable_bed(bam_file, output_bed_file, work_dir, genome_cfg, min_dep
     return output_bed_file
 
 
-def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_depth):
+def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_depth,
+                       parall_view=None):
     """ Picking random 3 samples and getting a callable for them.
         Trade off between looping through all samples in a huge batch,
         and hitting an sample with outstanding coverage.
@@ -34,12 +35,18 @@ def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_dep
         return output_bed_file
     
     work_dir = safe_mkdir(join(work_dir, 'callable_work'))
-    random.seed(1234)  # seeding random for reproducability
-    bam_files = random.sample(bam_files, min(len(bam_files), 3))
-
-    with parallel_view(len(bam_files), ParallelCfg(threads=len(bam_files)), work_dir) as parall_view:
-        callable_beds = parall_view.run(_calculate, [[bf, work_dir, genome_cfg, min_depth]
-             for bf in bam_files])
+    # random.seed(1234)  # seeding random for reproducability
+    # bam_files = random.sample(bam_files, min(len(bam_files), 3))
+    
+    if parall_view:
+        callable_beds = parall_view.run(_calculate, [
+            [bf, work_dir, genome_cfg, min_depth]
+            for bf in bam_files])
+    else:
+        with parallel_view(len(bam_files), ParallelCfg(threads=len(bam_files)), work_dir) as parall_view:
+            callable_beds = parall_view.run(_calculate, [
+                [bf, work_dir, genome_cfg, min_depth]
+                for bf in bam_files])
 
     with file_transaction(work_dir, output_bed_file) as tx:
         bed = pybedtools.BedTool(callable_beds.pop())

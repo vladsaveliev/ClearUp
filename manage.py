@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 import glob
+import traceback
+
 import os
 from collections import defaultdict
-from logging import critical
+
+from az.ngb import add_bcbio_project_to_ngb, add_data_to_ngb, add_file_to_ngb
+from fingerprinting.panel import get_dbsnp
 from os.path import join, abspath, basename, splitext, isdir
 from subprocess import check_output
 
@@ -13,7 +17,7 @@ from flask import Flask
 from flask_script import Manager
 
 from ngs_utils.file_utils import safe_mkdir, file_transaction, intermediate_fname, can_reuse, verify_dir
-from ngs_utils.utils import is_local, is_us
+from ngs_utils.utils import is_local, is_us, is_uk
 from ngs_utils import logger as log, call_process
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_reporting.bcbio.bcbio import BcbioProject
@@ -29,31 +33,34 @@ manager = Manager(app)
 def _add_project(bam_by_sample, project_name, bed_file=None, data_dir='', genome_build='hg19',
                  bcbio_summary_file=None, min_depth=DEPTH_CUTOFF):
     work_dir = safe_mkdir(join(DATA_DIR, 'projects', project_name))
-
-    log.info('Initializing run for single project')
-    if not bed_file:
-        log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
-        bed_file = join(work_dir, 'callable_regions.bed')
-        genome_cfg = az.get_refdata(genome_build)
-        batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_cfg, min_depth)
-
-    log.info('Loading fingerprints into the DB')
-    fp_proj = Project(
-        name=project_name,
-        data_dir=data_dir,
-        genome=genome_build,
-        bed_fpath=bed_file,
-        min_depth=min_depth,
-    )
-    db.session.add(fp_proj)
-    db_samples = []
-    for sname, bam_file in bam_by_sample.items():
-        db_samples.append(Sample(sname, fp_proj, bam_file))
-    db.session.add_all(db_samples)
-    db.session.commit()
     
     with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as parall_view:
+        log.info('Initializing run for single project')
+        if not bed_file:
+            log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
+            bed_file = join(work_dir, 'callable_regions.bed')
+            genome_cfg = az.get_refdata(genome_build)
+            batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_cfg, min_depth,
+                               parall_view=parall_view)
+    
+        log.info('Loading fingerprints into the DB')
+        fp_proj = Project(
+            name=project_name,
+            data_dir=data_dir,
+            genome=genome_build,
+            bed_fpath=bed_file,
+            min_depth=min_depth,
+        )
+        db.session.add(fp_proj)
+        db_samples = []
+        for sname, bam_file in bam_by_sample.items():
+            db_samples.append(Sample(sname, fp_proj, bam_file))
+        db.session.add_all(db_samples)
+        db.session.commit()
+        
         get_or_create_run([fp_proj], parall_view=parall_view)
+
+        _add_to_ngb(project_name, bam_by_sample, genome_build, bed_file)
 
         log.info('Genotyping sex')
         sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
@@ -67,6 +74,21 @@ def _add_project(bam_by_sample, project_name, bed_file=None, data_dir='', genome
     
     log.info()
     log.info('Done.')
+    
+    
+def _add_to_ngb(project_name, bam_by_sample, genome_build, bed_file):
+    if is_us() or is_uk():
+        log.info('Exposing project to NGB...')
+        try:
+            dataset = project_name + '_Fingerprints'
+            add_data_to_ngb(parallel_view, bam_by_sample, dict(), dataset,
+                            bed_file=bed_file, genome_build='hg19')
+            add_file_to_ngb(get_dbsnp(genome_build), genome_build, dataset, dataset,
+                            skip_if_added=True)
+        except StandardError:
+            traceback.print_exc()
+            log.err('Error: cannot export to NGB')
+        log.info('*' * 70)
 
 
 @manager.command

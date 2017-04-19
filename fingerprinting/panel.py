@@ -175,7 +175,6 @@ def _overlap_bed_files(bed_files, output_bed_file):
 #
 #     log.info('Found SNPs with MAF>10%: ' + str(len(snps)))
 #     return snps
-#
 
 
 def get_snps_file(fname):

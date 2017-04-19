@@ -51,25 +51,26 @@ def build_snp_from_records(snp, records, min_depth):
     else:
         snp.depth = records[0].INFO['DP']
 
+    alleles = [Allele(rec) for rec in records]
+    sum_af = sum(c.af for c in alleles)
+    if sum_af < 1:
+        ref_af = 1.0 - sum_af
+        alleles.append(Allele(nt=snp.location.ref, af=ref_af,
+                              depth=ref_af * snp.depth))  # adding the reference allele
+    alleles = [a for a in alleles if a.af >= AF_CUTOFF]
+    alleles.sort(key=lambda a_: a_.af)
+    
+    if len(alleles) == 1:  # only 1 allele with AF>AF_CUTOFF - homozygous
+        snp.allele1 = snp.allele2 = alleles[-1].nt
+        snp.allele1_depth = snp.allele2_depth = alleles[-1].depth
+    else:  # multiple alleles with AF>AF_CUTOFF - heterozygous
+        snp.allele1 = alleles[-1].nt
+        snp.allele2 = alleles[-2].nt
+        snp.allele1_depth = alleles[-1].depth
+        snp.allele2_depth = alleles[-2].depth
+
     if snp.depth < min_depth:  # Not enough depth on location to call variation
         snp.allele1, snp.allele2 = 'N', 'N'
-
-    else:
-        alleles = [Allele(rec) for rec in records]
-        sum_af = sum(c.af for c in alleles)
-        if sum_af < 1:
-            alleles.append(Allele(nt=snp.location.ref, af=1.0 - sum_af))  # adding the reference allele
-        alleles = [a for a in alleles if a.af >= AF_CUTOFF]
-        alleles.sort(key=lambda a_: a_.af)
-        
-        if len(alleles) == 1:  # only 1 allele with AF>AF_CUTOFF - homozygous
-            snp.allele1 = snp.allele2 = alleles[-1].nt
-            snp.allele1_depth = snp.allele2_depth = alleles[-1].depth
-        else:  # multiple alleles with AF>AF_CUTOFF - heterozygous
-            snp.allele1 = alleles[-1].nt
-            snp.allele2 = alleles[-2].nt
-            snp.allele1_depth = alleles[-1].depth
-            snp.allele2_depth = alleles[-2].depth
         
         # for i, rec in enumerate(high_af_calls):
         #     called = rec.num_called > 0
