@@ -47,15 +47,17 @@ def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_cfg, min_dep
             callable_beds = parall_view.run(_calculate, [
                 [bf, work_dir, genome_cfg, min_depth]
                 for bf in bam_files])
-
+    
+    good_overlap_sample_fraction = 0.8  # we want to pick those regions that have coverage at 80% of samples
+    good_overlap_count = min(1, good_overlap_sample_fraction * len(callable_beds))
+    info('Intersecting callable regions and picking good overlaps with >=' + str(good_overlap_count) +
+         ' samples (' + str(100*0.8) + '%)')
     with file_transaction(work_dir, output_bed_file) as tx:
-        bed = pybedtools.BedTool(callable_beds.pop())
-        while callable_beds:
-            bed = bed.intersect(callable_beds.pop())
-        bed.saveas(tx)
-        # pybedtools.BedTool(callable_beds[0])\
-        #     .cat(*callable_beds[1:], postmerge=True)\
-        #     .saveas(tx)
+        pybedtools.set_tempdir(safe_mkdir(join(work_dir, 'pybedtools_tmp')))
+        intersection = pybedtools.BedTool()\
+            .multi_intersect(i=callable_beds)\
+            .filter(lambda r: len(r[4].split(',')) >= good_overlap_count)
+        intersection.saveas(tx)
     return output_bed_file
     
 

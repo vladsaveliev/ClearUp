@@ -60,7 +60,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, data_dir='', genome
         
         get_or_create_run([fp_proj], parall_view=parall_view)
 
-        _add_to_ngb(project_name, bam_by_sample, genome_build, bed_file)
+        _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file)
 
         log.info('Genotyping sex')
         sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
@@ -76,14 +76,14 @@ def _add_project(bam_by_sample, project_name, bed_file=None, data_dir='', genome
     log.info('Done.')
     
     
-def _add_to_ngb(project_name, bam_by_sample, genome_build, bed_file):
+def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file):
     if is_us() or is_uk():
         log.info('Exposing project to NGB...')
         try:
             dataset = project_name + '_Fingerprints'
-            add_data_to_ngb(parallel_view, bam_by_sample, dict(), dataset,
+            add_data_to_ngb(work_dir, parallel_view, bam_by_sample, dict(), dataset,
                             bed_file=bed_file, genome_build='hg19')
-            add_file_to_ngb(get_dbsnp(genome_build), genome_build, dataset, dataset,
+            add_file_to_ngb(work_dir, get_dbsnp(genome_build), genome_build, dataset, dataset,
                             skip_if_added=True)
         except StandardError:
             traceback.print_exc()
@@ -171,7 +171,7 @@ def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, bcbio_summa
         avg_depth = get_avg_depth(bcbio_summary_file, sname)
     if avg_depth is None:
         if not depths:
-            critical('Error: no SNPs in sample ' + sname)
+            log.critical('Error: no SNPs in sample ' + sname)
         avg_depth = sum(depths) / len(depths)
     sex = determine_sex(safe_mkdir(join(work_dir, sname)), bam_file, avg_depth,
                         genome_build, target_bed=bed_file)
