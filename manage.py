@@ -30,44 +30,49 @@ from fingerprinting.utils import bam_samplename
 manager = Manager(app)
 
 
-def _add_project(bam_by_sample, project_name, bed_file=None, data_dir='', genome_build='hg19',
-                 bcbio_summary_file=None, min_depth=DEPTH_CUTOFF):
+def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
+                 data_dir='', genome_build='hg19', bcbio_summary_file=None,
+                 min_depth=DEPTH_CUTOFF):
     work_dir = safe_mkdir(join(DATA_DIR, 'projects', project_name))
     
-    with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as parall_view:
+    with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
         log.info('Initializing run for single project')
-        if not bed_file:
+        if use_callable:
             log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
             bed_file = join(work_dir, 'callable_regions.bed')
             genome_cfg = az.get_refdata(genome_build)
             batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_cfg, min_depth,
-                               parall_view=parall_view)
-    
-        log.info('Loading fingerprints into the DB')
-        fp_proj = Project(
-            name=project_name,
-            data_dir=data_dir,
-            genome=genome_build,
-            bed_fpath=bed_file,
-            min_depth=min_depth,
-        )
-        db.session.add(fp_proj)
-        db_samples = []
-        for sname, bam_file in bam_by_sample.items():
-            db_samples.append(Sample(sname, fp_proj, bam_file))
-        db.session.add_all(db_samples)
-        db.session.commit()
-        
-        get_or_create_run([fp_proj], parall_view=parall_view)
+                               parall_view=p_view)
 
-        _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file)
+        fp_proj = Project.query.filter(Project.name==project_name).first()
+        if fp_proj:
+            db_samples = fp_proj.samples.all()
+        else:
+            log.info('Loading fingerprints into the DB')
+            fp_proj = Project(
+                name=project_name,
+                data_dir=data_dir,
+                genome=genome_build,
+                bed_fpath=bed_file,
+                min_depth=min_depth,
+            )
+            db.session.add(fp_proj)
+            db_samples = []
+            for sname, bam_file in bam_by_sample.items():
+                db_samples.append(Sample(sname, fp_proj, bam_file))
+            db.session.add_all(db_samples)
+            db.session.commit()
+        
+        get_or_create_run([fp_proj], parall_view=p_view)
+
+        _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p_view)
 
         log.info('Genotyping sex')
         sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
-        sexes = parall_view.run(_sex_from_bam, [
-            [db_s.name, bam_file, bed_file, sex_work_dir, genome_build, bcbio_summary_file,
+        sexes = p_view.run(_sex_from_bam, [
+            [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome_build, bcbio_summary_file,
              [snp.depth for snp in db_s.snps.all()]]
-            for db_s, bam_file in zip(db_samples, bam_by_sample.values())])
+            for db_s in db_samples])
         for s, sex in zip(db_samples, sexes):
             s.sex = sex
     db.session.commit()
@@ -76,13 +81,13 @@ def _add_project(bam_by_sample, project_name, bed_file=None, data_dir='', genome
     log.info('Done.')
     
     
-def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file):
+def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p_view):
     if is_us() or is_uk():
         log.info('Exposing project to NGB...')
         try:
             dataset = project_name + '_Fingerprints'
-            add_data_to_ngb(work_dir, parallel_view, bam_by_sample, dict(), dataset,
-                            bed_file=bed_file, genome_build='hg19')
+            add_data_to_ngb(work_dir, p_view, bam_by_sample, dict(), dataset,
+                            bed_file=bed_file, genome=genome_build)
             add_file_to_ngb(work_dir, get_dbsnp(genome_build), genome_build, dataset, dataset,
                             skip_if_added=True)
         except StandardError:
@@ -112,6 +117,7 @@ def load_data(data_dir, project_name, min_depth=DEPTH_CUTOFF):
         bam_by_sample={sample_by_bam[bf]: bf for bf in bam_files},
         project_name=project_name,
         bed_file=bed_file,
+        use_callable=not bed_file,
         data_dir=data_dir,
         min_depth=min_depth)
     
@@ -130,7 +136,8 @@ def load_bcbio_project(bcbio_dir, name=None, min_depth=DEPTH_CUTOFF, use_callabl
     _add_project(
         bam_by_sample={s.name: s.bam for s in bcbio_proj.samples},
         project_name=name,
-        bed_file=bcbio_proj.coverage_bed if not use_callable else None,
+        bed_file=bcbio_proj.coverage_bed,
+        use_callable=use_callable,
         data_dir=bcbio_proj.final_dir,
         genome_build=bcbio_proj.genome_build,
         bcbio_summary_file=bcbio_proj.find_in_log('project-summary.yaml'),
