@@ -34,7 +34,7 @@ def main(host, port):
     # handler = RotatingFileHandler(log_path, maxBytes=10000, backupCount=10)
     # handler.setLevel(logging.INFO)
     # app.logger.addHandler(handler)
-    
+
     http_server = WSGIServer((host, port), app, handler_class=WebSocketHandler)
     log.info('Starting a webserver at ' + host + ':' + str(port))
     http_server.serve_forever()
@@ -108,9 +108,10 @@ def sample_page(project_names_line, sample_id):
 @app.route('/')
 def homepage():
     projects = set()
-    for run in Run.query.all():  # Finding projects with ready-to-view runs
-        if verify_file(run.fasta_file_path(), silent=True) and run.projects.count() == 1:
-            projects.add(run.projects[0])
+    projects = Project.query.all()
+    # for run in Run.query.all():  # Finding projects with ready-to-view runs
+    #     if verify_file(run.fasta_file_path(), silent=True) and run.projects.count() == 1:
+    #         projects.add(run.projects[0])
     projects = sorted(projects, key=lambda p_: p_.name)
     t = render_template(
         'index.html',
