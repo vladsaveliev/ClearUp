@@ -34,7 +34,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
                  data_dir='', genome_build='hg19', bcbio_summary_file=None,
                  min_depth=DEPTH_CUTOFF):
     work_dir = safe_mkdir(join(DATA_DIR, 'projects', project_name))
-    
+
     with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
         log.info('Initializing run for single project')
         if use_callable:
@@ -62,8 +62,8 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
                 db_samples.append(Sample(sname, fp_proj, bam_file))
             db.session.add_all(db_samples)
             db.session.commit()
-        
-        get_or_create_run([fp_proj], parall_view=p_view)
+
+        # get_or_create_run([fp_proj], parall_view=p_view)
 
         _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p_view)
 
@@ -76,11 +76,11 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
         for s, sex in zip(db_samples, sexes):
             s.sex = sex
     db.session.commit()
-    
+
     log.info()
     log.info('Done.')
-    
-    
+
+
 def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p_view):
     if is_us() or is_uk():
         log.info('Exposing project to NGB...')
@@ -107,12 +107,12 @@ def load_data(data_dir, project_name, min_depth=DEPTH_CUTOFF):
     if bed_files:
         assert len(bed_files) == 1, 'Multuple BED files in ' + data_dir + ': ' + str(bed_files)
         bed_file = bed_files[0]
-        
+
     sample_by_bam = dict()
     for bam_file in bam_files:
         # sample_by_bam[bam_file] = check_output('goleft samplename ' + bam_file)
         sample_by_bam[bam_file] = bam_samplename(bam_file)
-    
+
     _add_project(
         bam_by_sample={sample_by_bam[bf]: bf for bf in bam_files},
         project_name=project_name,
@@ -120,7 +120,7 @@ def load_data(data_dir, project_name, min_depth=DEPTH_CUTOFF):
         use_callable=not bed_file,
         data_dir=data_dir,
         min_depth=min_depth)
-    
+
 
 @manager.command
 def load_bcbio_project(bcbio_dir, name=None, min_depth=DEPTH_CUTOFF, use_callable=False):
@@ -154,7 +154,7 @@ def _sex_from_x_snps(vcf_file):
                 het_calls_num += 1
             if rec.num_hom > 0:
                 hom_calls_num += 1
-    
+
     if het_calls_num + hom_calls_num > 10:
         if het_calls_num > 1.5 * hom_calls_num:
             return 'F'
@@ -167,7 +167,7 @@ def _sex_from_x_snps(vcf_file):
         log.debug('Total chrX calls number is ' + str(het_calls_num + hom_calls_num) +
                   ' - less than 10, not confident enough to call sex.')
     return None
-    
+
 
 def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, bcbio_summary_file=None, depths=None):
     from os.path import join
@@ -223,7 +223,7 @@ def reload_all_data():
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/PGDx/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_PGDx')
         load_bcbio_project(abspath('/ngs/oncology/analysis/dev/Dev_0327_MiSeq_SNP251/bcbio_preprint/final'), 'Dev_0327_MiSeq_SNP251_initial_preprint')
         load_bcbio_project(abspath('/ngs/oncology/analysis/dev/Dev_0320_HiSeq4000_PARPiResistant_Exome/bcbio/final'), 'Dev_0320_HiSeq4000_PARPiResistant_Exome')
- 
+
         # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0288_HiSeq4000_PlasmaSeqExome/bcbio/final'))
         # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0287_HiSeq4000_PlasmaSeqAZ100/bcbio_umi/final_vardict_1.4.8'))
         # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0300_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi/final'))
