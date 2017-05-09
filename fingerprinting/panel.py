@@ -45,7 +45,7 @@ def main(paths, output_dir, genome, depth):
         proj = BcbioProject()
         proj.load_from_bcbio_dir(d, proc_name='fingerprinting', need_coverage_interval=False)
         bcbio_projs.append(proj)
-    
+
     log.init(True)
     build_snps_panel(bcbio_projs, bed_files, safe_mkdir(output_dir), genome)
 
@@ -54,7 +54,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     selected_snps_file = join(output_dir, 'snps.bed')
     if can_reuse(selected_snps_file, bed_files):
         return selected_snps_file
-    
+
     work_dir = safe_mkdir(join(output_dir, 'work'))
 
     all_bed_files = set()
@@ -63,10 +63,13 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
             log.info(proj.project_name + ': selecting ' + proj.coverage_bed)
             all_bed_files.add(proj.coverage_bed)
     all_bed_files |= set(bed_files or [])
-    
+
+    if not all_bed_files:  # Empty list? Using exome
+        all_bed_files.add(get_snps_by_type('exome'))
+
     overlapped_bed = join(work_dir, 'merged_bed_files.bed')
     _overlap_bed_files(all_bed_files, overlapped_bed)
-    
+
     # Selecting SNPs from dbSNP
     dbsnp_file = get_dbsnp(genome_build)
     dbsnp_snps_file = join(work_dir, 'snps_in_merged_bed_files.bed')
@@ -76,7 +79,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
 
     subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')
     _make_snp_file(dbsnp_snps_file, genome_build, subset_bed_file)
-    
+
     shutil.copyfile(subset_bed_file, selected_snps_file)
     return selected_snps_file
 
@@ -101,7 +104,7 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
         loc = (interval.chrom, pos, rsid, gene, ref)
         locs_by_gene[gene].append(loc)
         total_locs += 1
-    
+
     random.seed(1234)  # seeding random for reproducability
 
     # Selecting random genes
@@ -138,7 +141,7 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     log.debug('Selected the following autosomal SNPs:')
     for (chrom, pos, rsid, gene, ref) in selected_locs:
         log.debug('  ' + chrom + ':' + str(pos) + '\t' + rsid + '\t' + gene)
-    
+
     with file_transaction(None, output_file) as tx:
         with open(tx, 'w') as out:
             for (chrom, pos, rsid, gene, ref) in selected_locs:
@@ -175,6 +178,17 @@ def _overlap_bed_files(bed_files, output_bed_file):
 #
 #     log.info('Found SNPs with MAF>10%: ' + str(len(snps)))
 #     return snps
+
+
+BED_BY_TYPE = {
+    'idt': 'idt_snps.bed',
+    'exome': 'exome_snps.bed',
+}
+def get_snps_by_type(panel_type):
+    snps_fname = BED_BY_TYPE.get(panel_type)
+    if not panel_type:
+        log.critical('SNPs for panel type ' + panel_type + ' is not defined')
+    return get_snps_file(snps_fname)
 
 
 def get_snps_file(fname):
