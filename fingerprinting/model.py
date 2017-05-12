@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from pybedtools import BedTool
 
 from ngs_utils.Sample import BaseSample
-from ngs_utils.file_utils import safe_mkdir, can_reuse, file_transaction
+from ngs_utils.file_utils import safe_mkdir, can_reuse, file_transaction, verify_file
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_utils import logger as log
 
@@ -218,6 +218,13 @@ def _genotype(run, samples, genome_build, parall_view):
 
 def get_or_create_run(projects, parall_view=None):
     run = Run.find_by_projects(projects)
+    if run:
+        tree_file = verify_file(run.tree_file_path())
+        if not tree_file:
+            log.debug('Tree file does not exist, recreating run for projects ' + ', '.join(p.name for p in projects))
+            db.session.delete(run)
+            db.session.commit()
+            run = None
     if not run:
         log.debug('Creating new run for projects ' + ', '.join(p.name for p in projects))
         run = Run.create(projects, parall_view)
