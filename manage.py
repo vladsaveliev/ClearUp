@@ -31,8 +31,7 @@ manager = Manager(app)
 
 
 def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
-                 data_dir='', genome_build='hg19', bcbio_summary_file=None,
-                 min_depth=DEPTH_CUTOFF):
+                 data_dir='', genome_build='hg19', min_depth=DEPTH_CUTOFF, depth_by_sample=None):
     work_dir = safe_mkdir(join(DATA_DIR, 'projects', project_name))
 
     with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
@@ -69,8 +68,10 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
 
         log.info('Genotyping sex')
         sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
+        
         sexes = p_view.run(_sex_from_bam, [
-            [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome_build, bcbio_summary_file,
+            [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome_build,
+             depth_by_sample.get(db_s.name) if depth_by_sample else None,
              [snp.depth for snp in db_s.snps.all()]]
             for db_s in db_samples])
         for s, sex in zip(db_samples, sexes):
@@ -97,7 +98,7 @@ def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p
 
 
 @manager.command
-def load_data(data_dir, project_name, min_depth=DEPTH_CUTOFF):
+def load_data(data_dir, name, min_depth=DEPTH_CUTOFF):
     data_dir = verify_dir(data_dir, is_critical=True)
     bam_files = glob.glob(join(data_dir, '*.bam'))
     assert bam_files, 'No BAM files in ' + data_dir
@@ -115,7 +116,7 @@ def load_data(data_dir, project_name, min_depth=DEPTH_CUTOFF):
 
     _add_project(
         bam_by_sample={sample_by_bam[bf]: bf for bf in bam_files},
-        project_name=project_name,
+        project_name=name,
         bed_file=bed_file,
         use_callable=not bed_file,
         data_dir=data_dir,
@@ -140,8 +141,9 @@ def load_bcbio_project(bcbio_dir, name=None, min_depth=DEPTH_CUTOFF, use_callabl
         use_callable=use_callable,
         data_dir=bcbio_proj.final_dir,
         genome_build=bcbio_proj.genome_build,
-        bcbio_summary_file=bcbio_proj.find_in_log('project-summary.yaml'),
-        min_depth=min_depth)
+        min_depth=min_depth,
+        depth_by_sample={s.name: s.get_avg_depth() for s in bcbio_proj.samples},
+    )
 
 
 def _sex_from_x_snps(vcf_file):
@@ -169,17 +171,31 @@ def _sex_from_x_snps(vcf_file):
     return None
 
 
-def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, bcbio_summary_file=None, depths=None):
+
+# def get_gender(genome, bam_fpath, bed_fpath, sample, avg_depth):
+#     gender = None
+#     chrom_lengths = ref.get_chrom_lengths(genome)
+#     chrom_names = [chrom for chrom, length in chrom_lengths]
+#     if 'Y' in chrom_names or 'chrY' in chrom_names:
+#         gender = determine_sex(sample.work_dir, bam_fpath, avg_depth, genome, bed_fpath)
+#         if gender:
+#             with open(join(safe_mkdir(sample.dirpath), 'gender.txt'), 'w') as f:
+#                 f.write(gender[0].upper())
+#     return gender
+
+
+        # with open(self.find_in_log('project-summary.yaml')) as f:
+        #     data = yaml.load(f)
+
+
+def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, avg_depth=None, snp_depths=None):
     from os.path import join
     from ngs_utils.file_utils import safe_mkdir
-    from ngs_reporting.coverage import get_avg_depth, determine_sex
-    avg_depth = None
-    if bcbio_summary_file:
-        avg_depth = get_avg_depth(bcbio_summary_file, sname)
+    from ngs_reporting.coverage import determine_sex
     if avg_depth is None:
-        if not depths:
-            log.critical('Error: no SNPs in sample ' + sname)
-        avg_depth = sum(depths) / len(depths)
+        if not snp_depths:
+            log.critical('Error: no ave_depth provided and no SNPs in sample ' + sname)
+        avg_depth = sum(snp_depths) / len(snp_depths)
     sex = determine_sex(safe_mkdir(join(work_dir, sname)), bam_file, avg_depth,
                         genome_build, target_bed=bed_file)
     return sex
