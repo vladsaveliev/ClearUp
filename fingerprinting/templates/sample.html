@@ -113,7 +113,7 @@
                            id="{{ snp_record.index }}_depth"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
-                      <span class="bar" style="width: {{ 100 * snp_record.allele1_depthA / snp_record.depthA }}%;"></span>
+                      <span class="bar" style="width: {{ (100 * snp_record.allele1_depthA / snp_record.depthA) if snp_record.depthA else 0 }}%;"></span>
 {#                      <span class="bar" style="width: {{ 100 * snp_record.allele2_depthA / snp_record.depthA }}%; margin-left: 50%;"></span>#}
                       <span class="val">{{ snp_record.depthA }}<span style="color: gray;">x</span></span>
                     </td>
@@ -126,7 +126,7 @@
                            id="{{ snp_record.index }}_depth"
                         chrom="{{ snp_record.chrom }}"
                           pos="{{ snp_record.pos }}">
-                      <span class="bar" style="width: {{ 100 * snp_record.allele1_depthB / snp_record.depthB }}%;"></span>
+                      <span class="bar" style="width: {{ (100 * snp_record.allele1_depthB / snp_record.depthB) if snp_record.depthB else 0 }}%;"></span>
 {#                      <span class="bar" style="width: {{ 100 * snp_record.allele2_depthB / snp_record.depthB }}%; margin-left: 50%;"></span>#}
                       <span class="val">{{ snp_record.depthB }}<span style="color: gray;">x</span></span>
                     </td>
