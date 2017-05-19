@@ -15,15 +15,18 @@
             <span style="font-weight: bold;">Phylogeny tree based on fingerprints</span>
         </p>
 
-        <ul style="margin-left: -23px;">
-        <span style="margin-left: -16px;">Samples from the following projects are used:</span>
-        {% for project in projects %}
-            <li style="color: {{ project.color }}" class="{{ project.name }}--label">
-              <span class="project-label">{{ project.name }}</span>
-            </li>
+        <p style="margin-left: -16px;">Samples from the following projects are used:</p>
+        {% for (genome, ps) in proj_by_genome_build %}
+            <ul style="margin-left: -23px;">
+            <span style="margin-left: -16px;">{{ genome }}</span>
+            {% for project in ps %}
+                <li style="color: {{ project.color }}" class="{{ project.name }}--label">
+                    <span class="project-label">{{ project.name }}</span>
+                </li>
+            {% endfor %}
+            </ul>
+            <br>
         {% endfor %}
-        </ul>
-        <br>
 
         <div id="tree_newick_json" style="display: none;">{{ tree_newick|safe }}</div>
         <svg id="tree_svg"></svg>
@@ -107,9 +110,9 @@
               .data(root.leaves())
             .enter().append("g")
               .attr("class", "leaf")
-              .attr("transform", function(d) { 
+              .attr("transform", function(d) {
                 leafsHorizontalPositions.push(d.radius);
-                return "translate(" + d.x + "," + (d.radius + treeLabelSpace) + ")rotate(90)"; 
+                return "translate(" + d.x + "," + (d.radius + treeLabelSpace) + ")rotate(90)";
               })
           // Keep in mind that x and y are flipped because the original tree is rotated (-90), and labels are rotated again (90) to make text back horizontal!
           var leafsLabels = chart.selectAll(".leaf")
@@ -194,11 +197,11 @@
             .selectAll(".loc")
               .data(locations)
             .enter().append("text")
-              .attr("transform", function(d, i) { 
+              .attr("transform", function(d, i) {
                 var x = 6;
-                if (i+1>=10) x = 4; 
+                if (i+1>=10) x = 4;
                 if (i+1>=100) x = 2;
-                return "translate(" + (i*locWidth+x) + "," + (topAnnoHeight-5) + ")"; 
+                return "translate(" + (i*locWidth+x) + "," + (topAnnoHeight-5) + ")";
               })
               .attr("class", "loc_index")
             .append("tspan")
@@ -269,7 +272,7 @@
                     if($.inArray(color, colors) === -1) colors.push(color);
                 });
                 if (colors.length == 1) d.color = colors[0];
-                else { 
+                else {
                   d.color = '#ccc';
                 }
             }

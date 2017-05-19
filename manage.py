@@ -31,7 +31,7 @@ manager = Manager(app)
 
 
 def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
-                 data_dir='', genome_build='hg19', min_depth=DEPTH_CUTOFF, depth_by_sample=None):
+                 data_dir='', genome='hg19', min_depth=DEPTH_CUTOFF, depth_by_sample=None):
     work_dir = safe_mkdir(join(DATA_DIR, 'projects', project_name))
 
     with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
@@ -39,7 +39,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
         if use_callable:
             log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
             bed_file = join(work_dir, 'callable_regions.bed')
-            genome_cfg = az.get_refdata(genome_build)
+            genome_cfg = az.get_refdata(genome)
             batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_cfg, min_depth,
                                parall_view=p_view)
 
@@ -51,7 +51,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
             fp_proj = Project(
                 name=project_name,
                 data_dir=data_dir,
-                genome=genome_build,
+                genome=genome,
                 bed_fpath=bed_file,
                 min_depth=min_depth,
             )
@@ -64,18 +64,18 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
 
         # get_or_create_run([fp_proj], parall_view=p_view)
 
-        _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p_view)
+        _add_to_ngb(work_dir, project_name, bam_by_sample, genome, bed_file, p_view)
 
         log.info('Genotyping sex')
         sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
         
-        sexes = p_view.run(_sex_from_bam, [
-            [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome_build,
-             depth_by_sample.get(db_s.name) if depth_by_sample else None,
-             [snp.depth for snp in db_s.snps.all()]]
-            for db_s in db_samples])
-        for s, sex in zip(db_samples, sexes):
-            s.sex = sex
+        # sexes = p_view.run(_sex_from_bam, [
+        #     [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome,
+        #      depth_by_sample.get(db_s.name) if depth_by_sample else None,
+        #      [snp.depth for snp in db_s.snps.all()]]
+        #     for db_s in db_samples])
+        # for s, sex in zip(db_samples, sexes):
+        #     s.sex = sex
     db.session.commit()
 
     log.info()
@@ -98,7 +98,7 @@ def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p
 
 
 @manager.command
-def load_data(data_dir, name, min_depth=DEPTH_CUTOFF):
+def load_data(data_dir, name, genome):
     data_dir = verify_dir(data_dir, is_critical=True)
     bam_files = glob.glob(join(data_dir, '*.bam'))
     assert bam_files, 'No BAM files in ' + data_dir
@@ -120,11 +120,12 @@ def load_data(data_dir, name, min_depth=DEPTH_CUTOFF):
         bed_file=bed_file,
         use_callable=not bed_file,
         data_dir=data_dir,
-        min_depth=min_depth)
+        genome=genome,
+        min_depth=DEPTH_CUTOFF)
 
 
 @manager.command
-def load_bcbio_project(bcbio_dir, name=None, min_depth=DEPTH_CUTOFF, use_callable=False):
+def load_bcbio_project(bcbio_dir, name=None, use_callable=False):
     log.info('-' * 70)
     log.info('Loading project into the fingerprints database from ' + bcbio_dir)
     log.info('-' * 70)
@@ -140,8 +141,8 @@ def load_bcbio_project(bcbio_dir, name=None, min_depth=DEPTH_CUTOFF, use_callabl
         bed_file=bcbio_proj.coverage_bed,
         use_callable=use_callable,
         data_dir=bcbio_proj.final_dir,
-        genome_build=bcbio_proj.genome_build,
-        min_depth=min_depth,
+        genome=bcbio_proj.genome_build,
+        min_depth=DEPTH_CUTOFF,
         depth_by_sample={s.name: s.get_avg_depth() for s in bcbio_proj.samples},
     )
 
@@ -194,7 +195,7 @@ def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, avg_depth=N
     from ngs_reporting.coverage import determine_sex
     if avg_depth is None:
         if not snp_depths:
-            log.critical('Error: no ave_depth provided and no SNPs in sample ' + sname)
+            log.critical('Error: avg_depth is NOT provided and no SNPs in sample ' + sname)
         avg_depth = sum(snp_depths) / len(snp_depths)
     sex = determine_sex(safe_mkdir(join(work_dir, sname)), bam_file, avg_depth,
                         genome_build, target_bed=bed_file)
@@ -227,7 +228,7 @@ def reload_all_data():
     safe_mkdir(DATA_DIR)
     init_db()
     if is_local():
-        load_data(abspath('tests/test_project'), 'SA-1826796__SA-30853')
+        load_data(abspath('tests/test_project'), 'SA-1826796__SA-30853', genome='hg38')
         load_bcbio_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle')
         load_bcbio_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
         load_bcbio_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')

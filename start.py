@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+import traceback
+from collections import defaultdict
+
+import os
 from os.path import abspath, join, dirname, splitext, basename
 
 import click
@@ -30,6 +34,7 @@ from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_t
               default=PORT)
 @click.version_option(version=get_version())
 def main(host, port):
+    os.environ['FLASK_DEBUG'] = '1'
     # log_path = join(DATA_DIR, 'flask.log')
     # handler = RotatingFileHandler(log_path, maxBytes=10000, backupCount=10)
     # handler.setLevel(logging.INFO)
@@ -107,31 +112,59 @@ def sample_page(project_names_line, sample_id):
 
 @app.route('/')
 def homepage():
-    projects = set()
-    projects = Project.query.all()
+    proj_by_genome_build = defaultdict(list)
+    for p in Project.query.all():
+        proj_by_genome_build[p.genome].append(p)
+    proj_by_genome_build = {
+        g: sorted(ps, key=lambda p_: p_.name) for g, ps in proj_by_genome_build.items()
+    }
     # for run in Run.query.all():  # Finding projects with ready-to-view runs
     #     if verify_file(run.fasta_file_path(), silent=True) and run.projects.count() == 1:
     #         projects.add(run.projects[0])
-    projects = sorted(projects, key=lambda p_: p_.name)
     t = render_template(
         'index.html',
-        projects=[{
-            'name': p.name,
-            'data_dir': p.data_dir,
-            'genome': p.genome,
-            'samples': [{
-                'id': s.id,
-                'name': s.name,
-            } for s in p.samples]
-        } for p in projects],
+        proj_by_genome_build=[(g, [{
+                'name': p.name,
+                'data_dir': p.data_dir,
+                'genome': p.genome,
+                'samples': [{
+                    'id': s.id,
+                    'name': s.name,
+                } for s in p.samples]
+            } for p in ps])
+            for g, ps in sorted(proj_by_genome_build.items())
+        ]
     )
     return t
 
 
 @app.errorhandler(404)
 def page_not_found(error):
-    return render_template('404.html', error=error.description), 404
+    return render_template(
+        'error.html',
+        title='Page Not Found',
+        lines=['Sorry, but the page you were trying to view does not exist.']), \
+           404
+
+
+@app.errorhandler(500)
+def server_error(error):
+    log.err('Error: ' + str(error))
+    log.err(traceback.format_exc())
+
+    html = 'Error: ' + str(error) + '<br>'
+    for l in traceback.format_exc().split('\n'):
+        html += l.replace('    ', '&nbsp;'*4) + '<br>'
+    
+    return render_template(
+        'error.html',
+        title='Internal Server Error',
+        lines=traceback.format_exc().split('\n')), \
+           500
 
 
 if __name__ == "__main__":
     main()
+    # except Exception as e:
+    #     log.err('Error ' + str(e) + ':\n' + traceback.print_exc())
+    #     render_template('500.html', error=str(e)), 500
