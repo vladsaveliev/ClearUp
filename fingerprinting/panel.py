@@ -50,7 +50,7 @@ def main(paths, output_dir, genome, depth):
     build_snps_panel(bcbio_projs, bed_files, safe_mkdir(output_dir), genome)
 
 
-def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_build=None):
+def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome=None):
     selected_snps_file = join(output_dir, 'snps.bed')
     if can_reuse(selected_snps_file, bed_files):
         return selected_snps_file
@@ -71,14 +71,14 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome_b
     _overlap_bed_files(all_bed_files, overlapped_bed)
 
     # Selecting SNPs from dbSNP
-    dbsnp_file = get_dbsnp(genome_build)
+    dbsnp_file = get_dbsnp(genome)
     dbsnp_snps_file = join(work_dir, 'snps_in_merged_bed_files.bed')
     if not can_reuse(dbsnp_snps_file, [dbsnp_file, overlapped_bed]):
         cmdl = 'bedtools intersect -header -a ' + dbsnp_file + ' -b ' + overlapped_bed
         call_process.run(cmdl, dbsnp_snps_file)
 
     subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')
-    _make_snp_file(dbsnp_snps_file, genome_build, subset_bed_file)
+    _make_snp_file(dbsnp_snps_file, genome, subset_bed_file)
 
     shutil.copyfile(subset_bed_file, selected_snps_file)
     return selected_snps_file
@@ -96,12 +96,12 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
             continue
         pos = int(interval.start) + 1
         annots = interval.name.split('|')
-        if len(annots) == 2:
-            rsid, gene = interval.name.split('|')
-            ref = interval[4]
-        else:
-            rsid, gene, ref = interval.name.split('|')
-        loc = (interval.chrom, pos, rsid, gene, ref)
+        # if len(annots) == 2:
+        #     rsid, gene = interval.name.split('|')
+        #     ref = interval[4]
+        # else:
+        rsid, gene, ref, alts = interval.name.split('|')
+        loc = (interval.chrom, pos, rsid, gene, ref, alts)
         locs_by_gene[gene].append(loc)
         total_locs += 1
 
@@ -124,12 +124,12 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     # Selecting unclustered SNPs within genes
     non_clustered_locs = []
     prev_pos = 0
-    for (chrom, pos, rsid, gene, ref) in all_locs:
+    for (chrom, pos, rsid, gene, ref, alts) in all_locs:
         if 0 < pos - prev_pos < 500:
             continue
         else:
             prev_pos = pos
-            non_clustered_locs.append((chrom, pos, rsid, gene, ref))
+            non_clustered_locs.append((chrom, pos, rsid, gene, ref, alts))
 
     # Selecting random SNPs within the limit
     selected_locs = random.sample(non_clustered_locs, min(len(non_clustered_locs), autosomal_locations_limit))
@@ -139,13 +139,13 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     selected_locs.sort(key=lambda a: (chrom_order.get(a[0], -1), a[1:]))
 
     log.debug('Selected the following autosomal SNPs:')
-    for (chrom, pos, rsid, gene, ref) in selected_locs:
+    for (chrom, pos, rsid, gene, ref, alts) in selected_locs:
         log.debug('  ' + chrom + ':' + str(pos) + '\t' + rsid + '\t' + gene)
 
     with file_transaction(None, output_file) as tx:
         with open(tx, 'w') as out:
-            for (chrom, pos, rsid, gene, ref) in selected_locs:
-                out.write('\t'.join([chrom, str(pos-1), str(pos), rsid + '|' + gene + '|' + ref]) + '\n')
+            for (chrom, pos, rsid, gene, ref, alts) in selected_locs:
+                out.write('\t'.join([chrom, str(pos-1), str(pos), rsid + '|' + gene + '|' + ref + '|' + alts]) + '\n')
     return output_file
 
 
@@ -197,7 +197,7 @@ def get_snps_file(fname):
 
 def get_dbsnp(genome):
     # return get_snps_file('dbsnp.autosomal.bed.gz')
-    return get_snps_file('dbsnp_maf10pct.no_selfchain_gc25-30_65-70_lowcomp50.autosomal.bed.gz')
+    return get_snps_file('dbsnp_maf10pct.no_selfchain_gc25-30_65-70_lowcomp50.' + genome + '.autosomal.bed.gz')
 
 
 if __name__ == '__main__':

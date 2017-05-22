@@ -38,7 +38,7 @@ class Location(db.Model):
     gene = db.Column(db.String)
     ref = db.Column(db.String)
     # alt = db.Column(db.String)
-    
+
     run_id = db.Column(db.String, db.ForeignKey('run.id'))
     run = db.relationship('Run', backref=db.backref('locations', lazy='dynamic'))
 
@@ -80,16 +80,16 @@ class SNP(db.Model):
         self.chrom = loc.chrom
         self.pos = loc.pos
         self.gene = loc.gene
-        
+
     def __repr__(self):
         return '<SNP {}:{} {} {}|{} for sample {}>'.format(
             str(self.location.chrom), str(self.location.pos), self.location.rsid,
             self.allele1, self.allele2, self.sample.name)
-    
+
     def get_gt(self):
         assert self.allele1 and self.allele2, str(self)
         return ''.join(sorted([self.allele1, self.allele2]))
-    
+
 
 def _get_snps_not_called(snps_file, samples):
     # TODO: select and save only snps per sample that are not called in taht sample (special treatment for gender?)
@@ -110,19 +110,19 @@ class Run(db.Model):
     snps_file = db.Column(db.String)
     projects = db.relationship("Project", secondary=run_to_project_assoc_table,
                                backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
-    
+
     def __init__(self):
         self.snps_file = None
-     
+
     def work_dir_path(self):
         return safe_mkdir(join(DATA_DIR, str(self.id)))
-     
+
     def fasta_file_path(self):
         return join(self.work_dir_path(), 'fingerprints.fasta')
 
     def tree_file_path(self):
         return join(self.work_dir_path(), 'fingerprints.newick')
-    
+
     @staticmethod
     def create(projects, parall_view=None):
         run = Run()
@@ -130,14 +130,15 @@ class Run(db.Model):
         for p in projects:
             run.projects.append(p)
         db.session.commit()
-        
-        genome_builds = [p.genome for p in projects]
-        assert len(set(genome_builds)) == 1, 'Error: different genome builds in projects'
-        genome_build = genome_builds[0]
-        
+
+        genomes = [p.genome for p in projects]
+        if len(set(genomes)) > 1:
+            log.critical('Error: multiple genomes in projects: ' + str(genomes))
+        genome_build = genomes[0]
+
         snps_dir = safe_mkdir(join(run.work_dir_path(), 'snps'))
         run.snps_file = build_snps_panel(bed_files=[p.bed_fpath for p in projects if p.bed_fpath],
-                                         output_dir=snps_dir, genome_build=genome_build)
+                                         output_dir=snps_dir, genome=genome_build)
         locations = extract_locations_from_file(run.snps_file)
         for loc in locations:
             db.session.add(loc)
@@ -179,7 +180,7 @@ class Run(db.Model):
         db.session.add(run)
         db.session.commit()
         log.info('Saved locations in the DB')
-        
+
         log.info()
         log.info('Building tree')
         build_tree(run)
@@ -190,7 +191,7 @@ class Run(db.Model):
             [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
              for s in samples])
         return run
-    
+
     @staticmethod
     def find_by_projects(projects):
         for r in Run.query.all():
@@ -214,9 +215,12 @@ def _genotype(run, samples, genome_build, parall_view):
     vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                              work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
     return vcf_by_sample
-    
+
 
 def get_or_create_run(projects, parall_view=None):
+    genomes = set([p.genome for p in projects])
+    if len(genomes) > 1:
+        log.critical('Error: multiple genomes in projects: ' + str(genomes))
     run = Run.find_by_projects(projects)
     if run:
         tree_file = verify_file(run.tree_file_path())
@@ -241,7 +245,7 @@ class Project(db.Model):
     genome = db.Column(db.String(20))
     bed_fpath = db.Column(db.String)
     min_depth = db.Column(db.Integer)
-    
+
     def __init__(self, name, data_dir, genome, bed_fpath, min_depth):
         self.name = name
         self.data_dir = data_dir
@@ -281,7 +285,7 @@ class Sample(db.Model):
         # snps = [snp for snp in self.snps if snp.rsid in locs_ids]
         snps_by_rsid = {snp.rsid: snp for snp in snps}
         return snps_by_rsid
-    
+
     def __repr__(self):
         return '<Sample {} from project {}>'.format(self.name, self.project.name)
 

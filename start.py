@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 import traceback
 from collections import defaultdict
-
 import os
 from os.path import abspath, join, dirname, splitext, basename
-
 import click
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
 from logging.handlers import RotatingFileHandler
@@ -144,7 +142,7 @@ def page_not_found(error):
         'error.html',
         title='Page Not Found',
         lines=['Sorry, but the page you were trying to view does not exist.']), \
-           404
+        404
 
 
 @app.errorhandler(500)
@@ -155,12 +153,12 @@ def server_error(error):
     html = 'Error: ' + str(error) + '<br>'
     for l in traceback.format_exc().split('\n'):
         html += l.replace('    ', '&nbsp;'*4) + '<br>'
-    
+
     return render_template(
         'error.html',
         title='Internal Server Error',
         lines=traceback.format_exc().split('\n')), \
-           500
+        500
 
 
 if __name__ == "__main__":

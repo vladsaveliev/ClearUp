@@ -3,18 +3,16 @@ import os
 import re
 import subprocess
 import time
-
-from az.ngb import get_ngb_link, get_ngb_link_template
-from ngs_utils.utils import is_us, is_uk
 from os.path import abspath, join, dirname, splitext, basename
 from collections import defaultdict
-
 from Bio import Phylo
 from flask import Flask, render_template, send_from_directory, abort, redirect, send_file
 from flask import Response, request
 
+from ngs_utils.utils import is_us, is_uk
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 from ngs_utils import logger as log
+from az.ngb import get_ngb_link, get_ngb_link_template
 
 from fingerprinting.model import Project, db, Sample, Run
 from fingerprinting.utils import FASTA_ID_PROJECT_SEPARATOR
