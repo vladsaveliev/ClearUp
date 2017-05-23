@@ -44,8 +44,6 @@ class Allele:
 
 
 def build_snp_from_records(snp, records, min_depth):
-    # TODO:
-    # keep alt in the dbSNP file, and select only the variant here with matching alt. Then report AF of that
     if not records:
         snp.depth = snp.allele1_depth = snp.allele2_depth = 0
     else:
@@ -203,15 +201,14 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
         vcf_writer = vcf.Writer(out, vcf_reader)
         for rec in vcf_reader:
             ann = ann_by_var[(rec.CHROM, str(rec.POS))]
-            rsid, gene, ref = ann.split('|')
-            rec.INFO['GENE'] = gene
-            rec.ID = rsid
+            rec.ID = ann.split('|')[0]
+            rec.INFO['ANNOTATION'] = ann
             vcf_writer.write_record(rec)
     assert verify_file(ann_vcf_file), ann_vcf_file
 
     ann_hdr_vcf_file = add_suffix(ann_vcf_file, 'hdr')
     cmdl = 'bcftools annotate -h <(echo ' \
-           '\'##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">\') ' + \
+           '\'##INFO=<ID=ANNOTATION,Number=1,Type=String,Description="rsid|gene_name|ref|alts">\') ' + \
            bgzip_and_tabix(ann_vcf_file)
     call_process.run(cmdl, output_fpath=ann_hdr_vcf_file)
     

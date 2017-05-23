@@ -37,7 +37,6 @@ class Location(db.Model):
     pos = db.Column(db.Integer)
     gene = db.Column(db.String)
     ref = db.Column(db.String)
-    # alt = db.Column(db.String)
 
     run_id = db.Column(db.String, db.ForeignKey('run.id'))
     run = db.relationship('Run', backref=db.backref('locations', lazy='dynamic'))
@@ -48,7 +47,6 @@ class Location(db.Model):
         self.pos = pos
         self.gene = gene
         self.ref = ref
-        # self.alt = None
 
     def __repr__(self):
         return '<Location {}:{} {} at gene {}>'.format(self.chrom, str(self.pos), self.rsid, self.gene)
@@ -294,7 +292,7 @@ def extract_locations_from_file(snps_file):
     locs = []
     for i, interval in enumerate(BedTool(snps_file)):
         pos = int(interval.start) + 1
-        rsid, gene, ref = interval.name.split('|')
+        rsid, gene, ref, alts = interval.name.split('|')
         loc = Location(
             rsid=rsid,
             chrom=interval.chrom,

@@ -140,7 +140,7 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
 
     log.debug('Selected the following autosomal SNPs:')
     for (chrom, pos, rsid, gene, ref, alts) in selected_locs:
-        log.debug('  ' + chrom + ':' + str(pos) + '\t' + rsid + '\t' + gene)
+        log.debug('  ' + chrom + ':' + str(pos) + '\t' + rsid + '\t' + gene + '\t' + ref + '>' + ','.join(alts))
 
     with file_transaction(None, output_file) as tx:
         with open(tx, 'w') as out:
@@ -197,7 +197,7 @@ def get_snps_file(fname):
 
 def get_dbsnp(genome):
     # return get_snps_file('dbsnp.autosomal.bed.gz')
-    return get_snps_file('dbsnp_maf10pct.no_selfchain_gc25-30_65-70_lowcomp50.' + genome + '.autosomal.bed.gz')
+    return get_snps_file('dbsnp_maf10pct.' + genome + '.no_selfchain_gc25-30_65-70_lowcomp50.autosomal.bed.gz')
 
 
 if __name__ == '__main__':
