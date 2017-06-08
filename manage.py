@@ -1,31 +1,20 @@
 #!/usr/bin/env python
 import glob
 import traceback
-
-import os
-from collections import defaultdict
-
-from az.ngb import add_bcbio_project_to_ngb, add_data_to_ngb, add_file_to_ngb
-from fingerprinting.panel import get_dbsnp
 from os.path import join, abspath, basename, splitext, isdir
-from subprocess import check_output
-
-import az
 from cyvcf2 import VCF
-from datetime import datetime
-from flask import Flask
 from flask_script import Manager
 
 from ngs_utils.file_utils import safe_mkdir, file_transaction, intermediate_fname, can_reuse, verify_dir
 from ngs_utils.utils import is_local, is_us, is_uk
 from ngs_utils import logger as log, call_process
 from ngs_utils.parallel import ParallelCfg, parallel_view
-from ngs_reporting.bcbio.bcbio import BcbioProject
 
-from fingerprinting.callable import batch_callable_bed
-from fingerprinting.model import Project, Sample, db, SNP, get_or_create_run
-from fingerprinting import app, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
-from fingerprinting.utils import bam_samplename
+from clearup.panel import get_dbsnp
+from clearup.callable import batch_callable_bed
+from clearup.model import Project, Sample, db, SNP, get_or_create_run
+from clearup import app, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
+from clearup.utils import bam_samplename, get_ref_fasta
 
 manager = Manager(app)
 
@@ -39,8 +28,9 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
         if use_callable:
             log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
             bed_file = join(work_dir, 'callable_regions.bed')
-            genome_cfg = az.get_refdata(genome)
-            batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_cfg, min_depth,
+            
+            genome_fasta_file = get_ref_fasta(genome)
+            batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_fasta_file, min_depth,
                                parall_view=p_view)
 
         fp_proj = Project.query.filter(Project.name==project_name).first()
@@ -84,17 +74,22 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
 
 def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p_view):
     if is_us() or is_uk():
-        log.info('Exposing project to NGB...')
         try:
-            dataset = project_name + '_Fingerprints'
-            add_data_to_ngb(work_dir, p_view, bam_by_sample, dict(), dataset,
-                            bed_file=bed_file, genome=genome_build)
-            add_file_to_ngb(work_dir, get_dbsnp(genome_build), genome_build, dataset, dataset,
-                            skip_if_added=True)
-        except StandardError:
-            traceback.print_exc()
-            log.err('Error: cannot export to NGB')
-        log.info('*' * 70)
+            from az.ngb import add_bcbio_project_to_ngb, add_data_to_ngb, add_file_to_ngb
+        except ImportError:
+            log.warn('If you want to, install NGS Reporting with `conda install -v vladsaveliev ngs_reporting`')
+        else:
+            log.info('Exposing project to NGB...')
+            try:
+                dataset = project_name + '_Fingerprints'
+                add_data_to_ngb(work_dir, p_view, bam_by_sample, dict(), dataset,
+                                bed_file=bed_file, genome=genome_build)
+                add_file_to_ngb(work_dir, get_dbsnp(genome_build), genome_build, dataset, dataset,
+                                skip_if_added=True)
+            except StandardError:
+                traceback.print_exc()
+                log.err('Error: cannot export to NGB')
+            log.info('*' * 70)
 
 
 @manager.command
@@ -126,25 +121,31 @@ def load_data(data_dir, name, genome):
 
 @manager.command
 def load_bcbio_project(bcbio_dir, name=None, use_callable=False):
-    log.info('-' * 70)
-    log.info('Loading project into the fingerprints database from ' + bcbio_dir)
-    log.info('-' * 70)
-    log.info()
-
-    bcbio_proj = BcbioProject()
-    bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
-        proc_name='fingerprinting', need_coverage_interval=False, need_vardict=False)
-
-    _add_project(
-        bam_by_sample={s.name: s.bam for s in bcbio_proj.samples},
-        project_name=name,
-        bed_file=bcbio_proj.coverage_bed,
-        use_callable=use_callable,
-        data_dir=bcbio_proj.final_dir,
-        genome=bcbio_proj.genome_build,
-        min_depth=DEPTH_CUTOFF,
-        depth_by_sample={s.name: s.get_avg_depth() for s in bcbio_proj.samples},
-    )
+    try:
+        from ngs_reporting.bcbio.bcbio import BcbioProject
+    except ImportError:
+        log.critical('Error: cannot import ngs_reporting, needed to load a bcbio project. '
+                     'Please, install it with `conda install -v vladsaveliev ngs_reporting')
+    else:
+        log.info('-' * 70)
+        log.info('Loading project into the fingerprints database from ' + bcbio_dir)
+        log.info('-' * 70)
+        log.info()
+    
+        bcbio_proj = BcbioProject()
+        bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
+            proc_name='fingerprinting', need_coverage_interval=False, need_vardict=False)
+    
+        _add_project(
+            bam_by_sample={s.name: s.bam for s in bcbio_proj.samples},
+            project_name=name,
+            bed_file=bcbio_proj.coverage_bed,
+            use_callable=use_callable,
+            data_dir=bcbio_proj.final_dir,
+            genome=bcbio_proj.genome_build,
+            min_depth=DEPTH_CUTOFF,
+            depth_by_sample={s.name: s.get_avg_depth() for s in bcbio_proj.samples},
+        )
 
 
 def _sex_from_x_snps(vcf_file):
@@ -172,7 +173,6 @@ def _sex_from_x_snps(vcf_file):
     return None
 
 
-
 # def get_gender(genome, bam_fpath, bed_fpath, sample, avg_depth):
 #     gender = None
 #     chrom_lengths = ref.get_chrom_lengths(genome)
@@ -192,7 +192,7 @@ def _sex_from_x_snps(vcf_file):
 def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, avg_depth=None, snp_depths=None):
     from os.path import join
     from ngs_utils.file_utils import safe_mkdir
-    from ngs_reporting.coverage import determine_sex
+    from ngs_utils.sex import determine_sex
     if avg_depth is None:
         if not snp_depths:
             log.critical('Error: avg_depth is NOT provided and no SNPs in sample ' + sname)

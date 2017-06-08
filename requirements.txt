@@ -12,3 +12,5 @@ flask-assets
 bx
 pyvcf
 cyvcf2
+genomepy
+ngs_utils

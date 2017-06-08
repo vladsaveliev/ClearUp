@@ -1,9 +1,14 @@
 # Sample mix-up check
 
-## Install
+## Installation
 
+### Using conda
 ```bash
-source ~/reset_path.sh
+conda install clearup
+```
+
+### From source
+```bash
 module load python
 git clone https://github.com/AstraZeneca-NGS/Fingerprinting && cd Fingerprinting
 virtualenv -p $(which python2) venv_fp

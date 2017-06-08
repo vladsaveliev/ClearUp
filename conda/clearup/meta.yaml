@@ -1,0 +1,56 @@
+{% set version=load_setup_py_data().get('version') %}
+
+package:
+  name: clearup
+  version: "{{ version }}"
+
+source:
+  git_url: https://github.com/AstraZeneca-NGS/ClearUp
+  git_rev: master
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - python
+    - numpy
+    - ngs_utils
+    - six
+  run:
+    - python
+    - numpy
+    - ngs_utils
+    - six
+    - sambamba
+    - bedtools >=2.25
+    - pybedtools
+    - click
+    - SQLAlchemy
+    - biopython
+    - gevent
+    - gevent-websocket
+    - flask <0.11,>=0.9
+    - flask-script <0.7,>=0.6
+    - flask-runner
+    - flask-sqlalchemy
+    - flask-socketio
+    - flask-assets
+    - bx
+    - pyvcf
+    - cyvcf2
+    - nose
+
+test:
+  imports:
+   - clearup
+
+  commands:
+   - manage.py
+
+about:
+  home: https://github.com/AstraZeneca-NGS/ClearUp
+  license: GNU General Public License v3 (GPLv3)
+  summary: 'Sample identity validation and mix-up check'
+  license_family: GPL3
+

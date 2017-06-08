@@ -1,0 +1,74 @@
+{% extends "_base.html" %}
+
+{% block head %}
+        <title>Fingerprints</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='table_sorter/style.css') }}">
+{% endblock %}
+
+{% block body %}
+        <p style="font-size: 1.5em;">
+            <span style="font-weight: bold;">AZ projects</span>
+        </p>
+
+        {% for (genome, projects) in proj_by_genome_build %}
+            <h4>{{ genome }}</h4>
+
+            <button type="button" class="btn disabled" id="run_btn_{{ genome }}"
+                    style="margin: 20px 0">
+                Fingerprint selected {{ genome }} projects
+            </button>
+
+            <table cellspacing="0" class="report_table tableSorter projects_list_table"
+                   id="projects_list_table_{{ genome }}">
+                <thead>
+                    <tr>
+                        <th>Project</th>
+                        <th>Location</th>
+                        <th>Genome</th>
+                        <th># samples</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for project in projects %}
+                    <tr project_name="{{ project.name }}">
+                        <td>{{ project.name }}</td>
+                        <td>{{ project.data_dir }}</td>
+                        <td>{{ project.genome }}</td>
+                        <td>{{ project.samples|count }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+{% endblock %}
+
+{% block js %}
+        <script>
+            {% for (genome, projects) in proj_by_genome_build %}
+            $(document).ready(function() {
+                var tbody_{{ genome }} = $('#projects_list_table_{{ genome }}').find('tbody');
+                var btn_{{ genome }} = $('#run_btn_{{ genome }}');
+
+                btn_{{ genome }}.click(function () {
+                    var projectNames = [];
+                    tbody_{{ genome }}.find('tr.selected').each(function() {
+                        projectNames.push($(this).attr('project_name'));
+                    });
+                    location.href = "/" + projectNames.join('--') + "/tree";
+                });
+
+                tbody_{{ genome }}.on('click', 'tr', function () {
+                    $(this).toggleClass('selected');
+                    var selected = $(this).hasClass('selected');
+                    if (selected) {
+                        btn_{{ genome }}.removeClass('disabled');
+                    } else {
+                        btn_{{ genome }}.addClass('disabled');
+                    }
+                });
+            });
+            {% endfor %}
+        </script>
+{% endblock %}

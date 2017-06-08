@@ -1,0 +1,37 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="EXPIRES" content="Wed, 19 Apr 2017 11:00:00 GMT">
+        <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='html5_boilerplate/normalize.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='html5_boilerplate/main.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/bootstrap.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='jquery/jquery-ui-1.12.0.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+
+        {% block head %}{% endblock %}
+    </head>
+
+    <body>
+    <div class="content">
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        {% block body %}{% endblock %}
+
+        <script src="{{ url_for('static', filename='jquery/jquery-1.12.0.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='jquery/jquery-ui-1.12.0.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='bootstrap/bootstrap.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='modernizr/modernizr-2.8.3.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='table_sorter/tsort.js') }}"></script>
+        <script src="{{ url_for('static', filename='html5_boilerplate/plugins.js') }}"></script>
+
+        {% block js %}{% endblock %}
+    </div>
+    </body>
+</html>

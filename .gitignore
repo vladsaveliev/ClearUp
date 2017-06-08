@@ -86,11 +86,12 @@ celerybeat-schedule
 .idea
 venv_*
 data
+data-*
 data.bak*
 tests/test_project/
 *.bam
 
-fingerprinting/version.py
-fingerprinting/snps/playground
+clearup/version.py
+clearup/snps/playground
 
 .vscode/

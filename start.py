@@ -15,10 +15,10 @@ from ngs_utils.file_utils import verify_file
 from ngs_utils.sambamba import index_bam
 from ngs_utils.utils import is_local
 
-from fingerprinting import app, DATA_DIR, HOST_IP, PORT, get_version
-from fingerprinting.model import db, Sample, Project, Run, Location
-from fingerprinting.sample_view import render_closest_comparison_page, send_file_for_igv
-from fingerprinting.tree_view import run_analysis_socket_handler, render_phylo_tree_page
+from clearup import app, DATA_DIR, HOST_IP, PORT, get_version
+from clearup.model import db, Sample, Project, Run, Location
+from clearup.sample_view import render_closest_comparison_page, send_file_for_igv
+from clearup.tree_view import run_analysis_socket_handler, render_phylo_tree_page
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))

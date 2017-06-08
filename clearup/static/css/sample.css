@@ -1,0 +1,205 @@
+td, tr {
+    vertical-align: top;
+}
+
+/* Sample Report - Sample Info Table */
+table.samplePair td.sampleIntoTd {
+	padding-top: 2px;
+}
+table.sampleInfo {
+	margin-left: 10px;
+	margin-bottom: 0;
+}
+td.sampleInfoName, td.sampleInfoValue, td.sampleInfoValueB  {
+	padding-top: 3px;
+	padding-bottom: 3px;
+}
+td.sampleInfoValue {
+	text-align: left;
+	font-weight: bold;
+}
+td.sampleInfoValueB  {
+	text-align: center;
+	padding-left: 10px;
+	padding-right: 10px;
+	vertical-align: middle;
+	border: 1px solid #888888;
+}
+
+/* Sample Report - Tumor/Mismatch Headers */
+td.sampleSuperCategory  {
+	font-size: 1.5em;
+	font-weight: bold;
+	padding-top: 20px;
+}
+td.sampleCategory  {
+	font-size: 1.25em;
+	font-style: italic;
+	padding-top: 10px;
+}
+table.sampleMatch  {
+	border: 2px solid #888888;
+}
+table.snpCalls  {
+	border: 2px solid #FFFFFF;
+}
+
+/* Sample Report - Matched Sample Data */
+td.matchSampleInfoName  {
+	text-align: right;
+}
+td.matchSampleInfoValue  {
+	text-align: left;
+	font-weight: bold;
+}
+
+/* Match Report */
+td.ab  {
+	font-size: 40px;
+    padding-top: 0;
+}
+td.abSmall {
+	font-size: 0.8em;
+	text-align: right;
+    padding-right: 3px;
+}
+.score_total {
+	font-weight: bold;
+}
+.score_details td {
+    padding-bottom: 3px;
+}
+td.scoreValue  {
+	text-align: left;
+}
+
+/* Main table */
+table.match {
+	margin-top: 15px;
+	border-collapse: collapse;
+    border-spacing: 0;
+    max-width: 1000px;
+}
+table.fixed {
+    table-layout: fixed;
+}
+table.fixed td {
+    overflow: hidden;
+}
+table.match td {
+}
+table.match td:first-child {
+    width: 60px;
+	padding: 2px 2px 2px 0;
+}
+table.match td.cell {
+    min-width: 14px;
+    max-width: 14px;
+    text-align: center;
+	padding: 1px 2px 1px 2px;
+}
+td.toprow, td.bottomrow {
+	font-size: 11px;
+	font-family: monospace;
+}
+td.snp_index_td {
+	font-size: 9px;
+}
+td.snp_gene {
+	font-size: 7px;
+}
+td.snp_gene * {
+    transform: rotate(-90deg);
+	/*transform-origin: 50% 25%;*/
+	transform-origin: 100% 35%;
+    height: 30px;
+}
+td.bottomrow {
+    border-bottom: 1px solid white;
+}
+table.match td.snp_index {
+	text-align: center;
+	font-size: 8px;
+    border-top: 1px solid white;
+    padding-bottom: 0 ;
+}
+table.match td.depthrow {
+	text-align: center;
+	font-size: 7px;
+    padding-top: 3px;
+}
+/*table.match td.depthrow .bar {*/
+    /*background-color: rgb(191,191,174);*/
+    /*position: absolute;*/
+    /*top: 0;*/
+    /*left: 0;*/
+    /*bottom: 0;*/
+    /*z-index: -1;*/
+    /*display: block;*/
+/*}*/
+
+.usercall_input {
+    width: 13px;
+    padding: 0;
+    margin: -2px;
+}
+td.selectedIdxCell {
+    border-top: 1px solid black;
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    /*padding-top: 1px !important;*/
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+td.selectedInnerCell {
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+td.selectedBottomCell {
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    border-bottom: 1px solid black;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    /*padding-bottom: 1px !important;*/
+}
+
+/* Quality Score Values */
+td.usercall  {
+	font-style: italic;
+}
+
+/* Match Value */
+td.match {
+	background: #44cd40;
+}
+td.het_match {
+	background: #FFDD00;
+}
+td.mismatch {
+	background: #EE0000;
+}
+td.nocall {
+	background: #EEEEEE;
+}
+
+/* Legend */
+table.legend {
+	margin-top: 20px;
+    margin-left: -2px;
+	border: 0 solid #888888;
+	border-collapse: collapse;
+}
+table.legend td.legendHeader {
+	font-weight: bold;
+    padding-left: 0;
+	border-bottom: 0 solid #888888;
+}
+table.legend tr td.legend_item {
+	padding: 1px 1px 1px 1px;
+}
+table.legend td {
+	padding: 1px 3px 1px 5px;
+}

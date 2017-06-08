@@ -1,18 +1,17 @@
 #!/usr/bin/env python
+from macpath import join
 
 import os
 import click
 
 from ngs_utils import logger as log
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file
-from ngs_utils.parallel import ParallelCfg
+from ngs_utils.parallel import ParallelCfg, parallel_view
 
 from ngs_reporting.bcbio.bcbio import BcbioProject
 
-from fingerprinting import get_version
-from fingerprinting.genotype import genotype_bcbio_proj, DEPTH_CUTOFF
-
-import az
+from clearup import get_version
+from clearup.genotype import genotype, DEPTH_CUTOFF
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
@@ -45,7 +44,8 @@ def main(bcbio_dir, bed, depth, threads=None, isdebug=True):
     depth_cutoff = depth
 
     log.init(isdebug)
-
+    
+    import az
     sys_cfg = az.init_sys_cfg()
     parallel_cfg = ParallelCfg(
         scheduler=sys_cfg.get('scheduler'),
@@ -59,7 +59,11 @@ def main(bcbio_dir, bed, depth, threads=None, isdebug=True):
     proj = BcbioProject()
     proj.load_from_bcbio_dir(bcbio_dir, proc_name='fingerprinting', need_coverage_interval=False)
     log.info('Loaded ' + proj.final_dir)
-    genotype_bcbio_proj(proj, snp_file, parallel_cfg, depth_cutoff)
+    log_dir = safe_mkdir(join(proj.log_dir, 'clearup'))
+    work_dir = safe_mkdir(join(proj.work_dir, 'clearup'))
+    out_dir = safe_mkdir(join(proj.date_dir, 'clearup'))
+    with parallel_view(len(proj.samples), parallel_cfg, log_dir) as parall_view:
+        genotype(proj.samples, snp_file, parall_view, work_dir, out_dir, proj.genome_build)
 
 
 if __name__ == '__main__':

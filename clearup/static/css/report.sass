@@ -1,0 +1,61 @@
+// REPORT TABLE
+
+//#report
+//    margin: 0 100px 50px 0
+//    min-width: 532px
+//    font-size: 1em
+
+table.report_table
+    max-width: 100%
+    padding-right: 50px !important
+    margin-bottom: 30px
+    border-width: 0
+    border-spacing: 0
+    *
+        border-spacing: 0
+
+    td, th
+        white-space: nowrap
+        text-align: left
+        padding: 2px 6px 2px 4px
+
+    th
+        vertical-align: bottom
+        border-bottom: 1px solid #bbb
+
+    td.shifted_column, th.shifted_column
+        padding-left: 0
+        border-left: 20px solid white
+        //border-collapse: separate
+
+    td.stick_to_left, th.stick_to_left
+        padding-left: 0 !important
+
+    td.left_column_td, th.left_column_td, tr.td:first-child, tr.th:first-child
+        padding-left: 0 !important
+        a
+            padding-left: 0 !important
+
+    a.metric_name
+        border-bottom: none
+        color: black
+
+    tr.top_row_tr, tr.group_header
+        td, th
+            font-weight: bold
+
+    tr.group_header
+        td, th
+            height: 20px
+
+    tr.row_hidden, tr.group_empty
+        display: none
+
+    tr.highlighted_row td
+        background-color: #f5ffa3
+
+    tr.highlighted_green_row
+        td:last-child
+            border-right: 1px solid #bbb
+        td
+            background-color: #daffde
