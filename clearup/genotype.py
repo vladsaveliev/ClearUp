@@ -55,7 +55,7 @@ def build_snp_from_records(snp, records, min_depth):
                               depth=ref_af * snp.depth))  # adding the reference allele
     alleles = [a for a in alleles if a.af >= AF_CUTOFF]
     alleles.sort(key=lambda a_: a_.af)
-    
+
     if len(alleles) == 1:  # only 1 allele with AF>AF_CUTOFF - homozygous
         snp.allele1 = snp.allele2 = alleles[-1].nt
         snp.allele1_depth = snp.allele2_depth = alleles[-1].depth
@@ -67,7 +67,7 @@ def build_snp_from_records(snp, records, min_depth):
 
     if snp.depth < min_depth:  # Not enough depth on location to call variation
         snp.allele1, snp.allele2 = 'N', 'N'
-        
+
         # for i, rec in enumerate(high_af_calls):
         #     called = rec.num_called > 0
         #     filter_failed = rec.FILTER
@@ -100,7 +100,7 @@ def build_tree(run):
         critical('Prank failed to run')
     os.rename(prank_out + '.best.dnd', run.tree_file_path())
     os.remove(prank_out + '.best.fas')
-    
+
     return run.fasta_file_path()
 
 
@@ -113,7 +113,7 @@ def genotype(samples, snp_bed, parall_view, work_dir, output_dir, genome_build):
     vcf_by_sample = OrderedDict(zip([s.name for s in samples], vcfs))
     info('** Finished running VarDict **')
     return vcf_by_sample
-    
+
 
 def _split_bed(bed_file, work_dir):
     """ Splits into autosomal and sex chromosomes
@@ -131,12 +131,12 @@ def _split_bed(bed_file, work_dir):
     return autosomal_bed, sex_bed
 
 
-def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, snp_file):
+def _vardict_pileup_sample(sample, work_dir, output_dir, genome_fasta_file, threads, snp_file):
     vardict_snp_vars = join(work_dir, sample.name + '_vars.txt')
     vcf_file = join(output_dir, sample.name + '.vcf')
     if can_reuse(vardict_snp_vars, [sample.bam, snp_file]) and can_reuse(vcf_file, vardict_snp_vars):
         return vcf_file
-    
+
     if is_local():
         vardict_dir = '/Users/vlad/vagrant/VarDict/'
     elif is_us():
@@ -150,8 +150,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
     # Run VarDict
     index_bam(sample.bam)
     vardict = join(vardict_dir, 'vardict.pl')
-    ref_file = adjust_path(genome_cfg['seq'])
-    cmdl = '{vardict} -G {ref_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'.format(**locals())
+    cmdl = '{vardict} -G {genome_fasta_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'.format(**locals())
     call_process.run(cmdl, output_fpath=vardict_snp_vars)
 
     # Complex variants might have a shifted start positions with respect to rsid so we are
@@ -162,7 +161,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
             fs = l.split('\t')
             ann, chrom, start = fs[1], fs[2], fs[3]
             ann_by_var[(chrom, start)] = ann
-    
+
     info()
     info('Converting to VCF')
     work_vcf_file = join(work_dir, sample.name + '_vars.vcf')
@@ -172,7 +171,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
             ' | ' + join(vardict_dir, 'var2vcf_valid.pl') + ' -A -f 0.2' +
             '')
     call_process.run(cmdl, output_fpath=work_vcf_file)
-    
+
     # Fix non-call records with empty REF and LAT, and "NA" values assigned to INFO's SN and HICOV
     fixed_vcf_file = add_suffix(work_vcf_file, 'fixed')
     info('Fixing VCF for parsing, writing to ' + fixed_vcf_file)
@@ -209,7 +208,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_cfg, threads, sn
            '\'##INFO=<ID=ANNOTATION,Number=1,Type=String,Description="rsid|gene_name|ref|alts">\') ' + \
            bgzip_and_tabix(ann_vcf_file)
     call_process.run(cmdl, output_fpath=ann_hdr_vcf_file)
-    
+
     debug('Renaming ' + ann_hdr_vcf_file + ' -> ' + vcf_file)
     os.rename(ann_hdr_vcf_file, vcf_file)
     return vcf_file
@@ -223,7 +222,7 @@ def _get_fasta_ref(ref_file, chrom, pos):
     fasta_ref = faidx_out.split('\n')[1].strip().upper()
     assert faidx_out
     return fasta_ref
-    
+
 
 # def vcf_to_ped(vcf_by_sample, ped_file, sex_by_sample, depth_cutoff):
 #     if can_reuse(ped_file, vcf_by_sample.values()):

@@ -11,12 +11,13 @@ from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 
 from ngs_utils import logger as log
-from ngs_utils.file_utils import verify_file
+from ngs_utils.file_utils import verify_file, safe_mkdir
 from ngs_utils.sambamba import index_bam
 from ngs_utils.utils import is_local
 
 from clearup import app, DATA_DIR, HOST_IP, PORT, get_version
-from clearup.model import db, Sample, Project, Run, Location
+from clearup.genotype import build_tree
+from clearup.model import db, Sample, Project, Run, Location, SNP
 from clearup.sample_view import render_closest_comparison_page, send_file_for_igv
 from clearup.tree_view import run_analysis_socket_handler, render_phylo_tree_page
 
@@ -33,6 +34,7 @@ from clearup.tree_view import run_analysis_socket_handler, render_phylo_tree_pag
 @click.version_option(version=get_version())
 def main(host, port):
     os.environ['FLASK_DEBUG'] = '1'
+    safe_mkdir(DATA_DIR)
     # log_path = join(DATA_DIR, 'flask.log')
     # handler = RotatingFileHandler(log_path, maxBytes=10000, backupCount=10)
     # handler.setLevel(logging.INFO)
@@ -72,9 +74,19 @@ def add_user_call(project_names_line, sample_id):
         log.error('Sample with ID=' + str(edit_sample_id) + ' not found')
         return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id))
 
-    snp = sample.snps.join(Location).filter(Location.rsid==request.form['rsid']).first()
+    # snp = sample.snps.join(Location).filter(Location.rsid==request.form['rsid']).first()
+    snp = sample.snps.filter(SNP.rsid==request.form['rsid']).first()
     snp.usercall = request.form['usercall']
     db.session.commit()
+
+    # Forcing rebuilding the trees of affected runs
+    for run in Run.query.all():
+        if sample.project in run.projects:
+            if any(l for l in run.locations if l.rsid == snp.rsid):
+                log.debug('Removing tree file ' + run.tree_file_path())
+                os.rename(run.fasta_file_path(), run.fasta_file_path() + '.bak')
+                os.rename(run.tree_file_path(), run.tree_file_path() + '.bak')
+
     return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id,
                             snpIndex=request.form['snpIndex']))
 

@@ -28,7 +28,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
         if use_callable:
             log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
             bed_file = join(work_dir, 'callable_regions.bed')
-            
+
             genome_fasta_file = get_ref_fasta(genome)
             batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_fasta_file, min_depth,
                                parall_view=p_view)
@@ -58,7 +58,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
 
         log.info('Genotyping sex')
         sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
-        
+
         # sexes = p_view.run(_sex_from_bam, [
         #     [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome,
         #      depth_by_sample.get(db_s.name) if depth_by_sample else None,
@@ -86,7 +86,7 @@ def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p
                                 bed_file=bed_file, genome=genome_build)
                 add_file_to_ngb(work_dir, get_dbsnp(genome_build), genome_build, dataset, dataset,
                                 skip_if_added=True)
-            except StandardError:
+            except Exception:
                 traceback.print_exc()
                 log.err('Error: cannot export to NGB')
             log.info('*' * 70)
@@ -131,14 +131,14 @@ def load_bcbio_project(bcbio_dir, name=None, use_callable=False):
         log.info('Loading project into the fingerprints database from ' + bcbio_dir)
         log.info('-' * 70)
         log.info()
-    
+
         bcbio_proj = BcbioProject()
         bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
             proc_name='fingerprinting', need_coverage_interval=False, need_vardict=False)
-    
+
         _add_project(
             bam_by_sample={s.name: s.bam for s in bcbio_proj.samples},
-            project_name=name,
+            project_name=name or bcbio_proj.project_name,
             bed_file=bcbio_proj.coverage_bed,
             use_callable=use_callable,
             data_dir=bcbio_proj.final_dir,

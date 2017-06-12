@@ -156,7 +156,8 @@ class Run(db.Model):
             with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as parall_view:
                 vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                      work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
-
+        
+        # TODO: speed this up
         log.info('Loading called SNPs into the DB')
         for s in samples:
             recs = [r for r in VCF(vcf_by_sample[s.long_name()])]

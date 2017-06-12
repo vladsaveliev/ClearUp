@@ -11,6 +11,7 @@ from os.path import join, dirname, isfile
 from collections import defaultdict
 from os.path import abspath, join, dirname, splitext, basename
 
+import six
 from Bio import SeqIO, Phylo
 from flask import Flask, render_template, abort, request
 
@@ -50,6 +51,8 @@ def run_analysis_socket_handler(project_names_line):
         log.debug(cmdl)
         proc = subprocess.Popen(cmdl.split(), stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=os.environ)
         for stdout_line in iter(proc.stdout.readline, ''):
+            if six.PY3:
+                stdout_line = stdout_line.decode()
             if '#(' not in stdout_line.strip():
                 _send_line(ws, stdout_line)
         log.debug('Exit from the subprocess')
@@ -119,13 +122,13 @@ def render_phylo_tree_page(project_names_line):
             rsid=l.rsid,
             gene=l.gene)
         for i, l in enumerate(run.locations)]
-    
+
     tree_file = verify_file(run.tree_file_path())
     log.debug('Found the tree file: ' + tree_file)
     if not tree_file:
         raise RuntimeError('Run ' + project_names_line +
                            ' does not contain the tree file (probably failed building phylogeny)')
-        
+
     return render_template(
         'tree.html',
         projects=[{

@@ -21,9 +21,12 @@ FASTA_ID_PROJECT_SEPARATOR = '____PROJECT_'
 
 
 def get_ref_fasta(genome):
-    genome_dir = safe_mkdir(join(DATA_DIR, 'genomes', genome))
-    genomepy.install_genome(genome, 'UCSC', genome_dir=genome_dir)
-    genome_fasta_file = genomepy.genome(genome, genome_dir=genome_dir)
+    genome_dir = safe_mkdir(join(DATA_DIR, 'genomes'))
+    if genome not in genomepy.list_installed_genomes(genome_dir):
+        if genome not in genomepy.list_available_genomes('UCSC'):
+            logger.critical('Error: genome ' + genome + ' is not available at UCSC')
+        genomepy.install_genome(genome, 'UCSC', genome_dir=genome_dir)
+    genome_fasta_file = genomepy.genome(genome, genome_dir=genome_dir).filename
     return genome_fasta_file
 
 

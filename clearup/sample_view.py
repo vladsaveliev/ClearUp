@@ -144,7 +144,7 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
 
 
 def send_file_for_igv(fpath):
-    # handle igv.js Range header which it uses to request a subset of a .bam
+    # handle igv.js Range header which it uses to request a subset of a BAM file:
     range_header = request.headers.get('Range', None)
     if not range_header:
         return send_file(fpath)
@@ -168,5 +168,3 @@ def send_file_for_igv(fpath):
 
     log.info("GET range request: %s-%s %s" % (m.group(1), m.group(2), fpath))
     return rv
-
-
