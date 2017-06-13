@@ -26,8 +26,11 @@ setup(
     license='GPLv3',
     packages=find_packages(),
     package_data={
-        package_name: ['locations/locations.bed'] + setup_utils.find_package_files('prank', package_name),
-        '': setup_utils.find_package_files('static', '') + setup_utils.find_package_files('templates', ''),
+        package_name:
+            ['snps/*.bed.gz*'],
+        '':
+            setup_utils.find_package_files('static', '') +
+            setup_utils.find_package_files('templates', ''),
     },
     include_package_data=True,
     zip_safe=False,

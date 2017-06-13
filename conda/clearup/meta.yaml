@@ -41,6 +41,7 @@ requirements:
     - flask-script
     - flask-sqlalchemy
     - flask-socketio
+    - prank
     - nose
 
 test:
