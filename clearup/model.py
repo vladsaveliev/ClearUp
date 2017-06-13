@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
-from copy import copy
 from os.path import abspath, join, dirname, splitext, basename
 from collections import defaultdict
 from cyvcf2 import VCF
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from pybedtools import BedTool
 
 from ngs_utils.Sample import BaseSample

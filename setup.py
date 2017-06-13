@@ -51,14 +51,13 @@ setup(
     tests_require=['nose'],
 )
 
-if setup_utils.is_installing():
-    print("""
+print("""
 -------------------------
  Installation complete!
 -------------------------
 Usage:
-$ ./genotyper.py bcbio_dir --bed --ref ref --depth 5
 $ ./manage.py init_db
-$ ./manage.py load_project <bcbio_final_path_of_fingerprints_project>
+$ ./manage.py load_bcbio_project <bcbio_final_path>
+$ ./manage.py load_data <dir_with_bams_and_beds> name=<project_name> genome=<genome_build_name>
 $ ./start.py
 """)
