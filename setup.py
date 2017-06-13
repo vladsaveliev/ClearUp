@@ -1,33 +1,28 @@
 #!/usr/bin/env python
-import os
-import pip
-from os.path import join, isfile, abspath, dirname, relpath
+import sys
+py_v = sys.version_info[:2]
+if not (py_v == (2, 7) or py_v >= (3, 3)):
+    sys.exit('Only Python 2.7 or 3.3 and up are supported. Current version: ' + '.'.join(py_v))
+    
+
+import clearup
+package_name = clearup.__name__
+
+
+from ngs_utils import setup_utils
+version = setup_utils.init(package_name, package_name, __file__)
+
+
 from setuptools import setup, find_packages
-
-try:
-    from ngs_utils import setup_utils
-except ImportError:
-    pip.main(['install', 'git+git://github.com/vladsaveliev/NGS_Utils.git'])
-    from ngs_utils import setup_utils
-
-
-name = 'Fingerprinting'
-package_name = 'fingerprinting'
-
-
-version = setup_utils.init(name, package_name, __file__)
-
-
 setup(
-    name=name,
+    name=package_name,
     version=version,
     author='Vlad Saveliev, Tsistan Lubinsky, Alla Mikheenko',
     author_email='vladislav.sav@gmail.com',
-    description='Mutational fingerprinting tool',
+    description='Mix up check tool',
     long_description=(open('README.md').read()),
     keywords='bioinformatics',
-    url='https://github.com/AstraZeneca-NGS/Fingerprinting',
-    # download_url='https://github.com/AstraZeneca-NGS/Fingerprinting/releases',
+    url='https://github.com/AstraZeneca-NGS/ClearUp',
     license='GPLv3',
     packages=find_packages(),
     package_data={

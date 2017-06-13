@@ -52,12 +52,12 @@ def main(bcbio_dir, bed, depth, threads=None, isdebug=True):
         queue=sys_cfg.get('queue'),
         resources=sys_cfg.get('resources'),
         threads=threads or sys_cfg.get('threads'),
-        tag='fingerprinting')
+        tag='clearup')
 
     log.info('Loading bcbio project from ' + bcbio_dir)
     log.info('-' * 70)
     proj = BcbioProject()
-    proj.load_from_bcbio_dir(bcbio_dir, proc_name='fingerprinting', need_coverage_interval=False)
+    proj.load_from_bcbio_dir(bcbio_dir, proc_name='clearup', need_coverage_interval=False)
     log.info('Loaded ' + proj.final_dir)
     log_dir = safe_mkdir(join(proj.log_dir, 'clearup'))
     work_dir = safe_mkdir(join(proj.work_dir, 'clearup'))
