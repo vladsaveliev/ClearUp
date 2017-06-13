@@ -10,9 +10,7 @@ from pybedtools import BedTool
 from ngs_utils import logger as log
 from ngs_utils import call_process
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file, file_transaction, verify_dir, add_suffix, splitext_plus
-from ngs_utils.logger import debug
 from ngs_utils.reference_data import get_chrom_order
-from ngs_reporting.bcbio.bcbio import BcbioProject
 
 from clearup.utils import is_sex_chrom
 from clearup import get_version, DEPTH_CUTOFF
@@ -39,11 +37,20 @@ from clearup import get_version, DEPTH_CUTOFF
 @click.version_option(version=get_version())
 def main(paths, output_dir, genome, depth):
     bed_files = [verify_file(f, is_critical=True) for f in paths if isfile(f)]
+    
     bcbio_projs = []
-    for d in [verify_dir(f, is_critical=True) for f in paths if isdir(f)]:
-        proj = BcbioProject()
-        proj.load_from_bcbio_dir(d, proc_name='fingerprinting', need_coverage_interval=False)
-        bcbio_projs.append(proj)
+    dirs = [verify_dir(f, is_critical=True) for f in paths if isdir(f)]
+    if dirs:
+        try:
+            from ngs_reporting.bcbio.bcbio import BcbioProject
+        except ImportError:
+            log.err('Error: cannot import ngs_reporting, needed to load bcbio projects from ' + str(dirs) +
+                    'Please, install it with `conda install -v vladsaveliev ngs_reporting.')
+        else:
+            for d in dirs:
+                proj = BcbioProject()
+                proj.load_from_bcbio_dir(d, proc_name='clearup', need_coverage_interval=False)
+                bcbio_projs.append(proj)
 
     log.init(True)
     build_snps_panel(bcbio_projs, bed_files, safe_mkdir(output_dir), genome)

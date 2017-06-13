@@ -9,7 +9,7 @@ source:
   git_rev: master
 
 build:
-  number: 3
+  number: 5
 
 requirements:
   build:
@@ -30,11 +30,10 @@ requirements:
     - bedtools >=2.25
     - pybedtools
     - click
-    - SQLAlchemy
+    - sqlalchemy
     - biopython
     - gevent
     - gevent-websocket
-    - bx
     - pyvcf
     - cyvcf2
     - flask

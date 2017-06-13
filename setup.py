@@ -17,7 +17,7 @@ from setuptools import setup, find_packages
 setup(
     name=package_name,
     version=version,
-    author='Vlad Saveliev, Tsistan Lubinsky, Alla Mikheenko',
+    author='Vlad Saveliev, Tristan Lubinsky, Alla Miheenko',
     author_email='vladislav.sav@gmail.com',
     description='Mix up check tool',
     long_description=(open('README.md').read()),
