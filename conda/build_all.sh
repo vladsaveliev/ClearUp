@@ -10,7 +10,7 @@ function build() {
 	echo "Building $NAME";
 
 	CHANNELS="-c vladsaveliev -c bcbio -c bioconda -c conda-forge"
-	for PY in 2.7 3.5 3.6 ; do
+	for PY in 3.6 ; do
 		PACKAGE_PATH=$(conda build $NAME $CHANNELS --output --py $PY | tail -n1)
 		if [ -f $PACKAGE_PATH ] ; then
 		    echo "$PACKAGE_PATH exists, skipping"
@@ -21,7 +21,7 @@ function build() {
 			FILENAME=$(basename $PACKAGE_PATH)
 			echo "Converting packages into $BASEDIR"
 			for PLATFORM in osx-64 linux-32 linux-64 ; do
-				if [-f $BASEDIR/$PLATFORM/$FILENAME ] ; then
+				if [ -f $BASEDIR/$PLATFORM/$FILENAME ] ; then
 				    echo "$BASEDIR/$PLATFORM/$FILENAME exists, skipping"
 			    else
 					conda convert -p $PLATFORM $PACKAGE_PATH -o $BASEDIR -f

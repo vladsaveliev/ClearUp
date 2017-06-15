@@ -204,7 +204,6 @@ def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, avg_depth=N
 
 @manager.command
 def analyse_projects(project_names_line):
-    log.init(is_debug_=True)
     project_names = project_names_line.split('--')
     projects = Project.query.filter(Project.name.in_(project_names))
     if projects.count() < len(project_names):

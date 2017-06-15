@@ -2,14 +2,14 @@
 
 package:
   name: clearup
-  version: "{{ version }}"
+  version: "1.1.3"
 
 source:
   git_url: https://github.com/AstraZeneca-NGS/ClearUp
   git_rev: master
 
 build:
-  number: 5
+  number: 8
 
 requirements:
   build:
@@ -42,13 +42,11 @@ requirements:
     - flask-socketio
     - prank
     - nose
+    - genomepy
 
 test:
   imports:
    - clearup
-
-  commands:
-   - manage.py
 
 about:
   home: https://github.com/AstraZeneca-NGS/ClearUp
