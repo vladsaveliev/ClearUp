@@ -13,13 +13,14 @@ from os.path import abspath, join, dirname, splitext, basename
 
 import six
 from Bio import SeqIO, Phylo
-from flask import Flask, render_template, abort, request
+from flask import Flask, render_template, abort, request, url_for
 
 from ngs_utils.bed_utils import Region
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse, verify_file
 from ngs_utils.file_utils import can_reuse, safe_mkdir
 from ngs_utils import logger as log
 
+from clearup.genotype import build_tree
 from clearup.model import Project, db, Sample, Run, get_or_create_run
 from clearup.utils import read_fasta, FASTA_ID_PROJECT_SEPARATOR
 from clearup import app
@@ -50,8 +51,10 @@ def run_analysis_socket_handler(project_names_line):
     def _run_cmd(cmdl):
         log.debug(cmdl)
         proc = subprocess.Popen(cmdl.split(), stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=os.environ)
-        for stdout_line in iter(proc.stdout.readline, ''):
-            if six.PY3:
+        for stdout_line in iter(proc.stdout.readline, None):
+            if not stdout_line:
+                break
+            if not six.PY2:
                 stdout_line = stdout_line.decode()
             if '#(' not in stdout_line.strip():
                 _send_line(ws, stdout_line)
@@ -78,17 +81,25 @@ def _send_line(ws, line, error=False):
     }))
 
 
+def run_processing(project_names_line, redirect_to):
+    pnames = project_names_line.split('--')
+    return render_template(
+        'processing.html',
+        projects=pnames,
+        title='Comparing projects ' + ', '.join(pnames),
+        project_names_line=project_names_line,
+        redirect_to=redirect_to
+    )
+
+
 def render_phylo_tree_page(project_names_line):
-    log.debug('Finding run for ' + project_names_line)
     run = Run.find_by_project_names_line(project_names_line)
-    if not run or not isfile(run.fasta_file_path()) or not isfile(run.tree_file_path()):
-        pnames = project_names_line.split('--')
-        return render_template(
-            'processing.html',
-            projects=pnames,
-            title='Comparing projects ' + ', '.join(pnames),
-            project_names_line=project_names_line,
-        )
+
+    if not Run.is_ready(run):
+        return run_processing(project_names_line,
+            redirect_to=url_for(
+                'phylo_tree_page',
+                project_names_line=project_names_line))
 
     log.debug('Prank results found, rendering a tree for run ' + str(run.id))
     fasta_file = verify_file(run.fasta_file_path())

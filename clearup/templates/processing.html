@@ -49,7 +49,7 @@
                                 consoleDiv.append('<br><hr><span style="color: red;">' + data.line + "</span><br>");
                             }
                         } else if (data.finished) {
-                            location.href = "/{{ project_names_line }}/tree";
+                            location.href = "{{ redirect_to }}";
                         }
                     };
                 }

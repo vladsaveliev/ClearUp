@@ -10,10 +10,10 @@
 {% block body %}
         <h2>{{ title }}</h2>
         <div>
-            <pre>
-            {% for l in lines %}
-                <span>{{ l|safe }}</span>
-            {% endfor %}
-            </pre>
+            <p>{{ error }}</p>
+            Traceback:
+            <pre>{% for l in traceback %}
+    {{ l|safe }}
+{%- endfor %}</pre>
         </div>
 {% endblock %}

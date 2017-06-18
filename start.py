@@ -83,12 +83,15 @@ def add_user_call(project_names_line, sample_id):
     for run in Run.query.all():
         if sample.project in run.projects:
             if any(l for l in run.locations if l.rsid == snp.rsid):
-                log.debug('Removing tree file ' + run.tree_file_path())
-                os.rename(run.fasta_file_path(), run.fasta_file_path() + '.bak')
-                os.rename(run.tree_file_path(), run.tree_file_path() + '.bak')
+                # log.debug('Removing tree file ' + run.tree_file_path())
+                # os.rename(run.fasta_file_path(), run.fasta_file_path() + '.bak')
+                # os.rename(run.tree_file_path(), run.tree_file_path() + '.bak')
+                run.rerun_on_usercall = True
+                db.session.commit()
 
-    return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id,
-                            snpIndex=request.form['snpIndex']))
+    return redirect(url_for('closest_comparison_page',
+                            project_names_line=project_names_line,
+                            sample_id=sample_id))
 
 
 @app.route('/<run_id>/bamfiles/<fname>/')
@@ -162,14 +165,16 @@ def server_error(error):
     log.err('Error: ' + str(error))
     log.err(traceback.format_exc())
 
-    html = 'Error: ' + str(error) + '<br>'
+    lines = []
     for l in traceback.format_exc().split('\n'):
-        html += l.replace('    ', '&nbsp;'*4) + '<br>'
+        if l.strip():
+            lines.append(l.replace('    ', '&nbsp;'*4))
 
     return render_template(
         'error.html',
         title='Internal Server Error',
-        lines=traceback.format_exc().split('\n')), \
+        error='Error: ' + str(error) + '',
+        traceback=traceback.format_exc().split('\n')), \
         500
 
 

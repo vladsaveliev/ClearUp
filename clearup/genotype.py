@@ -93,9 +93,7 @@ def build_tree(run):
     info()
     info('Building phylogeny tree using prank...')
     prank_out = join(run.work_dir_path(), splitext(basename(run.fasta_file_path()))[0])
-    suffix = 'lnx' if 'linux' in sys.platform else 'osx'
-    prank_bin = join(dirname(__file__), 'prank', 'prank_' + suffix, 'bin', 'prank')
-    call_process.run(prank_bin + ' -d=' + run.fasta_file_path() + ' -o=' + prank_out + ' -showtree')
+    call_process.run('prank -d=' + run.fasta_file_path() + ' -o=' + prank_out + ' -showtree')
     if not verify_file(prank_out + '.best.dnd'):
         critical('Prank failed to run')
     os.rename(prank_out + '.best.dnd', run.tree_file_path())

@@ -6,7 +6,7 @@ import time
 from os.path import abspath, join, dirname, splitext, basename
 from collections import defaultdict
 from Bio import Phylo
-from flask import Flask, render_template, send_from_directory, abort, redirect, send_file
+from flask import Flask, render_template, send_from_directory, abort, redirect, send_file, url_for
 from flask import Response, request
 
 from ngs_utils.utils import is_us, is_uk
@@ -15,6 +15,7 @@ from ngs_utils import logger as log
 from az.ngb import get_ngb_link, get_ngb_link_template
 
 from clearup.model import Project, db, Sample, Run
+from clearup.tree_view import run_processing
 from clearup.utils import FASTA_ID_PROJECT_SEPARATOR
 from clearup import app
 
@@ -37,7 +38,7 @@ def _find_closest_match(sample, run):
 
 
 def _get_snp_record(snps_dict, snp_a, snp_b, snp_index, ngb_link=None):
-    seq_a, seq_b = snp_a.usercall or snp_a.get_gt(), snp_b.usercall or snp_b.get_gt()
+    seq_a, seq_b = snp_a.get_gt(), snp_b.get_gt()
     # seq_a, seq_b = seq_a.replace('N', ''), seq_b.replace('N', '')
     snp_record = {'index': snp_index,
                   'ngb_link': ngb_link,
@@ -78,6 +79,13 @@ def _get_snp_record(snps_dict, snp_a, snp_b, snp_index, ngb_link=None):
 
 
 def render_closest_comparison_page(project_names_line, sample_id, selected_idx=None):
+    run = Run.find_by_project_names_line(project_names_line)
+    if not Run.is_ready(run):
+        return run_processing(project_names_line,
+                              redirect_to=url_for('closest_comparison_page',
+                project_names_line=project_names_line,
+                sample_id=sample_id))
+
     run = Run.find_by_project_names_line(project_names_line)
     if not run:
         log.err('Run ' + str(project_names_line) + ' not found')

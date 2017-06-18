@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from os.path import abspath, join, dirname, splitext, basename
+from os.path import abspath, join, dirname, splitext, basename, isfile
 from collections import defaultdict
 from cyvcf2 import VCF
 from pybedtools import BedTool
@@ -82,6 +82,8 @@ class SNP(db.Model):
             self.allele1, self.allele2, self.sample.name)
 
     def get_gt(self):
+        if self.usercall:
+            return self.usercall
         assert self.allele1 and self.allele2, str(self)
         return ''.join(sorted([self.allele1, self.allele2]))
 
@@ -105,9 +107,11 @@ class Run(db.Model):
     snps_file = db.Column(db.String)
     projects = db.relationship("Project", secondary=run_to_project_assoc_table,
                                backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
+    rerun_on_usercall = db.Column(db.Boolean)
 
     def __init__(self):
         self.snps_file = None
+        self.rerun_on_usercall = False
 
     def work_dir_path(self):
         return safe_mkdir(join(DATA_DIR, str(self.id)))
@@ -117,6 +121,13 @@ class Run(db.Model):
 
     def tree_file_path(self):
         return join(self.work_dir_path(), 'fingerprints.newick')
+
+    @staticmethod
+    def is_ready(run):
+        return run and \
+               not run.rerun_on_usercall and \
+               isfile(run.fasta_file_path()) and \
+               isfile(run.tree_file_path())
 
     @staticmethod
     def create(projects, parall_view=None):
@@ -146,6 +157,7 @@ class Run(db.Model):
         vcf_dir = safe_mkdir(join(run.work_dir_path(), 'vcf'))
         work_dir = safe_mkdir(join(vcf_dir, 'work'))
         bs = [BaseSample(s.long_name(), bam=s.bam) for s in samples]
+
         if parall_view:
             vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                  work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
@@ -153,7 +165,7 @@ class Run(db.Model):
             with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as parall_view:
                 vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                      work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
-        
+
         # TODO: speed this up
         log.info('Loading called SNPs into the DB')
         for s in samples:
@@ -218,10 +230,20 @@ def get_or_create_run(projects, parall_view=None):
     if len(genomes) > 1:
         log.critical('Error: multiple genomes in projects: ' + str(genomes))
     run = Run.find_by_projects(projects)
+
+    if run.rerun_on_usercall:
+        log.info()
+        log.info('Rebuilding tree on usercall')
+        build_tree(run)
+        run.rerun_on_usercall = False
+        db.session.commit()
+        return run
+
     if run:
         tree_file = verify_file(run.tree_file_path())
-        if not tree_file:
-            log.debug('Tree file does not exist, recreating run for projects ' + ', '.join(p.name for p in projects))
+        fasta_file = verify_file(run.fasta_file_path())
+        if not tree_file or not fasta_file:
+            log.debug('Tree files do not exist, recreating run for projects ' + ', '.join(p.name for p in projects))
             db.session.delete(run)
             db.session.commit()
             run = None
