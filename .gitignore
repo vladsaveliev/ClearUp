@@ -89,9 +89,8 @@ data
 data-*
 data.bak*
 tests/test_project/
-*.bam
 
-clearup/version.py
-clearup/snps/playground
+*/version.py
+*/snps/playground
 
 .vscode/
