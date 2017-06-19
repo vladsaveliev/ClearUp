@@ -54,7 +54,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
 
         # get_or_create_run([fp_proj], parall_view=p_view)
 
-        _add_to_ngb(work_dir, project_name, bam_by_sample, genome, bed_file, p_view)
+        # _add_to_ngb(work_dir, project_name, bam_by_sample, genome, bed_file, p_view)
 
         log.info('Genotyping sex')
         sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
@@ -234,7 +234,7 @@ def reload_all_data():
     elif is_us():
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Resolution/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Resolution', use_callable=True)
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation')
-        load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/plasma/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation_plasma', min_depth=10, use_callable=True)
+        load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/plasma/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation_plasma', use_callable=True)
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/tissue/OurType/bcbio_complete'), 'EXT_070_Plasma_Seq_Pilot_Foundation_tissue')
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/PGDx/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_PGDx')
         load_bcbio_project(abspath('/ngs/oncology/analysis/dev/Dev_0327_MiSeq_SNP251/bcbio_preprint/final'), 'Dev_0327_MiSeq_SNP251_initial_preprint')

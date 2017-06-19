@@ -103,15 +103,15 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
     snp_records = []
     snps_a_by_rsid = sample.snps_from_run(run)
     snps_b_by_rsid = matching_sample.snps_from_run(run)
-    ngb_link_tmpl = None
-    if is_us() or is_uk():
-        ngb_link_tmpl = get_ngb_link_template(
-            run.work_dir_path(), sample.name, sample.project.genome, sample.project.name,
-            sample.project.bed_fpath, matching_sample.name, matching_sample.bam)
+    ngb_link_tmpl, ngb_link = None, None
+    # if is_us() or is_uk():
+    #     ngb_link_tmpl = get_ngb_link_template(
+    #         run.work_dir_path(), sample.name, sample.project.genome, sample.project.name,
+    #         sample.project.bed_fpath, matching_sample.name, matching_sample.bam)
     for i, l in enumerate(run.locations):
         snp_a = snps_a_by_rsid[l.rsid]
         snp_b = snps_b_by_rsid[l.rsid]
-        ngb_link = get_ngb_link(run.work_dir_path(), ngb_link_tmpl, snp_a.chrom, snp_a.pos) if ngb_link_tmpl else None
+        # ngb_link = get_ngb_link(run.work_dir_path(), ngb_link_tmpl, snp_a.chrom, snp_a.pos) if ngb_link_tmpl else None
         snp_records.append(_get_snp_record(snps_dict, snp_a, snp_b, i + 1, ngb_link=ngb_link))
         if (i + 1) % SNPS_IN_ROW == 0:
             snp_tables.append(snp_records)
