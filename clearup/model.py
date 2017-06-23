@@ -231,7 +231,7 @@ def get_or_create_run(projects, parall_view=None):
         log.critical('Error: multiple genomes in projects: ' + str(genomes))
     run = Run.find_by_projects(projects)
 
-    if run.rerun_on_usercall:
+    if run and run.rerun_on_usercall:
         log.info()
         log.info('Rebuilding tree on usercall')
         build_tree(run)
@@ -239,20 +239,18 @@ def get_or_create_run(projects, parall_view=None):
         db.session.commit()
         return run
 
+    if run and not run.is_ready():
+        log.debug('Tree files do not exist, recreating run for projects ' + ', '.join(p.name for p in projects))
+        db.session.delete(run)
+        db.session.commit()
+        run = None
+
     if run:
-        tree_file = verify_file(run.tree_file_path())
-        fasta_file = verify_file(run.fasta_file_path())
-        if not tree_file or not fasta_file:
-            log.debug('Tree files do not exist, recreating run for projects ' + ', '.join(p.name for p in projects))
-            db.session.delete(run)
-            db.session.commit()
-            run = None
-    if not run:
+        log.debug('Found run for ' + ', '.join([p.name for p in projects]) + ' with ID ' + str(run.id))
+    else:
         log.debug('Creating new run for projects ' + ', '.join(p.name for p in projects))
         run = Run.create(projects, parall_view)
         log.debug('Done creating new run with ID ' + str(run.id))
-    else:
-        log.debug('Found run for ' + ', '.join([p.name for p in projects]) + ' with ID ' + str(run.id))
     return run
 
 

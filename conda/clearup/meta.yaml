@@ -28,6 +28,7 @@ requirements:
     - six
     - sambamba
     - bedtools >=2.25
+    - bedops
     - pybedtools
     - click
     - sqlalchemy
