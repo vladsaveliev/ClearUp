@@ -12,7 +12,6 @@ from flask import Response, request
 from ngs_utils.utils import is_us, is_uk
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse
 from ngs_utils import logger as log
-from az.ngb import get_ngb_link, get_ngb_link_template
 
 from clearup.model import Project, db, Sample, Run
 from clearup.tree_view import run_processing

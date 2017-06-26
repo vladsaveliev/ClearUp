@@ -76,7 +76,15 @@ def add_user_call(project_names_line, sample_id):
 
     # snp = sample.snps.join(Location).filter(Location.rsid==request.form['rsid']).first()
     snp = sample.snps.filter(SNP.rsid==request.form['rsid']).first()
-    snp.usercall = request.form['usercall']
+    usercall = request.form['usercall']
+
+    msg = 'ClearUp: usercall for sample ' + sample.name + ' of run ' + project_names_line + ' added:\n'
+    msg += 'SNP {}:{} {} {}|{}'.format(str(snp.location.chrom), str(snp.location.pos), snp.location.rsid, snp.allele1, snp.allele2)
+    if snp.usercall:
+        msg += ', previous usercall ' + snp.usercall
+    msg += ', setting usercall ' + usercall
+
+    snp.usercall = usercall
     db.session.commit()
 
     # Forcing rebuilding the trees of affected runs
@@ -88,6 +96,8 @@ def add_user_call(project_names_line, sample_id):
                 # os.rename(run.tree_file_path(), run.tree_file_path() + '.bak')
                 run.rerun_on_usercall = True
                 db.session.commit()
+
+    log.send_email(msg, subj='ClearUp usercall', only_me=True)
 
     return redirect(url_for('closest_comparison_page',
                             project_names_line=project_names_line,
