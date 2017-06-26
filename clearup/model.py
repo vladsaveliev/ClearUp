@@ -18,6 +18,7 @@ from clearup import app, db, DATA_DIR, parallel_cfg
 # import logging
 # logging.basicConfig()
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+safe_mkdir(DATA_DIR)
 
 
 run_to_project_assoc_table = db.Table(

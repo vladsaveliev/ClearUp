@@ -12,14 +12,14 @@ except ImportError:
     sys_cfg = None
 else:
     sys_cfg = az.init_sys_cfg()
-    
+
 
 if is_us():
     HOST_IP = 'rask.usbod.astrazeneca.net'
     PORT = 5003
-    # parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
-    #                            sys_cfg.get('resources'), sys_cfg.get('threads'))
-    parallel_cfg = ParallelCfg(threads=20)
+    parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
+                               sys_cfg.get('resources'), sys_cfg.get('threads'))
+    # parallel_cfg = ParallelCfg(threads=20)
 else:
     HOST_IP = 'localhost'
     PORT = 5004
@@ -33,9 +33,6 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + join(DATA_DIR, 'projects.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
-
-logger.init(True, join(DATA_DIR, 'log.txt'))
 
 
 def get_version():

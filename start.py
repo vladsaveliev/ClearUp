@@ -5,8 +5,6 @@ import os
 from os.path import abspath, join, dirname, splitext, basename
 import click
 from flask import Flask, render_template, send_from_directory, abort, redirect, url_for, send_file, request
-from logging.handlers import RotatingFileHandler
-import logging
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 
@@ -33,8 +31,9 @@ from clearup.tree_view import run_analysis_socket_handler, render_phylo_tree_pag
               default=PORT)
 @click.version_option(version=get_version())
 def main(host, port):
+    log.init(True, join(DATA_DIR, 'log_server.txt'), save_previous=True)
+
     os.environ['FLASK_DEBUG'] = '1'
-    safe_mkdir(DATA_DIR)
     # log_path = join(DATA_DIR, 'flask.log')
     # handler = RotatingFileHandler(log_path, maxBytes=10000, backupCount=10)
     # handler.setLevel(logging.INFO)

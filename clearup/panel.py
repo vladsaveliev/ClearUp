@@ -36,8 +36,10 @@ from clearup import get_version, DEPTH_CUTOFF
               )
 @click.version_option(version=get_version())
 def main(paths, output_dir, genome, depth):
+    log.init(True)
+
     bed_files = [verify_file(f, is_critical=True) for f in paths if isfile(f)]
-    
+
     bcbio_projs = []
     dirs = [verify_dir(f, is_critical=True) for f in paths if isdir(f)]
     if dirs:
@@ -52,7 +54,6 @@ def main(paths, output_dir, genome, depth):
                 proj.load_from_bcbio_dir(d, proc_name='clearup', need_coverage_interval=False)
                 bcbio_projs.append(proj)
 
-    log.init(True)
     build_snps_panel(bcbio_projs, bed_files, safe_mkdir(output_dir), genome)
 
 

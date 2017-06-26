@@ -19,6 +19,7 @@ from clearup import app, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
 from clearup.utils import bam_samplename, get_ref_fasta
 
 manager = Manager(app)
+log.init(True)
 
 
 def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
