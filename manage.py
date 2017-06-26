@@ -2,6 +2,8 @@
 import glob
 import traceback
 from os.path import join, abspath, basename, splitext, isdir
+
+import sys
 from cyvcf2 import VCF
 from flask_script import Manager
 
@@ -12,7 +14,7 @@ from ngs_utils.parallel import ParallelCfg, parallel_view
 
 from clearup.panel import get_dbsnp
 from clearup.callable import batch_callable_bed
-from clearup.model import Project, Sample, db, SNP, get_or_create_run
+from clearup.model import Project, Sample, db, SNP, get_or_create_run, Run
 from clearup import app, DATA_DIR, parallel_cfg, DEPTH_CUTOFF
 from clearup.utils import bam_samplename, get_ref_fasta
 
@@ -44,6 +46,7 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
                 genome=genome,
                 bed_fpath=bed_file,
                 min_depth=min_depth,
+                used_callable=use_callable,
             )
             db.session.add(fp_proj)
             db_samples = []
@@ -97,6 +100,9 @@ def load_data(data_dir, name, genome):
     data_dir = verify_dir(data_dir, is_critical=True)
     bam_files = glob.glob(join(data_dir, '*.bam'))
     assert bam_files, 'No BAM files in ' + data_dir
+
+    if name.startswith('--name'):
+        name = name.split('--name')[1]
 
     bed_file = None
     bed_files = glob.glob(join(data_dir, '*.bed'))
@@ -247,6 +253,23 @@ def reload_all_data():
         # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0308_HiSeq4000_MerckFFPE_AZ100/bcbio_umi_102/final'))
         # load_project(abspath('/ngs/oncology/analysis/dev/Dev_0309_HiSeq4000_PlasmaSeq_Tissue_Exome/bcbio_umi/final'))
         # load_project(abspath('/ngs/oncology/Analysis/dev/Dev_0310_HiSeq4000_PlasmaSeq_Tissue_AZ100/bcbio_umi_102/final'))
+
+
+@manager.command
+def dump_projects(output_file):
+    projects = set()
+    for run in Run.query.all():  # Finding projects with ready-to-view runs
+        for p in run.projects:
+            projects.add(p)
+    for p in sorted(list(projects), key=lambda p: p.name):
+        if 'final' in p.data_dir:
+            cmdl = './manage.py load_bcbio_project ' + p.data_dir + ' --name=' + p.name
+        else:
+            cmdl = './manage.py load_data ' + p.data_dir + ' ' + p.name + ' --genome=' + p.genome
+        if 'used_callable' in p.__dict__ and p.used_callable:
+            cmdl += ' --used_callable'
+        with open(output_file, 'w') as f:
+            f.write(cmdl + '\n')
 
 
 if __name__ == '__main__':

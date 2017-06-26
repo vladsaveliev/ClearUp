@@ -107,7 +107,7 @@ class Run(db.Model):
     snps_file = db.Column(db.String)
     projects = db.relationship("Project", secondary=run_to_project_assoc_table,
                                backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
-    rerun_on_usercall = db.Column(db.Boolean)
+    rerun_on_usercall = db.Column(db.Boolean, default=False)
 
     def __init__(self):
         self.snps_file = None
@@ -261,13 +261,15 @@ class Project(db.Model):
     genome = db.Column(db.String(20))
     bed_fpath = db.Column(db.String)
     min_depth = db.Column(db.Integer)
+    used_callable = db.Column(db.Boolean, default=False)
 
-    def __init__(self, name, data_dir, genome, bed_fpath, min_depth):
+    def __init__(self, name, data_dir, genome, bed_fpath, min_depth, used_callable):
         self.name = name
         self.data_dir = data_dir
         self.genome = genome
         self.bed_fpath = bed_fpath
         self.min_depth = min_depth
+        self.used_callable = used_callable
 
     def __repr__(self):
         return '<Project {} {}>'.format(self.name, self.genome)
