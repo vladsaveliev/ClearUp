@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-
-from os.path import abspath, join, dirname, splitext, basename, isfile
+import shutil
+from os.path import abspath, join, dirname, splitext, basename, isfile, isdir
 from collections import defaultdict
 from cyvcf2 import VCF
 from pybedtools import BedTool
@@ -37,7 +37,7 @@ class Location(db.Model):
     ref = db.Column(db.String)
 
     run_id = db.Column(db.String, db.ForeignKey('run.id'))
-    run = db.relationship('Run', backref=db.backref('locations', lazy='dynamic'))
+    run = db.relationship('Run', backref=db.backref('locations', lazy='dynamic', cascade='all, delete-orphan'))
 
     def __init__(self, rsid, chrom=None, pos=None, gene=None, ref=None):
         self.rsid = rsid
@@ -68,7 +68,7 @@ class SNP(db.Model):
     location = db.relationship('Location')
 
     sample_id = db.Column(db.String, db.ForeignKey('sample.id'))
-    sample = db.relationship('Sample', backref=db.backref('snps', lazy='dynamic'))
+    sample = db.relationship('Sample', backref=db.backref('snps', lazy='dynamic', cascade='all, delete-orphan'))
 
     def __init__(self, loc):
         self.location = loc
@@ -106,8 +106,10 @@ class Run(db.Model):
     __tablename__ = 'run'
     id = db.Column(db.Integer, primary_key=True)
     snps_file = db.Column(db.String)
-    projects = db.relationship("Project", secondary=run_to_project_assoc_table,
-                               backref=db.backref('runs', lazy='dynamic'), lazy='dynamic')
+    projects = db.relationship("Project",
+                               secondary=run_to_project_assoc_table,
+                               backref=db.backref('runs', lazy='dynamic'),
+                               lazy='dynamic')
     rerun_on_usercall = db.Column(db.Boolean, default=False)
 
     def __init__(self):
@@ -214,6 +216,11 @@ class Run(db.Model):
         projects = Project.query.filter(Project.name.in_(pnames))
         return Run.find_by_projects(projects)
 
+    def delete(self):
+        if isdir(self.work_dir_path()):
+            shutil.rmtree(self.work_dir_path())
+        db.session.delete(self)
+
 
 def _genotype(run, samples, genome_build, parall_view):
     snps_left_to_call_file = _get_snps_not_called(run.snps_file, samples)
@@ -271,6 +278,9 @@ class Project(db.Model):
         self.bed_fpath = bed_fpath
         self.min_depth = min_depth
         self.used_callable = used_callable
+
+    def get_work_dir(self):
+        return join(DATA_DIR, 'projects', self.name)
 
     def __repr__(self):
         return '<Project {} {}>'.format(self.name, self.genome)

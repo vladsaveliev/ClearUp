@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import glob
+import shutil
 import traceback
 from os.path import join, abspath, basename, splitext, isdir
 
@@ -24,7 +25,15 @@ log.init(True)
 
 def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
                  data_dir='', genome='hg19', min_depth=DEPTH_CUTOFF, depth_by_sample=None):
-    work_dir = safe_mkdir(join(DATA_DIR, 'projects', project_name))
+    fp_proj = Project(
+        name=project_name,
+        data_dir=data_dir,
+        genome=genome,
+        bed_fpath=bed_file,
+        min_depth=min_depth,
+        used_callable=use_callable,
+    )
+    work_dir = safe_mkdir(fp_proj.get_work_dir())
 
     with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
         log.info('Initializing run for single project')
@@ -41,14 +50,6 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
             db_samples = fp_proj.samples.all()
         else:
             log.info('Loading fingerprints into the DB')
-            fp_proj = Project(
-                name=project_name,
-                data_dir=data_dir,
-                genome=genome,
-                bed_fpath=bed_file,
-                min_depth=min_depth,
-                used_callable=use_callable,
-            )
             db.session.add(fp_proj)
             db_samples = []
             for sname, bam_file in bam_by_sample.items():
@@ -262,15 +263,27 @@ def dump_projects(output_file):
     for run in Run.query.all():  # Finding projects with ready-to-view runs
         for p in run.projects:
             projects.add(p)
-    for p in sorted(list(projects), key=lambda p: p.name):
-        if 'final' in p.data_dir:
-            cmdl = './manage.py load_bcbio_project ' + p.data_dir + ' --name=' + p.name
-        else:
-            cmdl = './manage.py load_data ' + p.data_dir + ' ' + p.name + ' --genome=' + p.genome
-        if 'used_callable' in p.__dict__ and p.used_callable:
-            cmdl += ' --used_callable'
-        with open(output_file, 'w') as f:
+    with open(output_file, 'w') as f:
+        for p in sorted(list(projects), key=lambda p: p.name):
+            if 'final' in p.data_dir:
+                cmdl = './manage.py load_bcbio_project ' + p.data_dir + ' --name=' + p.name
+            else:
+                cmdl = './manage.py load_data ' + p.data_dir + ' ' + p.name + ' --genome=' + p.genome
+            if 'used_callable' in p.__dict__ and p.used_callable:
+                cmdl += ' --used_callable'
             f.write(cmdl + '\n')
+
+
+@manager.command
+def remove_project(project_name):
+    p = Project.get(name=project_name)
+    if p:
+        if isdir(p.get_work_dir()):
+            shutil.rmtree(p.get_work_dir())
+        for r in p.runs:
+            r.delete()
+        p.runs.remove()
+        db.session.delete(p)
 
 
 if __name__ == '__main__':
