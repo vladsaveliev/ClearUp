@@ -285,6 +285,14 @@ class Project(db.Model):
     def __repr__(self):
         return '<Project {} {}>'.format(self.name, self.genome)
 
+    def delete(self):
+        if isdir(self.get_work_dir()):
+            shutil.rmtree(self.get_work_dir())
+        for r in self.runs:
+            r.delete()
+        self.runs.remove()
+        db.session.delete(self)
+
 
 class Sample(db.Model):
     id = db.Column(db.Integer, primary_key=True)

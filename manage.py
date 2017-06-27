@@ -25,6 +25,10 @@ log.init(True)
 
 def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
                  data_dir='', genome='hg19', min_depth=DEPTH_CUTOFF, depth_by_sample=None):
+    fp_proj = Project.query.filter(Project.name == project_name).first()
+    if fp_proj:
+        fp_proj.delete()
+
     fp_proj = Project(
         name=project_name,
         data_dir=data_dir,
@@ -33,29 +37,21 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
         min_depth=min_depth,
         used_callable=use_callable,
     )
-    work_dir = safe_mkdir(fp_proj.get_work_dir())
+    db.session.add(fp_proj)
+    db_samples = []
+    for sname, bam_file in bam_by_sample.items():
+        db_samples.append(Sample(sname, fp_proj, bam_file))
+    db.session.add_all(db_samples)
 
+    work_dir = safe_mkdir(fp_proj.get_work_dir())
     with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
-        log.info('Initializing run for single project')
         if use_callable:
             log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
-            bed_file = join(work_dir, 'callable_regions.bed')
+            fp_proj.bed_file = join(work_dir, 'callable_regions.bed')
 
             genome_fasta_file = get_ref_fasta(genome)
-            batch_callable_bed(bam_by_sample.values(), bed_file, work_dir, genome_fasta_file, min_depth,
+            batch_callable_bed(bam_by_sample.values(), fp_proj.bed_file, work_dir, genome_fasta_file, min_depth,
                                parall_view=p_view)
-
-        fp_proj = Project.query.filter(Project.name==project_name).first()
-        if fp_proj:
-            db_samples = fp_proj.samples.all()
-        else:
-            log.info('Loading fingerprints into the DB')
-            db.session.add(fp_proj)
-            db_samples = []
-            for sname, bam_file in bam_by_sample.items():
-                db_samples.append(Sample(sname, fp_proj, bam_file))
-            db.session.add_all(db_samples)
-            db.session.commit()
 
         # get_or_create_run([fp_proj], parall_view=p_view)
 
@@ -278,12 +274,7 @@ def dump_projects(output_file):
 def remove_project(project_name):
     p = Project.get(name=project_name)
     if p:
-        if isdir(p.get_work_dir()):
-            shutil.rmtree(p.get_work_dir())
-        for r in p.runs:
-            r.delete()
-        p.runs.remove()
-        db.session.delete(p)
+        p.delete()
 
 
 if __name__ == '__main__':
