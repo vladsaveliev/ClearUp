@@ -17,9 +17,9 @@ else:
 if is_us():
     HOST_IP = 'rask.usbod.astrazeneca.net'
     PORT = 5003
-    parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
-                               sys_cfg.get('resources'), sys_cfg.get('threads'))
-    # parallel_cfg = ParallelCfg(threads=20)
+    # parallel_cfg = ParallelCfg(sys_cfg.get('scheduler'), sys_cfg.get('queue'),
+    #                            sys_cfg.get('resources'), sys_cfg.get('threads'))
+    parallel_cfg = ParallelCfg(threads=20)
 else:
     HOST_IP = 'localhost'
     PORT = 5004

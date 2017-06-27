@@ -8,12 +8,12 @@ from subprocess import check_output
 
 import genomepy
 from Bio import SeqIO
-from build.lib.Utils.utils import is_az
 
 from ngs_utils import logger
 from ngs_utils import call_process
 from ngs_utils.file_utils import verify_file, safe_mkdir, file_transaction, which, can_reuse
 from ngs_utils.sambamba import index_bam, call_sambamba
+from ngs_utils.utils import is_az
 
 from clearup import DATA_DIR
 
@@ -27,7 +27,7 @@ def get_ref_fasta(genome):
         if isfile(path):
             logger.info('Found genome fasta at ' + path)
             return path
-    
+
     genome_dir = safe_mkdir(join(DATA_DIR, 'genomes'))
     if genome not in genomepy.list_installed_genomes(genome_dir):
         genome_rec = [rec for rec in genomepy.list_available_genomes() if rec[1] == genome]
