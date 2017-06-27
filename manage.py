@@ -281,9 +281,35 @@ def dump_projects(output_file):
 
 @manager.command
 def remove_project(project_name):
-    p = Project.get(name=project_name)
+    p = Project.query.filter(Project.name == project_name).first()
     if p:
         p.delete()
+        db.session.commit()
+
+
+@manager.command
+def remove_run(project_names_line_or_id):
+    try:
+        id = int(project_names_line_or_id)
+    except ValueError:
+        project_names = project_names_line_or_id.split('--')
+        projects = Project.query.filter(Project.name.in_(project_names))
+        if projects.count() < len(project_names):
+            raise RuntimeError('Some projects in ' + str(project_names) + ' are not found in the database: ' +
+                               str(set(project_names) - set(p.name for p in projects)))
+        run = Run.find_by_projects(projects)
+        if not run:
+            raise RuntimeError('Cannot find run ' + str(project_names_line_or_id) +
+                               ' - some projects are not found in the database: ' +
+                               str(set(project_names) - set(p.name for p in projects)))
+    else:
+        run = Run.query.filter(id == id).first()
+    if run:
+        log.info('Deleting run ' + str(run.id))
+        run.delete()
+        db.session.commit()
+    else:
+        log.info('Coould not find run')
 
 
 if __name__ == '__main__':
