@@ -3,11 +3,12 @@ import shutil
 import itertools
 from collections import defaultdict, OrderedDict
 import os
-from os.path import join, dirname, splitext, basename
+from os.path import join, dirname, splitext, basename, isfile
 from subprocess import check_output
 
 import genomepy
 from Bio import SeqIO
+from build.lib.Utils.utils import is_az
 
 from ngs_utils import logger
 from ngs_utils import call_process
@@ -21,6 +22,12 @@ FASTA_ID_PROJECT_SEPARATOR = '____PROJECT_'
 
 
 def get_ref_fasta(genome):
+    if is_az():
+        path = '/ngs/reference_data/genomes/Hsapiens/' + genome + '/seq/' + genome + '.fa'
+        if isfile(path):
+            logger.info('Found genome fasta at ' + path)
+            return path
+    
     genome_dir = safe_mkdir(join(DATA_DIR, 'genomes'))
     if genome not in genomepy.list_installed_genomes(genome_dir):
         genome_rec = [rec for rec in genomepy.list_available_genomes() if rec[1] == genome]

@@ -273,7 +273,7 @@ def dump_projects(output_file):
             if 'final' in p.data_dir:
                 cmdl = './manage.py load_bcbio_project ' + p.data_dir + ' --name=' + p.name
             else:
-                cmdl = './manage.py load_data ' + p.data_dir + ' ' + p.name + ' --genome=' + p.genome
+                cmdl = './manage.py load_data ' + p.data_dir + ' ' + p.name + ' ' + p.genome
             if 'used_callable' in p.__dict__ and p.used_callable:
                 cmdl += ' --used_callable'
             f.write(cmdl + '\n')
