@@ -44,29 +44,38 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
     db.session.add_all(db_samples)
 
     work_dir = safe_mkdir(fp_proj.get_work_dir())
-    with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
-        if use_callable:
-            log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
-            fp_proj.bed_file = join(work_dir, 'callable_regions.bed')
 
-            genome_fasta_file = get_ref_fasta(genome)
-            batch_callable_bed(bam_by_sample.values(), fp_proj.bed_file, work_dir, genome_fasta_file, min_depth,
-                               parall_view=p_view)
+    do_ngb = False
+    do_sex = False
+    do_create_run = False
+    if do_ngb or do_sex or do_create_run or use_callable:
+        with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
+            if use_callable:
+                log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
+                fp_proj.bed_file = join(work_dir, 'callable_regions.bed')
 
-        # get_or_create_run([fp_proj], parall_view=p_view)
+                genome_fasta_file = get_ref_fasta(genome)
+                batch_callable_bed(bam_by_sample.values(), fp_proj.bed_file, work_dir, genome_fasta_file, min_depth,
+                                   parall_view=p_view)
 
-        # _add_to_ngb(work_dir, project_name, bam_by_sample, genome, bed_file, p_view)
+            if do_create_run:
+                get_or_create_run([fp_proj], parall_view=p_view)
 
-        log.info('Genotyping sex')
-        sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
+            if do_ngb:
+                log.info('Exposing to NGB')
+                _add_to_ngb(work_dir, project_name, bam_by_sample, genome, bed_file, p_view)
 
-        # sexes = p_view.run(_sex_from_bam, [
-        #     [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome,
-        #      depth_by_sample.get(db_s.name) if depth_by_sample else None,
-        #      [snp.depth for snp in db_s.snps.all()]]
-        #     for db_s in db_samples])
-        # for s, sex in zip(db_samples, sexes):
-        #     s.sex = sex
+            if do_sex:
+                log.info('Genotyping sex')
+                sex_work_dir = safe_mkdir(join(work_dir, 'sex'))
+                sexes = p_view.run(_sex_from_bam, [
+                    [db_s.name, bam_by_sample[db_s.name], bed_file, sex_work_dir, genome,
+                     depth_by_sample.get(db_s.name) if depth_by_sample else None,
+                     [snp.depth for snp in db_s.snps.all()]]
+                    for db_s in db_samples])
+                for s, sex in zip(db_samples, sexes):
+                    s.sex = sex
+
     db.session.commit()
 
     log.info()
