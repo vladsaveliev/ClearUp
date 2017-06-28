@@ -77,9 +77,9 @@ def _get_snp_record(snps_dict, snp_a, snp_b, snp_index, ngb_link=None):
     return snp_record
 
 
-def render_closest_comparison_page(project_names_line, sample_id, selected_idx=None):
+def render_closest_comparison_page(project_names_line, sample_id, selected_idx=None, rerun_if_usercall=True):
     run = Run.find_by_project_names_line(project_names_line)
-    if not Run.is_ready(run):
+    if not Run.is_ready(run) or (run.rerun_on_usercall and rerun_if_usercall):
         return run_processing(project_names_line,
                               redirect_to=url_for('closest_comparison_page',
                 project_names_line=project_names_line,

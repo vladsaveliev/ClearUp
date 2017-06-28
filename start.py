@@ -61,7 +61,8 @@ def phylo_tree_page(project_names_line):
 
 @app.route('/<project_names_line>/tree/<int:sample_id>/')
 def closest_comparison_page(project_names_line, sample_id):
-    return render_closest_comparison_page(project_names_line, sample_id, request.args.get('snpIndex'))
+    return render_closest_comparison_page(project_names_line, sample_id,
+                                          request.args.get('snpIndex'), rerun_if_usercall=False)
 
 
 @app.route('/<project_names_line>/tree/<int:sample_id>/add_usercall/', methods=['POST'])
@@ -71,7 +72,9 @@ def add_user_call(project_names_line, sample_id):
     sample = Sample.query.get(edit_sample_id)
     if not sample:
         log.error('Sample with ID=' + str(edit_sample_id) + ' not found')
-        return redirect(url_for('closest_comparison_page', project_names_line=project_names_line, sample_id=sample_id))
+        return redirect(url_for('closest_comparison_page',
+                                project_names_line=project_names_line,
+                                sample_id=sample_id))
 
     # snp = sample.snps.join(Location).filter(Location.rsid==request.form['rsid']).first()
     snp = sample.snps.filter(SNP.rsid==request.form['rsid']).first()
@@ -98,9 +101,12 @@ def add_user_call(project_names_line, sample_id):
 
     log.send_email(msg, subj='ClearUp usercall', only_me=True)
 
-    return redirect(url_for('closest_comparison_page',
-                            project_names_line=project_names_line,
-                            sample_id=sample_id))
+    return render_closest_comparison_page(project_names_line, sample_id,
+           selected_idx=request.form['snpIndex'], rerun_if_usercall=False)
+    # return redirect(url_for('closest_comparison_page',
+    #                         project_names_line=project_names_line,
+    #                         sample_id=sample_id,
+    #                         rerun=False))
 
 
 @app.route('/<run_id>/bamfiles/<fname>/')

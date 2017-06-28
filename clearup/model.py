@@ -128,7 +128,6 @@ class Run(db.Model):
     @staticmethod
     def is_ready(run):
         return run and \
-               not run.rerun_on_usercall and \
                isfile(run.fasta_file_path()) and \
                isfile(run.tree_file_path())
 
