@@ -95,7 +95,7 @@ def run_processing(project_names_line, redirect_to):
 def render_phylo_tree_page(project_names_line):
     run = Run.find_by_project_names_line(project_names_line)
 
-    if not Run.is_ready(run) or run.rerun_if_usercall:
+    if not Run.is_ready(run) or run.rerun_on_usercall:
         return run_processing(project_names_line,
             redirect_to=url_for(
                 'phylo_tree_page',

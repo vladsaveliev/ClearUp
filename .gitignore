@@ -94,3 +94,6 @@ tests/test_project/
 */snps/playground
 
 .vscode/
+
+playground
+clearup/ultrafast/*/

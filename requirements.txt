@@ -11,3 +11,7 @@ pyvcf
 cyvcf2
 genomepy
 ngs_utils
+pandas
+seaborn
+matplotlib
+scipy

@@ -75,7 +75,7 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome=N
         all_bed_files.add(get_snps_by_type('exome'))
 
     overlapped_bed = join(work_dir, 'merged_bed_files.bed')
-    _overlap_bed_files(all_bed_files, overlapped_bed)
+    overlap_bed_files(all_bed_files, overlapped_bed)
 
     # Selecting SNPs from dbSNP
     dbsnp_file = get_dbsnp(genome)
@@ -156,7 +156,7 @@ def _make_snp_file(dbsnp_snps_file, genome_build, output_file,
     return output_file
 
 
-def _overlap_bed_files(bed_files, output_bed_file):
+def overlap_bed_files(bed_files, output_bed_file):
     if can_reuse(output_bed_file, bed_files):
         return output_bed_file
     if len(bed_files) == 1:

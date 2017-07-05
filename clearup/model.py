@@ -246,7 +246,7 @@ def get_or_create_run(projects, parall_view=None):
         db.session.commit()
         return run
 
-    if run and not run.is_ready():
+    if run and not Run.is_ready(run):
         log.debug('Tree files do not exist, recreating run for projects ' + ', '.join(p.name for p in projects))
         db.session.delete(run)
         db.session.commit()
