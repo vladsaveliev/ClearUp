@@ -40,7 +40,7 @@ def subset_dbsnp(genome):
 
     total_snps_written = 0
     current_chrom = None
-    output_path = join(dirname(__file__), 'dbsnp.maf10pct.' + genome + '.1.bed')
+    output_path = join(dirname(__file__), f'dbsnp.maf{int(MIN_MAF*100)}pct.{genome}.bed')
     info('Writing to ' + output_path)
     prev_pos = 0
     with file_transaction(None, output_path) as tx:
@@ -58,7 +58,9 @@ def subset_dbsnp(genome):
                 cafs = [float(a) if a != '.' else 0 for a in caf.split(',')[1:]]
                 alts = v.ALT
                 assert len(cafs) == len(alts)
-                caf_by_snp_alt = dict({a: c for a, c in zip(alts, cafs) if c > MIN_MAF and len(a) == 1})
+                caf_by_snp_alt = dict({a: c for a, c in zip(alts, cafs)
+                                       if MIN_MAF < c < 1.0 - MIN_MAF
+                                       and len(a) == 1})
                 if len(caf_by_snp_alt) == 0:
                     continue
                 gene = gene_val.split(':')[0]

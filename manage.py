@@ -5,6 +5,10 @@ import traceback
 from os.path import join, abspath, basename, splitext, isdir
 
 import sys
+
+from Bio.Phylo.TreeConstruction import DistanceCalculator
+from clearup.ultrafast.test_ultrafast_fp import plot_heatmap
+from collections import defaultdict
 from cyvcf2 import VCF
 from flask_script import Manager
 
@@ -12,6 +16,7 @@ from ngs_utils.file_utils import safe_mkdir, file_transaction, intermediate_fnam
 from ngs_utils.utils import is_local, is_us, is_uk
 from ngs_utils import logger as log, call_process
 from ngs_utils.parallel import ParallelCfg, parallel_view
+from ngs_utils.bcbio import BcbioProject
 
 from clearup.panel import get_dbsnp
 from clearup.callable import batch_callable_bed
@@ -134,31 +139,25 @@ def load_data(data_dir, name, genome):
 
 @manager.command
 def load_bcbio_project(bcbio_dir, name=None, use_callable=False):
-    try:
-        from ngs_reporting.bcbio.bcbio import BcbioProject
-    except ImportError:
-        log.critical('Error: cannot import ngs_reporting, needed to load a bcbio project. '
-                     'Please, install it with `conda install -v vladsaveliev ngs_reporting')
-    else:
-        log.info('-' * 70)
-        log.info('Loading project into the fingerprints database from ' + bcbio_dir)
-        log.info('-' * 70)
-        log.info()
+    log.info('-' * 70)
+    log.info('Loading project into the fingerprints database from ' + bcbio_dir)
+    log.info('-' * 70)
+    log.info()
 
-        bcbio_proj = BcbioProject()
-        bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
-            proc_name='clearup', need_coverage_interval=False, need_vardict=False)
+    bcbio_proj = BcbioProject()
+    bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
+        proc_name='clearup', need_coverage_interval=False, need_vardict=False)
 
-        _add_project(
-            bam_by_sample={s.name: s.bam for s in bcbio_proj.samples},
-            project_name=name or bcbio_proj.project_name,
-            bed_file=bcbio_proj.coverage_bed,
-            use_callable=use_callable,
-            data_dir=bcbio_proj.final_dir,
-            genome=bcbio_proj.genome_build,
-            min_depth=DEPTH_CUTOFF,
-            depth_by_sample={s.name: s.get_avg_depth() for s in bcbio_proj.samples},
-        )
+    _add_project(
+        bam_by_sample={s.name: s.bam for s in bcbio_proj.samples},
+        project_name=name or bcbio_proj.project_name,
+        bed_file=bcbio_proj.coverage_bed,
+        use_callable=use_callable,
+        data_dir=bcbio_proj.final_dir,
+        genome=bcbio_proj.genome_build,
+        min_depth=DEPTH_CUTOFF,
+        depth_by_sample={s.name: s.get_avg_depth() for s in bcbio_proj.samples},
+    )
 
 
 def _sex_from_x_snps(vcf_file):
@@ -222,7 +221,34 @@ def analyse_projects(project_names_line):
     if projects.count() < len(project_names):
         raise RuntimeError('Some projects in ' + str(project_names) + ' are not found in the database: ' +
                            str(set(project_names) - set(p.name for p in projects)))
-    get_or_create_run(projects)
+    run = get_or_create_run(projects)
+
+
+def compare_pairwise(run):
+    import itertools as it
+    all_samples = [s for p in run.projects for s in p.samples]
+    pairwise_dict = defaultdict(dict)
+    for s1, s2 in it.combinations_with_replacement(all_samples, 2):
+        snps_a_by_rsid = s1.snps_from_run(run)
+        snps_b_by_rsid = s2.snps_from_run(run)
+        matches = 0
+        total_locs = 0
+        for i, l in enumerate(run.locations):
+            snp_a = snps_a_by_rsid[l.rsid]
+            snp_b = snps_b_by_rsid[l.rsid]
+            seq_a, seq_b = snp_a.get_gt(), snp_b.get_gt()
+            if seq_a == 'NN' or seq_b == 'NN':
+                pass
+            elif seq_a == seq_b:
+                matches += 2
+            elif seq_a[0] == seq_b[0] or seq_a[1] == seq_b[1]:
+                matches += 1
+            total_locs += 2
+        dist = matches / total_locs
+        log.info(f'   {s1.name} VS {s2.name}: {dist:.2f}')
+        pairwise_dict[s1.name][s2.name] = dist
+        pairwise_dict[s2.name][s1.name] = dist
+    return pairwise_dict
 
 
 @manager.command

@@ -289,7 +289,6 @@ class Project(db.Model):
             shutil.rmtree(self.get_work_dir())
         for r in self.runs:
             r.delete()
-        self.runs.remove()
         db.session.delete(self)
 
 

@@ -7,8 +7,7 @@ import click
 from ngs_utils import logger as log
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file
 from ngs_utils.parallel import ParallelCfg, parallel_view
-
-from ngs_reporting.bcbio.bcbio import BcbioProject
+from ngs_utils.bcbio import BcbioProject
 
 from clearup import get_version
 from clearup.genotype import genotype, DEPTH_CUTOFF
@@ -44,15 +43,19 @@ def main(bcbio_dir, bed, depth, threads=None, isdebug=True):
     depth_cutoff = depth
 
     log.init(isdebug)
-    
-    import az
-    sys_cfg = az.init_sys_cfg()
-    parallel_cfg = ParallelCfg(
-        scheduler=sys_cfg.get('scheduler'),
-        queue=sys_cfg.get('queue'),
-        resources=sys_cfg.get('resources'),
-        threads=threads or sys_cfg.get('threads'),
-        tag='clearup')
+
+    try:
+        import az
+    except ImportError:
+        parallel_cfg = ParallelCfg(threads=threads)
+    else:
+        sys_cfg = az.init_sys_cfg()
+        parallel_cfg = ParallelCfg(
+            scheduler=sys_cfg.get('scheduler'),
+            queue=sys_cfg.get('queue'),
+            resources=sys_cfg.get('resources'),
+            threads=threads or sys_cfg.get('threads'),
+            tag='clearup')
 
     log.info('Loading bcbio project from ' + bcbio_dir)
     log.info('-' * 70)

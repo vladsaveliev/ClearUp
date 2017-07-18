@@ -13,7 +13,9 @@ from os.path import abspath, join, dirname, splitext, basename
 
 import six
 from Bio import SeqIO, Phylo
+from clearup.ultrafast.test_ultrafast_fp import plot_heatmap
 from flask import Flask, render_template, abort, request, url_for
+from manage import compare_pairwise
 
 from ngs_utils.bed_utils import Region
 from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse, verify_file
@@ -100,6 +102,10 @@ def render_phylo_tree_page(project_names_line):
             redirect_to=url_for(
                 'phylo_tree_page',
                 project_names_line=project_names_line))
+
+    log.info('Runing ultrafast')
+    pairwise_dict = compare_pairwise(run)
+    plot_heatmap(pairwise_dict, run.work_dir_path(), ' '.join(p.name for p in run.projects))
 
     log.debug('Prank results found, rendering a tree for run ' + str(run.id))
     fasta_file = verify_file(run.fasta_file_path())

@@ -9,6 +9,7 @@ from pybedtools import BedTool
 
 from ngs_utils import logger as log
 from ngs_utils import call_process
+from ngs_utils.bcbio import BcbioProject
 from ngs_utils.file_utils import safe_mkdir, can_reuse, verify_file, file_transaction, verify_dir, add_suffix, splitext_plus
 from ngs_utils.reference_data import get_chrom_order
 
@@ -43,16 +44,10 @@ def main(paths, output_dir, genome, depth):
     bcbio_projs = []
     dirs = [verify_dir(f, is_critical=True) for f in paths if isdir(f)]
     if dirs:
-        try:
-            from ngs_reporting.bcbio.bcbio import BcbioProject
-        except ImportError:
-            log.err('Error: cannot import ngs_reporting, needed to load bcbio projects from ' + str(dirs) +
-                    'Please, install it with `conda install -v vladsaveliev ngs_reporting.')
-        else:
-            for d in dirs:
-                proj = BcbioProject()
-                proj.load_from_bcbio_dir(d, proc_name='clearup', need_coverage_interval=False)
-                bcbio_projs.append(proj)
+        for d in dirs:
+            proj = BcbioProject()
+            proj.load_from_bcbio_dir(d, proc_name='clearup', need_coverage_interval=False)
+            bcbio_projs.append(proj)
 
     build_snps_panel(bcbio_projs, bed_files, safe_mkdir(output_dir), genome)
 
@@ -165,6 +160,15 @@ def overlap_bed_files(bed_files, output_bed_file):
     cmdl = 'bedops --intersect' + ''.join([' <(sort-bed ' + bf + ')' for bf in bed_files])
     call_process.run(cmdl, output_bed_file)
     return output_bed_file
+
+
+def lift_over(fpath, from_genome, to_genome):
+    chain_file = join(dirname(__file__), 'over.chain', f'{from_genome}To{to_genome.title()}.over.chain.gz')
+    if not verify_file(chain_file):
+        log.critical(f'Error: conversion from {from_genome} to {to_genome} is not supported!')
+    out_fpath = add_suffix(fpath, to_genome)
+    call_process.run(f'liftOver {fpath} {chain_file} {out_fpath} {out_fpath}.unMapped')
+    return out_fpath
 
 
 # def _filter_snps(snp_vcf):
