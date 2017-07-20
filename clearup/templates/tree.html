@@ -16,17 +16,17 @@
         </p>
 
         <p style="margin-left: -16px;">Samples from the following projects are used:</p>
-        {% for (genome, ps) in proj_by_genome_build %}
+{#        {% for (genome, ps) in proj_by_genome_build %}#}
             <ul style="margin-left: -23px;">
-            <span style="margin-left: -16px;">{{ genome }}</span>
-            {% for project in ps %}
+{#            <span style="margin-left: -16px;">{{ genome }}</span>#}
+            {% for project in projects %}
                 <li style="color: {{ project.color }}" class="{{ project.name }}--label">
                     <span class="project-label">{{ project.name }}</span>
                 </li>
             {% endfor %}
             </ul>
             <br>
-        {% endfor %}
+{#        {% endfor %}#}
 
         <div id="tree_newick_json" style="display: none;">{{ tree_newick|safe }}</div>
         <svg id="tree_svg"></svg>
