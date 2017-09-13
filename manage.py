@@ -145,8 +145,7 @@ def load_bcbio_project(bcbio_dir, name=None, use_callable=False):
     log.info()
 
     bcbio_proj = BcbioProject()
-    bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name,
-        proc_name='clearup', need_coverage_interval=False, need_vardict=False)
+    bcbio_proj.load_from_bcbio_dir(bcbio_dir, project_name=name, proc_name='clearup')
 
     _add_project(
         bam_by_sample={s.name: s.bam for s in bcbio_proj.samples},

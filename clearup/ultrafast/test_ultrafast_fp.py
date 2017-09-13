@@ -239,7 +239,7 @@ def _load_datasets(subdirs):
         else:
             # Bcbio directory?
             bcbio_proj = BcbioProject()
-            bcbio_proj.load_from_bcbio_dir(subdir, proc_name='clearup', need_coverage_interval=False)
+            bcbio_proj.load_from_bcbio_dir(subdir, proc_name='clearup')
             dataset.name = bcbio_proj.project_name
             dataset.genome = bcbio_proj.genome_build
             for s in bcbio_proj.samples:
@@ -431,6 +431,8 @@ def plot_heatmap(pairwise, run_dir, title):
             url = convert_gpfs_path_to_url(png_file)
             if url:
                 log.info('    url: ' + url)
+                return url
+        return png_file
 
 
 def _hash(s, l=10):
