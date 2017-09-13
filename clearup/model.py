@@ -176,6 +176,7 @@ class Run(db.Model):
             for r in recs:
                 recs_by_rsid[r.ID].append(r)
             for loc in locations:
+                assert loc
                 snp = s.snps.filter(SNP.rsid==loc.rsid).first()
                 if not snp:
                     snp = SNP(loc)

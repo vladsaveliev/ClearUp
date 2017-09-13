@@ -46,7 +46,7 @@ def main(paths, output_dir, genome, depth):
     if dirs:
         for d in dirs:
             proj = BcbioProject()
-            proj.load_from_bcbio_dir(d, proc_name='clearup', need_coverage_interval=False)
+            proj.load_from_bcbio_dir(d, proc_name='clearup')
             bcbio_projs.append(proj)
 
     build_snps_panel(bcbio_projs, bed_files, safe_mkdir(output_dir), genome)
