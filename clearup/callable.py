@@ -33,11 +33,11 @@ def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_fasta_file, 
     """
     if can_reuse(output_bed_file, bam_files):
         return output_bed_file
-    
+
     work_dir = safe_mkdir(join(work_dir, 'callable_work'))
     # random.seed(1234)  # seeding random for reproducability
     # bam_files = random.sample(bam_files, min(len(bam_files), 3))
-    
+
     if parall_view:
         callable_beds = parall_view.run(_calculate, [
             [bf, work_dir, genome_fasta_file, min_depth]
@@ -47,19 +47,20 @@ def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_fasta_file, 
             callable_beds = parall_view.run(_calculate, [
                 [bf, work_dir, genome_fasta_file, min_depth]
                 for bf in bam_files])
-    
+
     good_overlap_sample_fraction = 0.8  # we want to pick those regions that have coverage at 80% of samples
     good_overlap_count = min(1, good_overlap_sample_fraction * len(callable_beds))
-    info('Intersecting callable regions and picking good overlaps with >=' + str(good_overlap_count) +
-         ' samples (' + str(100*0.8) + '%)')
+    info(f'Intersecting callable regions and picking good overlaps with >={good_overlap_count} ' +
+         f'samples ({100 * good_overlap_sample_fraction}% of {len(callable_beds)})')
     with file_transaction(work_dir, output_bed_file) as tx:
         pybedtools.set_tempdir(safe_mkdir(join(work_dir, 'pybedtools_tmp')))
-        intersection = pybedtools.BedTool()\
-            .multi_intersect(i=callable_beds)\
+        intersection = pybedtools.BedTool() \
+            .multi_intersect(i=callable_beds) \
             .filter(lambda r: len(r[4].split(',')) >= good_overlap_count)
         intersection.saveas(tx)
+    info(f'Saved to {output_bed_file}')
     return output_bed_file
-    
+
 
 def _calculate(bam_file, work_dir, genome_fasta_file, min_depth):
     """Calculate coverage in parallel using samtools depth through goleft.
@@ -67,18 +68,15 @@ def _calculate(bam_file, work_dir, genome_fasta_file, min_depth):
     samtools depth removes duplicates and secondary reads from the counts:
     if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
     """
-    params = {'window_size': 5000, 'parallel_window_size': 1e5, 'high_multiplier': 20}
     output_prefix = os.path.join(work_dir, bam_samplename(bam_file))
-    depth_file = output_prefix + '.depth.bed'
     callability_annotation_file = output_prefix + '.callable.bed'
     callable_file = output_prefix + '.callable.CALLABLE.bed'
     if can_reuse(callable_file, bam_file):
         return callable_file
-        
-    cmdl = 'goleft depth --q 1 --mincov {min_depth} --reference {genome_fasta_file} --ordered' \
-           ' --prefix {output_prefix} {bam_file}'
-    info('Calculating coverage at ' + bam_file)
-    run(cmdl.format(**locals()))
+
+    info(f'Calculating coverage at {bam_file}')
+    run(f'goleft depth --q 1 --mincov {min_depth} --reference {genome_fasta_file} --ordered'
+        f' --prefix {output_prefix} {bam_file}')
 
     with file_transaction(None, callable_file) as tx:
         pybedtools.BedTool(callability_annotation_file)\

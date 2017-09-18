@@ -29,10 +29,11 @@ log.init(True)
 
 
 def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
-                 data_dir='', genome='hg19', min_depth=DEPTH_CUTOFF, depth_by_sample=None):
+                 data_dir='', genome='hg19', min_depth=DEPTH_CUTOFF, depth_by_sample=None,
+                 reuse_files=False):
     fp_proj = Project.query.filter(Project.name == project_name).first()
     if fp_proj:
-        fp_proj.delete()
+        fp_proj.delete(reuse_files=reuse_files)
 
     fp_proj = Project(
         name=project_name,
@@ -108,7 +109,7 @@ def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p
 
 
 @manager.command
-def load_data(data_dir, name, genome):
+def load_data(data_dir, name, genome, reuse_files=False):
     data_dir = verify_dir(data_dir, is_critical=True)
     bam_files = glob.glob(join(data_dir, '*.bam'))
     assert bam_files, 'No BAM files in ' + data_dir
@@ -134,7 +135,8 @@ def load_data(data_dir, name, genome):
         use_callable=not bed_file,
         data_dir=data_dir,
         genome=genome,
-        min_depth=DEPTH_CUTOFF)
+        min_depth=DEPTH_CUTOFF,
+        reuse_files=reuse_files)
 
 
 @manager.command

@@ -285,8 +285,8 @@ class Project(db.Model):
     def __repr__(self):
         return '<Project {} {}>'.format(self.name, self.genome)
 
-    def delete(self):
-        if isdir(self.get_work_dir()):
+    def delete(self, reuse_files=True):
+        if isdir(self.get_work_dir()) and not reuse_files:
             shutil.rmtree(self.get_work_dir())
         for r in self.runs:
             r.delete()
