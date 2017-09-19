@@ -49,8 +49,8 @@ def batch_callable_bed(bam_files, output_bed_file, work_dir, genome_fasta_file, 
                 for bf in bam_files])
 
     good_overlap_sample_fraction = 0.8  # we want to pick those regions that have coverage at 80% of samples
-    good_overlap_count = min(1, good_overlap_sample_fraction * len(callable_beds))
-    info(f'Intersecting callable regions and picking good overlaps with >={good_overlap_count} ' +
+    good_overlap_count = max(1, good_overlap_sample_fraction * len(callable_beds))
+    info(f'Intersecting callable regions and picking good overlaps with >={good_overlap_count} '
          f'samples ({100 * good_overlap_sample_fraction}% of {len(callable_beds)})')
     with file_transaction(work_dir, output_bed_file) as tx:
         pybedtools.set_tempdir(safe_mkdir(join(work_dir, 'pybedtools_tmp')))
@@ -70,18 +70,17 @@ def _calculate(bam_file, work_dir, genome_fasta_file, min_depth):
     """
     output_prefix = os.path.join(work_dir, bam_samplename(bam_file))
     callability_annotation_file = output_prefix + '.callable.bed'
+    if not can_reuse(callability_annotation_file, bam_file):
+        info(f'Calculating coverage at {bam_file}')
+        run(f'goleft depth --q 1 --mincov {min_depth} --reference {genome_fasta_file} --ordered'
+            f' --prefix {output_prefix} {bam_file}')
+
     callable_file = output_prefix + '.callable.CALLABLE.bed'
-    if can_reuse(callable_file, bam_file):
-        return callable_file
-
-    info(f'Calculating coverage at {bam_file}')
-    run(f'goleft depth --q 1 --mincov {min_depth} --reference {genome_fasta_file} --ordered'
-        f' --prefix {output_prefix} {bam_file}')
-
-    with file_transaction(None, callable_file) as tx:
-        pybedtools.BedTool(callability_annotation_file)\
-            .filter(lambda x: x.name == 'CALLABLE')\
-            .saveas(tx)
+    if not can_reuse(callable_file, callability_annotation_file):
+        with file_transaction(None, callable_file) as tx:
+            pybedtools.BedTool(callability_annotation_file)\
+                .filter(lambda x: x.name == 'CALLABLE')\
+                .saveas(tx)
 
     return callable_file
 

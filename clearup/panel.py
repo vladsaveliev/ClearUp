@@ -59,24 +59,26 @@ def build_snps_panel(bcbio_projs=None, bed_files=None, output_dir=None, genome=N
 
     work_dir = safe_mkdir(join(output_dir, 'work'))
 
+    log.info('Intersecting BED files for projects.')
     all_bed_files = set()
     for proj in bcbio_projs or []:
         if proj.coverage_bed:
             log.info(proj.project_name + ': selecting ' + proj.coverage_bed)
             all_bed_files.add(proj.coverage_bed)
+        else:
+            all_bed_files.add(proj.call)
     all_bed_files |= set(bed_files or [])
 
-    if not all_bed_files:  # Empty list? Using exome
-        all_bed_files.add(get_snps_by_type('exome'))
 
     overlapped_bed = join(work_dir, 'merged_bed_files.bed')
+    log.info(f'BED files: {all_bed_files}, mergin, writing {overlapped_bed}')
     overlap_bed_files(all_bed_files, overlapped_bed)
 
     # Selecting SNPs from dbSNP
     dbsnp_file = get_dbsnp(genome)
     dbsnp_snps_file = join(work_dir, 'snps_in_merged_bed_files.bed')
     if not can_reuse(dbsnp_snps_file, [dbsnp_file, overlapped_bed]):
-        cmdl = 'bedtools intersect -header -a ' + dbsnp_file + ' -b ' + overlapped_bed
+        cmdl = f'bedtools intersect -header -a {dbsnp_file} -b {overlapped_bed}'
         call_process.run(cmdl, dbsnp_snps_file)
 
     subset_bed_file = add_suffix(dbsnp_snps_file, 'subset')

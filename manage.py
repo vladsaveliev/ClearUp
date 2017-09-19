@@ -57,12 +57,12 @@ def _add_project(bam_by_sample, project_name, bed_file=None, use_callable=False,
     if do_ngb or do_sex or do_create_run or use_callable:
         with parallel_view(len(bam_by_sample), parallel_cfg, work_dir) as p_view:
             if use_callable:
-                log.info('No BED file specified for project ' + project_name + ', calculating callable regions.')
-                fp_proj.bed_file = join(work_dir, 'callable_regions.bed')
-
+                log.info(f'Calculating callable regions for {project_name}.')
                 genome_fasta_file = get_ref_fasta(genome)
-                batch_callable_bed(bam_by_sample.values(), fp_proj.bed_file, work_dir, genome_fasta_file, min_depth,
-                                   parall_view=p_view)
+                fp_proj.bed_fpath = batch_callable_bed(
+                    bam_by_sample.values(), join(work_dir, 'callable_regions.bed'), work_dir,
+                    genome_fasta_file, min_depth, parall_view=p_view)
+                log.debug(f'Set bed file {fp_proj.bed_fpath}')
 
             if do_create_run:
                 get_or_create_run([fp_proj], parall_view=p_view)
@@ -108,8 +108,12 @@ def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p
             log.info('*' * 70)
 
 
-@manager.command
-def load_data(data_dir, name, genome, reuse_files=False):
+@manager.option('--data_dir')
+@manager.option('--name')
+@manager.option('--genome')
+@manager.option('--reuse', help='Reuse intermediate files', default=False)
+def load_data(data_dir, name, genome, reuse):
+    print(f"reuse: {reuse}")
     data_dir = verify_dir(data_dir, is_critical=True)
     bam_files = glob.glob(join(data_dir, '*.bam'))
     assert bam_files, 'No BAM files in ' + data_dir
@@ -136,7 +140,7 @@ def load_data(data_dir, name, genome, reuse_files=False):
         data_dir=data_dir,
         genome=genome,
         min_depth=DEPTH_CUTOFF,
-        reuse_files=reuse_files)
+        reuse_files=reuse)
 
 
 @manager.command
