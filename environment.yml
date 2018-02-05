@@ -1,0 +1,41 @@
+name: clearup
+
+channels:
+- bioconda
+- conda-forge
+- defaults
+- vladsaveliev
+- anaconda
+
+dependencies:
+- python>=3.6
+- click
+- nose
+- six
+#
+# Bio
+- sambamba
+- bedtools >=2.25
+- bedops
+- prank
+- ngs_utils
+- biopython
+- pybedtools
+- cyvcf2
+- genomepy
+#
+# Science
+- numpy
+- pandas
+- seaborn
+- matplotlib
+- scipy
+#
+# Web
+- sqlalchemy
+- gevent
+- gevent-websocket
+- flask
+- flask-script
+- flask-sqlalchemy
+- flask-socketio
