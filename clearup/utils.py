@@ -1,6 +1,5 @@
 import glob
 import shutil
-import itertools
 from collections import defaultdict, OrderedDict
 import os
 from os.path import join, dirname, splitext, basename, isfile
@@ -38,7 +37,7 @@ def get_ref_fasta(genome):
         logger.info('Downloading genome ' + genome + ' from ' + genome_rec[1] +
                     ' and installing into ' + genome_dir)
         genomepy.install_genome(genome, 'UCSC', genome_dir=genome_dir)
-    genome_fasta_file = genomepy.genome(genome, genome_dir=genome_dir).filename
+    genome_fasta_file = genomepy.Genome(genome, genome_dir=genome_dir).filename
     return genome_fasta_file
 
 
