@@ -103,9 +103,9 @@ def render_phylo_tree_page(project_names_line):
                 'phylo_tree_page',
                 project_names_line=project_names_line))
 
-    log.info('Runing ultrafast')
-    pairwise_dict = compare_pairwise(run)
-    plot_heatmap(pairwise_dict, run.work_dir_path(), ' '.join(p.name for p in run.projects))
+    # log.info('Runing ultrafast')
+    # pairwise_dict = compare_pairwise(run)
+    # plot_heatmap(pairwise_dict, run.work_dir_path(), ' '.join(p.name for p in run.projects))
 
     log.debug('Prank results found, rendering a tree for run ' + str(run.id))
     fasta_file = verify_file(run.fasta_file_path())
