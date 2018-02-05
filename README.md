@@ -5,9 +5,9 @@ The input can be sets of BAM files and bcbio-nextgen output folders.
 The tools supports comparison against different targets: WGS, exome, small panel. The only requirement 
 is that they should overlap so at least 20-30 SNPs are shared between all input samples.
 
-![sample_view](docs/sample_view.png)
-
 ![tree_view](docs/tree_view.png)
+
+![sample_view](docs/sample_view.png)
 
 ## Installation
 
