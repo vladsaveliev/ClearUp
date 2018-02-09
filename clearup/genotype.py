@@ -135,20 +135,14 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_fasta_file, thre
     if can_reuse(vardict_snp_vars, [sample.bam, snp_file]) and can_reuse(vcf_file, vardict_snp_vars):
         return vcf_file
 
-    if is_local():
-        vardict_dir = '/Users/vlad/vagrant/VarDict/'
-    elif is_us():
-        vardict_dir = '/group/cancer_informatics/tools_resources/NGS/bin/'
-    else:
-        vardict_pl = which('vardict.pl')
-        if not vardict_pl:
-            critical('Error: vardict.pl is not in PATH')
-        vardict_dir = dirname(vardict_pl)
+    vardict_exec = which('vardict')
+    if not vardict_exec:
+        critical('Error: vardict is not in PATH. Please install it with `conda install -c bioconda vardict`')
+    vardict_bin_dir = dirname(vardict_exec)
 
     # Run VarDict
     index_bam(sample.bam)
-    vardict = join(vardict_dir, 'vardict.pl')
-    cmdl = '{vardict} -G {genome_fasta_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'.format(**locals())
+    cmdl = '{vardict_exec} -G {genome_fasta_file} -N {sample.name} -b {sample.bam} -p -D {snp_file}'.format(**locals())
     call_process.run(cmdl, output_fpath=vardict_snp_vars)
 
     # Complex variants might have a shifted start positions with respect to rsid so we are
@@ -165,8 +159,8 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_fasta_file, thre
     work_vcf_file = join(work_dir, sample.name + '_vars.vcf')
     cmdl = ('cut -f-34 ' + vardict_snp_vars +
             ' | awk -F"\\t" -v OFS="\\t" \'{for (i=1;i<=NF;i++) { if ($i=="") $i="0" } print $0 }\''
-            ' | ' + join(vardict_dir, 'teststrandbias.R') +
-            ' | ' + join(vardict_dir, 'var2vcf_valid.pl') + ' -A -f 0.2' +
+            ' | ' + join('teststrandbias.R') +
+            ' | ' + join('var2vcf_valid.pl') + ' -A -f 0.2' +
             '')
     call_process.run(cmdl, output_fpath=work_vcf_file)
 
@@ -181,7 +175,7 @@ def _vardict_pileup_sample(sample, work_dir, output_dir, genome_fasta_file, thre
                 fs = l.split('\t')
                 chrom, pos, _, ref, alt = fs[0], int(fs[1]), fs[2], fs[3], fs[4]
                 if alt in ['.', '']:
-                    fs[4] = fs[3] = _get_fasta_ref(ref_file, chrom, pos)  # Reading the reference allele from fasta
+                    fs[4] = fs[3] = _get_fasta_ref(genome_fasta_file, chrom, pos)  # Reading the reference allele from fasta
                 l = '\t'.join(fs)
                 l = l.replace('=NA;', '=.;')
                 l = l.replace('=;', '=.;')

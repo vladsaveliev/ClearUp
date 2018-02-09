@@ -184,7 +184,7 @@ def add_user_call(run_id, prev_sample_id, edit_sample_id, snp_index):
     return redirect('/' + run_id + '/' + prev_sample_id)
 
 
-@app.route('/<run_id>/bamfiles/<bam_fname>')
+@app.route('/<run_id>/bams/<bam_fname>')
 def bam_files_page(run_id, bam_fname):
     return send_bam_files(run_id, bam_fname)
 

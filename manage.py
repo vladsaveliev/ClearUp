@@ -112,7 +112,7 @@ def _add_to_ngb(work_dir, project_name, bam_by_sample, genome_build, bed_file, p
 @manager.option('--name')
 @manager.option('--genome')
 @manager.option('--reuse', help='Reuse intermediate files', default=False)
-def load_data(data_dir, name, genome, reuse):
+def load_data(data_dir, name, genome, reuse=False):
     print(f"reuse: {reuse}")
     data_dir = verify_dir(data_dir, is_critical=True)
     bam_files = glob.glob(join(data_dir, '*.bam'))
@@ -271,10 +271,10 @@ def reload_all_data():
     safe_mkdir(DATA_DIR)
     init_db()
     if is_local():
-        load_data(abspath('tests/test_project'), 'SA-1826796__SA-30853', genome='hg38')
+        #load_data(abspath('tests/test_project'), 'SA-1826796__SA-30853', genome='hg38')
         load_bcbio_project(abspath('tests/Dev_0261_newstyle'), 'Dev_0261_newstyle')
         load_bcbio_project(abspath('tests/Dev_0261_newstyle_smallercopy'), 'Dev_0261_newstyle_smallercopy')
-        load_bcbio_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')
+        #load_bcbio_project(abspath('/Users/vlad/vagrant/NGS_Reporting/tests/results/bcbio_postproc/dream_chr21/final'), 'dream_chr21')
     elif is_us():
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Resolution/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Resolution', use_callable=True)
         load_bcbio_project(abspath('/ngs/oncology/analysis/external/EXT_070_Plasma_Seq_Pilot/Foundation/bcbio/final'), 'EXT_070_Plasma_Seq_Pilot_Foundation')

@@ -109,7 +109,7 @@ def add_user_call(project_names_line, sample_id):
     #                         rerun=False))
 
 
-@app.route('/<run_id>/bamfiles/<fname>/')
+@app.route('/<run_id>/bams/<fname>/')
 def bam_files_page(run_id, fname):
     fpath = join(DATA_DIR, str(run_id), 'bams', fname)
     bam_fpath = fpath

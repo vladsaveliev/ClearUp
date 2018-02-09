@@ -25,8 +25,7 @@ from ngs_utils import logger as log
 from clearup.genotype import build_tree
 from clearup.model import Project, db, Sample, Run, get_or_create_run
 from clearup.utils import read_fasta, FASTA_ID_PROJECT_SEPARATOR
-from clearup import app
-
+from clearup import app, DATA_DIR
 
 PROJ_COLORS = [
     '#000000',
@@ -45,30 +44,34 @@ PROJ_COLORS = [
 
 
 def run_analysis_socket_handler(project_names_line):
-    log.debug('Recieved request to start analysis for ' + project_names_line)
     ws = request.environ.get('wsgi.websocket', None)
     if not ws:
         raise RuntimeError('Environment lacks WSGI WebSocket support')
 
-    def _run_cmd(cmdl):
-        log.debug(cmdl)
-        proc = subprocess.Popen(cmdl.split(), stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=os.environ)
-        for stdout_line in iter(proc.stdout.readline, None):
-            if not stdout_line:
-                break
-            if not six.PY2:
-                stdout_line = stdout_line.decode()
-            if '#(' not in stdout_line.strip():
-                _send_line(ws, stdout_line)
-        log.debug('Exit from the subprocess')
+    run_log = join(DATA_DIR, str(project_names_line) + '.run_analysis.log')
+    if isfile(run_log):
+        _send_line(ws, f'Run for projects {project_names_line} already started. '
+                       f'Please, wait until it funished. To restart, please remove {run_log} '
+                       f'and reload the page.')
+    else:
+        log.debug(f'Recieved request to start analysis for {project_names_line}')
 
     manage_py = abspath(join(dirname(__file__), '..', 'manage.py'))
-    _run_cmd(sys.executable + ' ' + manage_py + ' analyse_projects ' + project_names_line)
-    run = Run.find_by_project_names_line(project_names_line)
-    if not run:
-        _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' cannot be found. Has genotyping been failed?', error=True)
+    cmdl = f'{sys.executable} {manage_py} analyse_projects {project_names_line}'
+    log.debug(cmdl)
+    _send_line(ws, f'\nStarting analysis:\n')
+    _send_line(ws, f'{cmdl}\n')
+    _send_line(ws, f'\nFollow the log at:\n')
+    _send_line(ws, f'{run_log}\n')
+    _send_line(ws, f'\nAnd reload the page when it\'s finished.')
+    subprocess.Popen(cmdl.split(), stderr=subprocess.STDOUT, stdout=open(run_log, 'w'), env=os.environ,
+                     close_fds=True)
 
-    ws.send(json.dumps({'finished': True}))
+    # run = Run.find_by_project_names_line(project_names_line)
+    # if not run:
+    #     _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' cannot be found. Has genotyping been failed?', error=True)
+    #
+    # ws.send(json.dumps({'finished': True}))
     return ''
 
 

@@ -23,6 +23,7 @@ dependencies:
 - pybedtools
 - cyvcf2
 - genomepy
+- vardict
 #
 # Science
 - numpy

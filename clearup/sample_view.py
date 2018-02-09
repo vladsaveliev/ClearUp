@@ -119,8 +119,8 @@ def render_closest_comparison_page(project_names_line, sample_id, selected_idx=N
         snp_tables.append(snp_records)
 
     snps_dict['total_score'] = sum((rec['score']) for recs in snp_tables for rec in recs)
-    bam_fpath_a = '/%s/bamfiles/%s' % (run.id, sample.long_name() + '.bam')
-    bam_fpath_b = '/%s/bamfiles/%s' % (run.id, matching_sample.long_name() + '.bam')
+    bam_fpath_a = '/%s/bams/%s' % (run.id, sample.long_name() + '.bam')
+    bam_fpath_b = '/%s/bams/%s' % (run.id, matching_sample.long_name() + '.bam')
     snps_bed = '/%s/snps_bed' % project_names_line
     sample_a = {
         'id': sample.id,
