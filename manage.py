@@ -6,6 +6,7 @@ from os.path import join, abspath, basename, splitext, isdir
 
 import sys
 
+import os
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 from clearup.ultrafast.test_ultrafast_fp import plot_heatmap
 from collections import defaultdict
@@ -221,6 +222,8 @@ def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, avg_depth=N
 
 @manager.command
 def analyse_projects(project_names_line):
+    print('PATH=' + os.environ['PATH'])
+
     project_names = project_names_line.split('--')
     projects = Project.query.filter(Project.name.in_(project_names))
     if projects.count() < len(project_names):

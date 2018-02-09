@@ -18,7 +18,7 @@ from flask import Flask, render_template, abort, request, url_for
 from manage import compare_pairwise
 
 from ngs_utils.bed_utils import Region
-from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse, verify_file
+from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse, verify_file, which
 from ngs_utils.file_utils import can_reuse, safe_mkdir
 from ngs_utils import logger as log
 
@@ -44,36 +44,31 @@ PROJ_COLORS = [
 
 
 def run_analysis_socket_handler(project_names_line):
+    log.debug('Recieved request to start analysis for ' + project_names_line)
     ws = request.environ.get('wsgi.websocket', None)
     if not ws:
         raise RuntimeError('Environment lacks WSGI WebSocket support')
 
-    run_log = join(DATA_DIR, str(project_names_line) + '.run_analysis.log')
-    if isfile(run_log):
-        _send_line(ws, f'Run for projects {project_names_line} already started. '
-                       f'Please, wait until it funished. To restart, please remove {run_log} '
-                       f'and reload the page.')
-    else:
-        log.debug(f'Recieved request to start analysis for {project_names_line}')
+    def _run_cmd(cmdl):
+        log.debug(cmdl)
+        proc = subprocess.Popen(cmdl.split(), stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=os.environ)
+        for stdout_line in iter(proc.stdout.readline, None):
+            if not stdout_line:
+                break
+            if not six.PY2:
+                stdout_line = stdout_line.decode()
+            if '#(' not in stdout_line.strip():
+                _send_line(ws, stdout_line)
+        log.debug('Exit from the subprocess')
 
     manage_py = abspath(join(dirname(__file__), '..', 'manage.py'))
-    cmdl = f'{sys.executable} {manage_py} analyse_projects {project_names_line}'
-    log.debug(cmdl)
-    _send_line(ws, f'\nStarting analysis:\n')
-    _send_line(ws, f'{cmdl}\n')
-    _send_line(ws, f'\nFollow the log at:\n')
-    _send_line(ws, f'{run_log}\n')
-    _send_line(ws, f'\nAnd reload the page when it\'s finished.')
-    subprocess.Popen(cmdl.split(), stderr=subprocess.STDOUT, stdout=open(run_log, 'w'), env=os.environ,
-                     close_fds=True)
+    _run_cmd(sys.executable + ' ' + manage_py + ' analyse_projects ' + project_names_line)
+    run = Run.find_by_project_names_line(project_names_line)
+    if not run:
+        _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' cannot be found. Has genotyping been failed?', error=True)
 
-    # run = Run.find_by_project_names_line(project_names_line)
-    # if not run:
-    #     _send_line(ws, 'Run ' + str(run.id) + ' for projects ' + project_names_line + ' cannot be found. Has genotyping been failed?', error=True)
-    #
-    # ws.send(json.dumps({'finished': True}))
+    ws.send(json.dumps({'finished': True}))
     return ''
-
 
 def _send_line(ws, line, error=False):
     if error:
@@ -87,6 +82,41 @@ def _send_line(ws, line, error=False):
 
 
 def run_processing(project_names_line, redirect_to):
+    pnames = project_names_line.split('--')
+
+    log.debug(f'Recieved request to start analysis for {project_names_line}')
+    run_log = join(DATA_DIR, str(project_names_line) + '.run_analysis.log')
+    if isfile(run_log):
+        msg = f'''<p>Run for projects {project_names_line} already started. Please, wait until it finished. 
+                  <br>
+                  <p>Follow the log at:</p>
+                  <pre>{run_log}</pre>
+                  <p>And reload the page when it\'s finished.</p>'''
+    else:
+        manage_py = abspath(join(dirname(__file__), '..', 'manage.py'))
+        vardict = which('vardict')
+        assert vardict, 'vardict is not in PATH. Are you running from "clearup" environment?'
+        cmdl = f'{sys.executable} {manage_py} analyse_projects {project_names_line}'
+        log.debug(cmdl)
+        subprocess.Popen(cmdl, stderr=subprocess.STDOUT, stdout=open(run_log, 'w'),
+                         env=os.environ, close_fds=True, shell=True)
+
+        msg = f'''<p>Starting analysis with a command line:</p>
+                  <pre>{cmdl}</pre>
+                  <p>Follow the log at:</p>
+                  <pre>{run_log}</pre>
+                  <p>And reload the page when it\'s finished.</p>'''
+
+    return render_template(
+        'submitted.html',
+        projects=pnames,
+        title='Comparing projects ' + ', '.join(pnames),
+        project_names_line=project_names_line,
+        redirect_to=redirect_to,
+        message=msg
+    )
+
+def run_processing_print_line(project_names_line, redirect_to):
     pnames = project_names_line.split('--')
     return render_template(
         'processing.html',
