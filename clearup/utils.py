@@ -2,7 +2,7 @@ import glob
 import shutil
 from collections import defaultdict, OrderedDict
 import os
-from os.path import join, dirname, splitext, basename, isfile
+from os.path import join, dirname, splitext, basename, isfile, isdir
 from subprocess import check_output
 
 import genomepy
@@ -27,7 +27,10 @@ def get_ref_fasta(genome):
             logger.info('Found genome fasta at ' + path)
             return path
 
-    genome_dir = safe_mkdir(join(DATA_DIR, 'genomes'))
+    if isdir(join(DATA_DIR, 'genomes', genome)):
+        genome_dir = safe_mkdir(join(DATA_DIR, 'genomes'))
+    else:
+        genome_dir = safe_mkdir(join(DATA_DIR, '..', 'genomes'))
     if genome not in genomepy.list_installed_genomes(genome_dir):
         genome_rec = [rec for rec in genomepy.list_available_genomes() if rec[1] == genome]
         if genome_rec:

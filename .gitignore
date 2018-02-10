@@ -89,6 +89,7 @@ data
 data-*
 data.bak*
 tests/test_project/
+genomes
 
 */version.py
 */snps/playground
