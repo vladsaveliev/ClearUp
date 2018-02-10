@@ -82,7 +82,7 @@ def _send_line(ws, line, error=False):
     }))
 
 
-def run_processing(project_names_line, redirect_to):
+def run_processing(project_names_line, redirect_to, email=None):
     pnames = project_names_line.split('--')
 
     log.debug(f'Recieved request to start analysis for {project_names_line}')
@@ -99,6 +99,8 @@ def run_processing(project_names_line, redirect_to):
         assert vardict, 'vardict is not in PATH. Are you running from "clearup" environment?'
         back_url = f"http://{clearup.HOST_IP}:{clearup.PORT}{redirect_to}"
         cmdl = f'{sys.executable} {manage_py} analyse_projects {project_names_line} --back_url={back_url}'
+        if email:
+            cmdl += f' --email={email}'
         log.debug(cmdl)
         process = subprocess.Popen(cmdl, stderr=subprocess.STDOUT, stdout=open(run_log, 'w'),
                          env=os.environ, close_fds=True, shell=True)
@@ -108,6 +110,9 @@ def run_processing(project_names_line, redirect_to):
                   <p>Process is running under ID={process.pid}. Follow the log at:</p>
                   <pre>{run_log}</pre>
                   <p>And reload the page when it\'s finished.</p>'''
+
+    if email:
+        msg += f'<br>When the run finished, you will be notified by an email sent to {email}'
 
     return render_template(
         'submitted.html',
@@ -129,14 +134,14 @@ def run_processing_printing_console(project_names_line, redirect_to):
     )
 
 
-def render_phylo_tree_page(project_names_line):
+def render_phylo_tree_page(project_names_line, email=None):
     run = Run.find_by_project_names_line(project_names_line)
 
     if not Run.is_ready(run) or run.rerun_on_usercall:
         return run_processing(project_names_line,
-            redirect_to=url_for(
-                'phylo_tree_page',
-                project_names_line=project_names_line))
+            redirect_to=url_for('phylo_tree_page',
+                                project_names_line=project_names_line),
+            email=email)
 
     # log.info('Runing ultrafast')
     # pairwise_dict = compare_pairwise(run)

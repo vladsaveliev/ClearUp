@@ -42,6 +42,13 @@
                 </tbody>
             </table>
         {% endfor %}
+
+        <div>
+            <div class="form-group">
+              <label for="email">Email for notifications (optional):</label>
+              <input type="email" class="form-control" id="email" style="max-width: 500px;">
+            </div>
+        </div>
 {% endblock %}
 
 {% block js %}
@@ -56,7 +63,13 @@
                     tbody_{{ genome }}.find('tr.selected').each(function() {
                         projectNames.push($(this).attr('project_name'));
                     });
-                    location.href = "/" + projectNames.join('--') + "/tree";
+                    var email = $('#email').val();
+                    if (projectNames.length > 0) {
+                        var new_href = "/" + projectNames.join('--') + "/tree";
+                        if (email)
+                            new_href += "?email=" + email;
+                        location.href = new_href;
+                    }
                 });
 
                 tbody_{{ genome }}.on('click', 'tr', function () {

@@ -59,7 +59,8 @@ def run_analysis(project_names_line):
 
 @app.route('/<project_names_line>/tree/')
 def phylo_tree_page(project_names_line):
-    return render_phylo_tree_page(project_names_line)
+    email = request.args.get('email', None)
+    return render_phylo_tree_page(project_names_line, email=email)
 
 
 @app.route('/<project_names_line>/tree/<int:sample_id>/')
