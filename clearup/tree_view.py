@@ -22,6 +22,7 @@ from ngs_utils.file_utils import safe_mkdir, file_transaction, can_reuse, verify
 from ngs_utils.file_utils import can_reuse, safe_mkdir
 from ngs_utils import logger as log
 
+import clearup
 from clearup.genotype import build_tree
 from clearup.model import Project, db, Sample, Run, get_or_create_run
 from clearup.utils import read_fasta, FASTA_ID_PROJECT_SEPARATOR
@@ -96,14 +97,15 @@ def run_processing(project_names_line, redirect_to):
         manage_py = abspath(join(dirname(__file__), '..', 'manage.py'))
         vardict = which('vardict')
         assert vardict, 'vardict is not in PATH. Are you running from "clearup" environment?'
-        cmdl = f'{sys.executable} {manage_py} analyse_projects {project_names_line}'
+        back_url = f"http://{clearup.HOST_IP}:{clearup.PORT}{redirect_to}"
+        cmdl = f'{sys.executable} {manage_py} analyse_projects {project_names_line} --back_url={back_url}'
         log.debug(cmdl)
-        subprocess.Popen(cmdl, stderr=subprocess.STDOUT, stdout=open(run_log, 'w'),
+        process = subprocess.Popen(cmdl, stderr=subprocess.STDOUT, stdout=open(run_log, 'w'),
                          env=os.environ, close_fds=True, shell=True)
 
         msg = f'''<p>Starting analysis with a command line:</p>
                   <pre>{cmdl}</pre>
-                  <p>Follow the log at:</p>
+                  <p>Process is running under ID={process.pid}. Follow the log at:</p>
                   <pre>{run_log}</pre>
                   <p>And reload the page when it\'s finished.</p>'''
 
@@ -116,7 +118,7 @@ def run_processing(project_names_line, redirect_to):
         message=msg
     )
 
-def run_processing_print_line(project_names_line, redirect_to):
+def run_processing_printing_console(project_names_line, redirect_to):
     pnames = project_names_line.split('--')
     return render_template(
         'processing.html',

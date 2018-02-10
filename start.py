@@ -13,6 +13,7 @@ from ngs_utils.file_utils import verify_file, safe_mkdir
 from ngs_utils.sambamba import index_bam
 from ngs_utils.utils import is_local
 
+import clearup
 from clearup import app, DATA_DIR, HOST_IP, PORT, get_version
 from clearup.genotype import build_tree
 from clearup.model import db, Sample, Project, Run, Location, SNP
@@ -31,6 +32,8 @@ from clearup.tree_view import run_analysis_socket_handler, render_phylo_tree_pag
               default=PORT)
 @click.version_option(version=get_version())
 def main(host, port):
+    clearup.HOST_IP = host
+    clearup.POST = port
     log.init(True, join(DATA_DIR, 'log_server.txt'), save_previous=True)
 
     os.environ['FLASK_DEBUG'] = '1'

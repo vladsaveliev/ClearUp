@@ -221,7 +221,7 @@ def _sex_from_bam(sname, bam_file, bed_file, work_dir, genome_build, avg_depth=N
 
 
 @manager.command
-def analyse_projects(project_names_line):
+def analyse_projects(project_names_line, back_url=None):
     print('PATH=' + os.environ['PATH'])
 
     project_names = project_names_line.split('--')
@@ -230,6 +230,9 @@ def analyse_projects(project_names_line):
         raise RuntimeError('Some projects in ' + str(project_names) + ' are not found in the database: ' +
                            str(set(project_names) - set(p.name for p in projects)))
     run = get_or_create_run(projects)
+    if back_url:
+        log.send_email(f'Comparison of projects {project_names} is finished.\n\n'
+                       f'Follow this link for the tree: <a href="{back_url}">{back_url}</a>')
 
 
 def compare_pairwise(run):
