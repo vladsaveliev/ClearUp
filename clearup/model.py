@@ -164,9 +164,14 @@ class Run(db.Model):
             vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
                  work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
         else:
-            with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as parall_view:
-                vcf_by_sample = genotype(bs, snps_left_to_call_file, parall_view,
+            n_threads = parallel_cfg.threads
+            if len(samples) < n_threads:  # vardict is running in 1 thread
+                parallel_cfg.threads = len(samples)
+            with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as view:
+                vcf_by_sample = genotype(bs, snps_left_to_call_file, view,
                      work_dir=work_dir, output_dir=vcf_dir, genome_build=genome_build)
+            parallel_cfg.threads = n_threads
+
 
         # TODO: speed this up
         log.info('Loading called SNPs into the DB')
@@ -198,9 +203,16 @@ class Run(db.Model):
 
         log.info()
         log.info('Loading BAMs sliced to fingerprints')
-        parall_view.run(load_bam_file,
-            [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
-             for s in samples])
+        if parall_view:
+            parall_view.run(load_bam_file,
+                            [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
+                             for s in samples])
+        else:
+            with parallel_view(len(samples), parallel_cfg, safe_mkdir(join(run.work_dir_path(), 'log'))) as view:
+                view.run(load_bam_file,
+                         [[s.bam, safe_mkdir(join(run.work_dir_path(), 'bams')), run.snps_file, s.long_name()]
+                          for s in samples])
+
         return run
 
     @staticmethod

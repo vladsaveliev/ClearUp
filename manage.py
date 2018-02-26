@@ -231,9 +231,10 @@ def analyse_projects(project_names_line, back_url=None, email=None):
                            str(set(project_names) - set(p.name for p in projects)))
     run = get_or_create_run(projects)
     if back_url and email:
-        log.send_email(f'Comparison of projects {project_names} is finished.\n\n'
-                       f'Follow this link for the tree: <a href="{back_url}">{back_url}</a>',
-                       subj='ClearUp: done {", ".join(project_names)}',
+        log.set_smtp_host('relay.astrazeneca.net')
+        log.send_email(f'Comparison of projects {", ".join(project_names)} is finished.\n\n'
+                       f'Follow this link for the tree: {back_url}',
+                       subj=f'ClearUp: done {", ".join(project_names)}',
                        addr=email)
 
 

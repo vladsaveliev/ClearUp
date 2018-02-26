@@ -106,8 +106,7 @@ def genotype(samples, snp_bed, parall_view, work_dir, output_dir, genome_build):
     genome_fasta_file = get_ref_fasta(genome_build)
     info('** Running VarDict ** ')
     vcfs = parall_view.run(_vardict_pileup_sample,
-        [[s, work_dir, output_dir, genome_fasta_file, parall_view.cores_per_job, snp_bed]
-         for s in samples])
+        [[s, work_dir, output_dir, genome_fasta_file, snp_bed] for s in samples])
     vcf_by_sample = OrderedDict(zip([s.name for s in samples], vcfs))
     info('** Finished running VarDict **')
     return vcf_by_sample
@@ -129,7 +128,7 @@ def _split_bed(bed_file, work_dir):
     return autosomal_bed, sex_bed
 
 
-def _vardict_pileup_sample(sample, work_dir, output_dir, genome_fasta_file, threads, snp_file):
+def _vardict_pileup_sample(sample, work_dir, output_dir, genome_fasta_file, snp_file):
     vardict_snp_vars = join(work_dir, sample.name + '_vars.txt')
     vcf_file = join(output_dir, sample.name + '.vcf')
     if can_reuse(vardict_snp_vars, [sample.bam, snp_file]) and can_reuse(vcf_file, vardict_snp_vars):
