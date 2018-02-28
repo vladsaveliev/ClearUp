@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import time
+import hashlib
 
 import sys
 from os.path import join, dirname, isfile
@@ -86,7 +87,8 @@ def run_processing(project_names_line, redirect_to, email=None):
     pnames = project_names_line.split('--')
 
     log.debug(f'Recieved request to start analysis for {project_names_line}')
-    run_log = join(DATA_DIR, str(project_names_line) + '.run_analysis.log')
+    run_id = hashlib.sha256(str(project_names_line).encode()).hexdigest()
+    run_log = join(DATA_DIR, f'run_{run_id}.log')
     if isfile(run_log):
         msg = f'''<p>Run for projects {project_names_line} already started. Please, wait until it finished. 
                   <br>
@@ -139,8 +141,7 @@ def render_phylo_tree_page(project_names_line, email=None):
 
     if not Run.is_ready(run) or run.rerun_on_usercall:
         return run_processing(project_names_line,
-            redirect_to=url_for('phylo_tree_page',
-                                project_names_line=project_names_line),
+            redirect_to=url_for('phylo_tree_page', project_names_line=project_names_line),
             email=email)
 
     # log.info('Runing ultrafast')
