@@ -23,7 +23,8 @@ if is_us():
 else:
     HOST_IP = 'localhost'
     PORT = 5004
-    parallel_cfg = ParallelCfg()
+    parallel_cfg = ParallelCfg(threads=3)
+
 
 
 DATA_DIR = abspath(join(dirname(__file__), '..', 'data'))

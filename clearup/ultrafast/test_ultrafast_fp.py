@@ -6,24 +6,23 @@ from os.path import join, basename, dirname, isfile
 from glob import glob
 from collections import defaultdict
 import hashlib
-import click
 
+import click
 import itertools as it
 import numpy as np
 import scipy.stats
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt; plt.switch_backend('agg')
-
 from pybedtools import BedTool
 from cyvcf2 import VCF
+
 from ngs_utils.file_utils import splitext_plus, can_reuse, safe_mkdir, adjust_path, str_to_filename
 from ngs_utils.call_process import run
 from ngs_utils import logger as log
 from ngs_utils.parallel import ParallelCfg, parallel_view
 from ngs_utils.bcbio import BcbioProject
 from ngs_utils.bed_utils import bgzip_and_tabix, sort_bed
-from clearup.panel import overlap_bed_files, lift_over
 
 
 class Params:
@@ -38,7 +37,7 @@ class Params:
     INTERREGION_PAIRS = True  # when regional sequencing, allow snp pairs between regions
 
 
-basedir = dirname(__file__)
+code_dir = dirname(__file__)
 # input_subdirs = 'platinum_hg19 platinum_hg38'.split()
 # input_subdirs = 'umi_onseq az600_probes az600_targets platinum_hg19 platinum_hg38'.split()
 # input_subdirs = 'az600_probes az600_targets platinum_hg19 platinum_hg38'.split()
@@ -66,25 +65,29 @@ basedir = dirname(__file__)
 @click.option('-d', '--isdebug',
               is_flag=True,
               default=False)
-def main(subdirs, output_dir, threads=1, fp_size=Params.L, isdebug=False):
+@click.pass_context
+def main(ctx, subdirs, output_dir, threads=1, fp_size=Params.L, isdebug=False):
     """ Generates a PNG image with a relatedness heatmap.
     """
+    if not subdirs:
+        ctx.fail('Provide at least on input directory.')
+
     datasets = _load_datasets(subdirs)
 
     title = ', '.join(d.name for d in datasets) + '\nL=' + str(fp_size) + ''
     if not Params.NORMALIZE_VAR:  title += ', not norm by var'
     if not Params.NORMALIZE_DIST: title += ', not norm by dist'
-    if Params.SKIP_DAMAGE:           title += ', skipped damage'
-    if Params.SKIP_REJECT:           title += ', skipped REJECT'
-    if Params.SKIP_NOCALL:           title += ', skipped num called = 0'
-    if Params.MIN_AF:                title += ', min AF=' + str(Params.MIN_AF)
-    if Params.MIN_DIST:              title += ', min dist=' + str(Params.MIN_DIST)
-    if Params.INTERREGION_PAIRS:     title += ', used SNP pairs between regions'
-    else:                            title += ', skiped SNP pairs between regions'
+    if Params.SKIP_DAMAGE:        title += ', skipped damage'
+    if Params.SKIP_REJECT:        title += ', skipped REJECT'
+    if Params.SKIP_NOCALL:        title += ', skipped num called = 0'
+    if Params.MIN_AF:             title += ', min AF=' + str(Params.MIN_AF)
+    if Params.MIN_DIST:           title += ', min dist=' + str(Params.MIN_DIST)
+    if Params.INTERREGION_PAIRS:  title += ', used SNP pairs between regions'
+    else:                         title += ', skiped SNP pairs between regions'
 
     run_id = '__'.join(d.name for d in datasets)
 
-    run_dir = safe_mkdir(join((output_dir or join(basedir, 'runs')), run_id))
+    run_dir = safe_mkdir(join((output_dir or join(code_dir, 'runs')), run_id))
     log.init(isdebug, join(run_dir, 'log.txt'), save_previous=True)
     work_dir = safe_mkdir(join(run_dir, 'work'))
 
@@ -92,7 +95,8 @@ def main(subdirs, output_dir, threads=1, fp_size=Params.L, isdebug=False):
     bed_files_by_genome = defaultdict(set)
     for d in datasets:
         all_vcf_by_label.update(d.vcf_by_label)
-        bed_files_by_genome[d.genome].add(d.bed_file)  # d.bed_file=None for WGS
+        if d.bed_file:
+            bed_files_by_genome[d.genome].add(d.bed_file)  # d.bed_file=None for WGS
 
     genome_by_label = dict()
     for d in datasets:
@@ -102,39 +106,10 @@ def main(subdirs, output_dir, threads=1, fp_size=Params.L, isdebug=False):
     parallel_cfg = ParallelCfg(threads=threads)
     log.info(f'Starting using {parallel_cfg.threads} threads')
 
-    overlap_bed_file_by_genome = dict()
     with parallel_view(len(all_vcf_by_label), parallel_cfg, work_dir) as parall_view:
+        overlap_bed_file_by_genome = dict()
         if bed_files_by_genome:
-            log.info(f'Found BED files: {bed_files_by_genome}')
-            for genome, bed_files in bed_files_by_genome.items():
-                bed_files = [b for b in bed_files if b]
-                log.info(f'Overlapping BED files for genome {genome}')
-                overlap_bed_file_by_genome[genome] = _overlap_bed_files(bed_files, work_dir, genome) \
-                    if bed_files else None
-
-            primary_genome = sorted(bed_files_by_genome.items(), key=lambda kv: len(kv[1]))[-1][0]
-            lifted_bed_files = []
-            for genome, overlap_bed_file in overlap_bed_file_by_genome.items():
-                if overlap_bed_file and genome != primary_genome:
-                    lifted_bed_file = lift_over(overlap_bed_file, genome, primary_genome)
-                    lifted_bed_files.append(lifted_bed_file)
-            if lifted_bed_files:
-                primary_bed_files = [b for b in lifted_bed_files + [overlap_bed_file_by_genome[primary_genome]] if b]
-                overlap_bed_file_by_genome[primary_genome] = _overlap_bed_files(
-                    primary_bed_files, work_dir, primary_genome)
-
-            log.info('Lifting BED files back')
-            for genome in overlap_bed_file_by_genome:
-                if genome != primary_genome:
-                    overlap_bed_file_by_genome[genome] = lift_over(
-                        overlap_bed_file_by_genome[primary_genome], primary_genome, genome)
-            log.info()
-
-            log.info('Sorting, bgzipping and tabixing BED files')
-            for g, bed in overlap_bed_file_by_genome.items():
-                overlap_bed_file_by_genome[g] = bgzip_and_tabix(sort_bed(bed, genome=g))
-            log.info()
-
+            overlap_bed_file_by_genome = _prep_bed(work_dir, bed_files_by_genome, overlap_bed_file_by_genome)
             log.info('Slicing VCFs to regions in BED files')
             out = parall_view.run(_slice_vcf_fn,
                [[work_dir, label, vcf, overlap_bed_file_by_genome.get(genome_by_label[label])]
@@ -144,7 +119,7 @@ def main(subdirs, output_dir, threads=1, fp_size=Params.L, isdebug=False):
 
         log.info('Calculating fingerprints for individual samples')
         out = parall_view.run(make_fingerprint,
-           [[vcf, work_dir, label, fp_size, overlap_bed_file_by_genome[genome_by_label[label]]]
+           [[vcf, work_dir, label, fp_size, overlap_bed_file_by_genome.get(genome_by_label[label])]
             for label, vcf in all_vcf_by_label.items()])
         print_label_pairs = dict(out)
         log.info()
@@ -165,6 +140,42 @@ def main(subdirs, output_dir, threads=1, fp_size=Params.L, isdebug=False):
     plot_heatmap(pairwise_dict, run_dir, title)
 
 
+def _prep_bed(work_dir, bed_files_by_genome, overlap_bed_file_by_genome=None):
+    overlap_bed_file_by_genome = dict()
+    log.info(f'Found BED files: {bed_files_by_genome}')
+    for genome, bed_files in bed_files_by_genome.items():
+        bed_files = [b for b in bed_files if b]
+        log.info(f'Overlapping BED files for genome {genome}')
+        overlap_bed_file_by_genome[genome] = _overlap_bed_files(bed_files, work_dir, genome) \
+            if bed_files else None
+
+    primary_genome = sorted(bed_files_by_genome.items(), key=lambda kv: len(kv[1]))[-1][0]
+    lifted_bed_files = []
+    for genome, overlap_bed_file in overlap_bed_file_by_genome.items():
+        if overlap_bed_file and genome != primary_genome:
+            from clearup.panel import lift_over
+            lifted_bed_file = lift_over(overlap_bed_file, genome, primary_genome)
+            lifted_bed_files.append(lifted_bed_file)
+    if lifted_bed_files:
+        primary_bed_files = [b for b in lifted_bed_files + [overlap_bed_file_by_genome[primary_genome]] if b]
+        overlap_bed_file_by_genome[primary_genome] = _overlap_bed_files(
+            primary_bed_files, work_dir, primary_genome)
+
+    log.info('Lifting BED files back')
+    for genome in overlap_bed_file_by_genome:
+        if genome != primary_genome:
+            from clearup.panel import lift_over
+            overlap_bed_file_by_genome[genome] = lift_over(
+                overlap_bed_file_by_genome[primary_genome], primary_genome, genome)
+    log.info()
+
+    log.info('Sorting, bgzipping and tabixing BED files')
+    for g, bed in overlap_bed_file_by_genome.items():
+        overlap_bed_file_by_genome[g] = bgzip_and_tabix(sort_bed(bed, genome=g))
+    log.info()
+    return overlap_bed_file_by_genome
+
+
 def compare(fp1, fp2):
     try:
         res = scipy.stats.spearmanr(fp1.flatten(), fp2.flatten())
@@ -179,6 +190,8 @@ def compare(fp1, fp2):
 
 
 def _overlap_bed_files(bed_files, work_dir, genome):
+    from clearup.panel import overlap_bed_files
+
     fnames = [basename(splitext_plus(fp)[0]) for fp in bed_files]
     overlapped_file = join(work_dir, f'{"__".join(fnames)}.{genome}.bed')
     if not can_reuse(overlapped_file, bed_files):
@@ -227,8 +240,9 @@ def _load_datasets(subdirs):
         else:
             dataset.genome = 'hg19'
 
-        dir_path = join(basedir, subdir)
+        dir_path = subdir
         if glob(join(dir_path, '*.vcf.gz')):
+            log.info(f'Found .vcf.gz files in directory {dir_path}')
             # Simple directory with VCF files and an optional BED file?
             dataset.name = subdir.replace('/', '__')
             if glob(join(dir_path, '*.bed')):
@@ -237,6 +251,7 @@ def _load_datasets(subdirs):
                 label = join(subdir, basename(splitext_plus(vcf_fpath)[0])).replace('/', '__')
                 dataset.vcf_by_label[label] = vcf_fpath
         else:
+            log.info(f'Not found any .vcf.gz files in directory {dir_path}. Checking if that\'s a bcbio folder.')
             # Bcbio directory?
             bcbio_proj = BcbioProject()
             bcbio_proj.load_from_bcbio_dir(subdir, proc_name='clearup')

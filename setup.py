@@ -3,10 +3,9 @@ import sys
 py_v = sys.version_info[:2]
 if not (py_v == (2, 7) or py_v >= (3, 3)):
     sys.exit('Only Python 2.7 or 3.3 and up are supported. Current version: ' + '.'.join(py_v))
-    
 
-import clearup
-package_name = clearup.__name__
+
+package_name = 'clearup'
 
 
 from ngs_utils import setup_utils

@@ -15,3 +15,4 @@ pandas
 seaborn
 matplotlib
 scipy
+pybedtools
