@@ -16,6 +16,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt; plt.switch_backend('agg')
 from pybedtools import BedTool
 from cyvcf2 import VCF
+import matplotlib
 
 from ngs_utils.file_utils import splitext_plus, can_reuse, safe_mkdir, adjust_path, str_to_filename
 from ngs_utils.call_process import run
@@ -429,12 +430,12 @@ def plot_heatmap(pairwise, run_dir, title):
     g.set_yticklabels(g.get_yticklabels(), rotation=0, fontsize=7)
     g.set_xticklabels(g.get_xticklabels(), rotation=90, fontsize=7)
     sns.set(font_scale=2)
-    sns.plt.subplots_adjust(left=0.2, right=1, top=0.93, bottom=0.29)
+    matplotlib.pyplot.subplots_adjust(left=0.2, right=1, top=0.93, bottom=0.29)
 
     png_file = join(run_dir, str_to_filename(title) + '.png')
     if isfile(png_file):
         os.remove(png_file)
-    sns.plt.savefig(png_file)
+    matplotlib.pyplot.savefig(png_file)
     if isfile(png_file):
         log.info('')
         log.info('Saved heatmap into ' + adjust_path(png_file))
